@@ -593,6 +593,25 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   box-shadow: 0 0 18px var(--pad);
 }
 
+/* Capsule Pong */
+
+.pgame { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px 0; }
+
+.p-score { font-weight: 600; color: var(--ink-dim); }
+.p-score b { color: var(--ink); font-size: 1.15rem; }
+
+#pong {
+  width: min(480px, 92vw);
+  aspect-ratio: 8 / 5;
+  background: var(--bg2);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  touch-action: none;
+  cursor: ns-resize;
+}
+
+.p-hint { color: var(--ink-dim); font-size: 0.85rem; }
+
 /* ---------- sticker wall ---------- */
 
 .wall-sub { color: var(--ink-dim); margin-bottom: 12px; }
@@ -718,7 +737,9 @@ footer {
   font-size: 0.8rem;
 }
 
-#reset-save {
+.foot-btns { display: flex; gap: 14px; }
+
+footer button {
   color: var(--ink-dim);
   cursor: pointer;
   text-decoration: underline;

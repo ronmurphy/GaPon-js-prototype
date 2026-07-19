@@ -329,6 +329,31 @@ function boot() {
     if (confirm('Wipe your GaPon save and start over?')) resetGame();
   });
 
+  // save codes are base64 JSON — same trust level as localStorage itself
+  $('#export-save').addEventListener('click', () => {
+    const code = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+    const fallback = () => prompt('Copy your save code somewhere safe:', code);
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(code).then(
+        () => toast('Save code copied to clipboard!', 'good'), fallback);
+    } else fallback();
+  });
+
+  $('#import-save').addEventListener('click', () => {
+    const code = prompt('Paste your save code:');
+    if (!code) return;
+    try {
+      const data = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+      if (typeof data.coins !== 'number' || typeof data.inv !== 'object') throw new Error();
+      if (!confirm('Replace your current save with this backup?')) return;
+      state = Object.assign(defaultState(), data);
+      saveGame();
+      location.reload();
+    } catch {
+      toast("That save code didn't work — bad paste?", 'warn');
+    }
+  });
+
   if (firstRun) {
     toast(`Welcome to GaPon! Here's ${fmtCoins(state.coins)} coins — go pull!`, 'good');
   } else if (daily) {

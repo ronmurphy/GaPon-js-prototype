@@ -1,6 +1,6 @@
 // GaPon — arcade corner: five quick minigames, 3 plays a day, small payouts.
 
-let timingRaf = null;
+let arcadeRaf = null;
 let arcadeTimers = [];
 
 // setTimeout/setInterval ids share one pool, so clearTimeout clears both.
@@ -26,7 +26,7 @@ function arcadeAward(payout, headline) {
 }
 
 function renderArcade() {
-  if (timingRaf) { cancelAnimationFrame(timingRaf); timingRaf = null; }
+  if (arcadeRaf) { cancelAnimationFrame(arcadeRaf); arcadeRaf = null; }
   clearArcadeTimers();
   const left = arcadePlaysLeft();
   const host = $('#tab-arcade');
@@ -73,6 +73,13 @@ function renderArcade() {
         <div class="g-pay">${coinIcon()} 2–15</div>
         <button class="btn" data-game="echo" ${left ? '' : 'disabled'}>Play</button>
       </div>
+      <div class="game-card">
+        <span class="msr g-icon">sports_tennis</span>
+        <div class="g-name">Capsule Pong</div>
+        <div class="g-desc">Beat the robo-paddle — first to ${ARCADE.pong.winScore}!</div>
+        <div class="g-pay">${coinIcon()} 3–15</div>
+        <button class="btn" data-game="pong" ${left ? '' : 'disabled'}>Play</button>
+      </div>
     </div>
     <div id="arcade-stage"></div>`;
   host.querySelectorAll('[data-game]').forEach(btn =>
@@ -86,6 +93,7 @@ function renderArcade() {
         chase: startChaseGame,
         shell: startShellGame,
         echo: startEchoGame,
+        pong: startPongGame,
       }[btn.dataset.game];
       start();
     }));
@@ -104,16 +112,16 @@ function startTimingGame() {
   const start = performance.now();
   let pos = 0;
   const loop = now => {
-    if (!document.body.contains(marker)) { timingRaf = null; return; }
+    if (!document.body.contains(marker)) { arcadeRaf = null; return; }
     pos = (Math.sin((now - start) * 0.0045) + 1) / 2;
     marker.style.left = `calc(${(pos * 100).toFixed(2)}% - 2px)`;
-    timingRaf = requestAnimationFrame(loop);
+    arcadeRaf = requestAnimationFrame(loop);
   };
-  timingRaf = requestAnimationFrame(loop);
+  arcadeRaf = requestAnimationFrame(loop);
 
   $('#t-stop').addEventListener('click', () => {
-    cancelAnimationFrame(timingRaf);
-    timingRaf = null;
+    cancelAnimationFrame(arcadeRaf);
+    arcadeRaf = null;
     const dist = Math.abs(pos - 0.5);
     const p = ARCADE.timing;
     let payout, headline;
@@ -317,6 +325,139 @@ function startShellGame() {
       ), 1100));
     }));
   }, t + 250));
+}
+
+// ---------- Capsule Pong (vs the robo-paddle) ----------
+
+function startPongGame() {
+  const c = ARCADE.pong;
+  const stage = $('#arcade-stage');
+  stage.innerHTML = `
+    <div class="pgame">
+      <div class="p-score">You <b id="p-you">0</b> · <b id="p-ai">0</b> Robo</div>
+      <canvas id="pong" width="480" height="300"></canvas>
+      <p class="p-hint">drag up &amp; down to move your paddle</p>
+    </div>`;
+  const cv = $('#pong'), ctx = cv.getContext('2d');
+  const W = 480, H = 300, PW = 10, PH = 64, R = 10;
+  const AI_SPEED = 2.7, MAX_SPEED = 7.5;
+  const you = { x: 18, y: H / 2 };
+  const ai = { x: W - 18 - PW, y: H / 2 };
+  const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+  let target = H / 2;
+  let yourScore = 0, aiScore = 0;
+  let speed = 4.2, waiting = 0, ended = false;
+  let ballColor = CAPSULE_COLORS[0];
+
+  function serve(dir) {
+    speed = 4.2;
+    ball.x = W / 2;
+    ball.y = H / 2;
+    const a = (Math.random() - 0.5) * 0.7;
+    ball.vx = dir * speed * Math.cos(a);
+    ball.vy = speed * Math.sin(a);
+    ballColor = CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
+    waiting = 50;
+  }
+  serve(Math.random() < 0.5 ? 1 : -1);
+
+  const track = e => {
+    const r = cv.getBoundingClientRect();
+    target = (e.clientY - r.top) / r.height * H;
+  };
+  cv.addEventListener('pointermove', track);
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); track(e); });
+
+  function bounce(paddle, dir) {
+    const rel = Math.max(-1, Math.min(1, (ball.y - paddle.y) / (PH / 2)));
+    speed = Math.min(MAX_SPEED, speed * 1.06);
+    const ang = rel * 0.85;   // edge hits fire off at up to ~49°
+    ball.vx = dir * speed * Math.cos(ang);
+    ball.vy = speed * Math.sin(ang);
+  }
+
+  function finish() {
+    const win = yourScore >= c.winScore;
+    arcadeAward(
+      win ? (aiScore === 0 ? c.sweep : c.win) : c.lose,
+      win ? (aiScore === 0 ? '🏆 FLAWLESS! Robo-paddle destroyed!' : 'You win! GG, robo-paddle.')
+          : 'Robo-paddle takes it. Rematch tomorrow?');
+  }
+
+  const step = () => {
+    if (!document.body.contains(cv)) { arcadeRaf = null; return; }
+
+    you.y += (target - you.y) * 0.3;
+    you.y = Math.max(PH / 2, Math.min(H - PH / 2, you.y));
+
+    // the "AI": chase the ball only while it's incoming, else drift home —
+    // its top speed is below the ball's, so sharp angles beat it
+    const aim = ball.vx > 0 ? ball.y : H / 2;
+    ai.y += Math.max(-AI_SPEED, Math.min(AI_SPEED, aim - ai.y));
+    ai.y = Math.max(PH / 2, Math.min(H - PH / 2, ai.y));
+
+    if (waiting > 0) waiting--;
+    else if (!ended) {
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+      if (ball.y < R) { ball.y = R; ball.vy = Math.abs(ball.vy); }
+      if (ball.y > H - R) { ball.y = H - R; ball.vy = -Math.abs(ball.vy); }
+      if (ball.vx < 0 && ball.x - R < you.x + PW && ball.x - R > you.x - 14 &&
+          Math.abs(ball.y - you.y) < PH / 2 + R) {
+        ball.x = you.x + PW + R;
+        bounce(you, 1);
+      }
+      if (ball.vx > 0 && ball.x + R > ai.x && ball.x + R < ai.x + PW + 14 &&
+          Math.abs(ball.y - ai.y) < PH / 2 + R) {
+        ball.x = ai.x - R;
+        bounce(ai, -1);
+      }
+      if (ball.x < -R * 2 || ball.x > W + R * 2) {
+        const youScored = ball.x > W;
+        if (youScored) $('#p-you').textContent = ++yourScore;
+        else $('#p-ai').textContent = ++aiScore;
+        if (yourScore >= c.winScore || aiScore >= c.winScore) {
+          ended = true;
+          addArcadeTimer(setTimeout(finish, 800));
+        } else {
+          serve(youScored ? 1 : -1);
+        }
+      }
+    }
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.setLineDash([8, 10]);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0);
+    ctx.lineTo(W / 2, H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#f0edf7';
+    for (const p of [you, ai]) {
+      ctx.beginPath();
+      ctx.roundRect(p.x, p.y - PH / 2, PW, PH, 5);
+      ctx.fill();
+    }
+    if (!ended) {
+      ctx.save();
+      ctx.translate(ball.x, ball.y);
+      ctx.rotate(Math.atan2(ball.vy, ball.vx) + Math.PI / 2);
+      ctx.beginPath();
+      ctx.arc(0, 0, R, Math.PI, Math.PI * 2);
+      ctx.fillStyle = ballColor;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI);
+      ctx.fillStyle = '#f2f0eb';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    arcadeRaf = requestAnimationFrame(step);
+  };
+  arcadeRaf = requestAnimationFrame(step);
 }
 
 // ---------- Echo Pads (repeat the pattern) ----------

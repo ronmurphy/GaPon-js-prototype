@@ -38,6 +38,7 @@ const ARCADE = {
             gold: 15, silver: 10, bronze: 5, miss: 2 },
   shell:  { swaps: 6, win: 12, wrong: 3 },
   echo:   { rounds: [5, 10, 15], flub: 2 },  // payout per round survived
+  pong:   { winScore: 3, win: 12, sweep: 15, lose: 3 },
 };
 
 // Each collection: 6 common, 3 uncommon, 2 rare, 1 chase.
