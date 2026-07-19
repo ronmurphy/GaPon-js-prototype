@@ -1,8 +1,17 @@
-// GaPon — arcade corner: two quick minigames, 3 plays a day, small payouts.
+// GaPon — arcade corner: five quick minigames, 3 plays a day, small payouts.
 
 let timingRaf = null;
+let arcadeTimers = [];
+
+// setTimeout/setInterval ids share one pool, so clearTimeout clears both.
+function addArcadeTimer(id) { arcadeTimers.push(id); return id; }
+function clearArcadeTimers() {
+  for (const id of arcadeTimers) clearTimeout(id);
+  arcadeTimers = [];
+}
 
 function arcadeAward(payout, headline) {
+  clearArcadeTimers();
   state.coins += payout;
   saveGame();
   updateHeader();
@@ -18,6 +27,7 @@ function arcadeAward(payout, headline) {
 
 function renderArcade() {
   if (timingRaf) { cancelAnimationFrame(timingRaf); timingRaf = null; }
+  clearArcadeTimers();
   const left = arcadePlaysLeft();
   const host = $('#tab-arcade');
   host.innerHTML = `
@@ -42,6 +52,27 @@ function renderArcade() {
         <div class="g-pay">${coinIcon()} 5–15</div>
         <button class="btn" data-game="match" ${left ? '' : 'disabled'}>Play</button>
       </div>
+      <div class="game-card">
+        <span class="msr g-icon">ads_click</span>
+        <div class="g-name">Capsule Chase</div>
+        <div class="g-desc">Tap capsules before they drop — 10 seconds!</div>
+        <div class="g-pay">${coinIcon()} 2–15</div>
+        <button class="btn" data-game="chase" ${left ? '' : 'disabled'}>Play</button>
+      </div>
+      <div class="game-card">
+        <span class="msr g-icon">visibility</span>
+        <div class="g-name">Shuffle Shells</div>
+        <div class="g-desc">Follow the capsule under the cups.</div>
+        <div class="g-pay">${coinIcon()} 3–12</div>
+        <button class="btn" data-game="shell" ${left ? '' : 'disabled'}>Play</button>
+      </div>
+      <div class="game-card">
+        <span class="msr g-icon">music_note</span>
+        <div class="g-name">Echo Pads</div>
+        <div class="g-desc">Repeat the growing beat pattern.</div>
+        <div class="g-pay">${coinIcon()} 2–15</div>
+        <button class="btn" data-game="echo" ${left ? '' : 'disabled'}>Play</button>
+      </div>
     </div>
     <div id="arcade-stage"></div>`;
   host.querySelectorAll('[data-game]').forEach(btn =>
@@ -49,8 +80,14 @@ function renderArcade() {
       if (!useArcadePlay()) return;
       host.querySelector('.arcade-games').remove();
       host.querySelector('.arcade-sub').remove();
-      if (btn.dataset.game === 'timing') startTimingGame();
-      else startMatchGame();
+      const start = {
+        timing: startTimingGame,
+        match: startMatchGame,
+        chase: startChaseGame,
+        shell: startShellGame,
+        echo: startEchoGame,
+      }[btn.dataset.game];
+      start();
     }));
 }
 
@@ -160,4 +197,192 @@ function startMatchGame() {
         }, 700);
       }
     }));
+}
+
+// ---------- Capsule Chase (whack-a-mole) ----------
+
+function startChaseGame() {
+  const c = ARCADE.chase;
+  const stage = $('#arcade-stage');
+  stage.innerHTML = `
+    <div class="wgame">
+      <div class="w-head">
+        <span id="w-time">${c.seconds.toFixed(1)}s</span>
+        <span id="w-score">0 caught</span>
+      </div>
+      <div class="w-grid">
+        ${Array.from({ length: 9 }, () =>
+          '<div class="w-hole"><div class="w-cap"></div></div>').join('')}
+      </div>
+    </div>`;
+  const holes = [...stage.querySelectorAll('.w-hole')];
+  let score = 0, over = false;
+  const end = performance.now() + c.seconds * 1000;
+
+  const popOne = () => {
+    if (over) return;
+    const free = holes.filter(h => !h.classList.contains('up'));
+    if (free.length) {
+      const hole = free[Math.floor(Math.random() * free.length)];
+      hole.querySelector('.w-cap').style.background =
+        `linear-gradient(180deg, ${CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)]} 50%, #f2f0eb 50%)`;
+      hole.classList.add('up');
+      addArcadeTimer(setTimeout(() => hole.classList.remove('up'), 650 + Math.random() * 250));
+    }
+    addArcadeTimer(setTimeout(popOne, 380 + Math.random() * 320));
+  };
+  popOne();
+
+  holes.forEach(h => h.addEventListener('pointerdown', () => {
+    if (over || !h.classList.contains('up')) return;
+    h.classList.remove('up');
+    score++;
+    $('#w-score').textContent = `${score} caught`;
+  }));
+
+  addArcadeTimer(setInterval(() => {
+    const ms = end - performance.now();
+    if (ms > 0) {
+      $('#w-time').textContent = (ms / 1000).toFixed(1) + 's';
+      return;
+    }
+    over = true;
+    clearArcadeTimers();
+    $('#w-time').textContent = '0.0s';
+    let payout, headline;
+    if (score >= c.goldTaps)        { payout = c.gold;   headline = `🏆 GOLD! ${score} capsules caught!`; }
+    else if (score >= c.silverTaps) { payout = c.silver; headline = `Silver — ${score} caught!`; }
+    else if (score >= c.bronzeTaps) { payout = c.bronze; headline = `Bronze — ${score} caught.`; }
+    else                            { payout = c.miss;   headline = 'They got away! Pity coins.'; }
+    addArcadeTimer(setTimeout(() => arcadeAward(payout, headline), 500));
+  }, 100));
+}
+
+// ---------- Shuffle Shells (follow the capsule) ----------
+
+function startShellGame() {
+  const c = ARCADE.shell;
+  const stage = $('#arcade-stage');
+  stage.innerHTML = `
+    <div class="sgame">
+      <p class="s-status" id="s-status">Watch the capsule…</p>
+      <div class="s-row">
+        <div class="s-ball"></div>
+        <div class="s-cup"></div>
+        <div class="s-cup"></div>
+        <div class="s-cup"></div>
+      </div>
+    </div>`;
+  const cups = [...stage.querySelectorAll('.s-cup')];
+  const ball = stage.querySelector('.s-ball');
+  const slots = [0, 1, 2];   // cup index -> slot
+  const ballCup = Math.floor(Math.random() * 3);
+  const slotX = i => `calc(${i} * (100% - 84px) / 2)`;
+  // the ball always sits at its cup's slot, hidden behind the cup unless lifted
+  const place = () => {
+    cups.forEach((cup, i) => cup.style.left = slotX(slots[i]));
+    ball.style.left = `calc(${slots[ballCup]} * (100% - 84px) / 2 + 26px)`;
+  };
+  place();
+  cups[ballCup].classList.add('lifted');
+
+  addArcadeTimer(setTimeout(() => cups[ballCup].classList.remove('lifted'), 1100));
+
+  let t = 1600;
+  for (let s = 0; s < c.swaps; s++) {
+    addArcadeTimer(setTimeout(() => {
+      const a = Math.floor(Math.random() * 3);
+      let b = Math.floor(Math.random() * 2);
+      if (b >= a) b++;
+      [slots[a], slots[b]] = [slots[b], slots[a]];
+      place();
+    }, t));
+    t += 340;
+  }
+
+  addArcadeTimer(setTimeout(() => {
+    $('#s-status').textContent = 'Where is it? Tap a cup!';
+    cups.forEach(cup => cup.classList.add('pickable'));
+    let done = false;
+    cups.forEach((cup, i) => cup.addEventListener('click', () => {
+      if (done || !cup.classList.contains('pickable')) return;
+      done = true;
+      cups.forEach(x => x.classList.remove('pickable'));
+      cup.classList.add('lifted');
+      const right = i === ballCup;
+      if (!right) addArcadeTimer(setTimeout(() => cups[ballCup].classList.add('lifted'), 400));
+      addArcadeTimer(setTimeout(() => arcadeAward(
+        right ? c.win : c.wrong,
+        right ? '🏆 Nailed it! Eagle eyes!' : 'Nope — it was over there!'
+      ), 1100));
+    }));
+  }, t + 250));
+}
+
+// ---------- Echo Pads (repeat the pattern) ----------
+
+function startEchoGame() {
+  const c = ARCADE.echo;
+  const colors = ['#ef5350', '#ffc107', '#66bb6a', '#42a5f5'];
+  const stage = $('#arcade-stage');
+  stage.innerHTML = `
+    <div class="egame">
+      <p class="e-status" id="e-status">Watch the pattern…</p>
+      <div class="e-grid">
+        ${colors.map(col => `<button class="e-pad" style="--pad:${col}"></button>`).join('')}
+      </div>
+    </div>`;
+  const pads = [...stage.querySelectorAll('.e-pad')];
+  const status = $('#e-status');
+  const seq = [];
+  let round = 0;        // completed rounds
+  let inputIdx = 0;
+  let accepting = false;
+
+  const flash = (i, ms = 320) => {
+    pads[i].classList.add('lit');
+    addArcadeTimer(setTimeout(() => pads[i].classList.remove('lit'), ms));
+  };
+
+  const playSeq = () => {
+    accepting = false;
+    status.textContent = `Round ${round + 1} of ${c.rounds.length} — watch…`;
+    while (seq.length < 3 + round) seq.push(Math.floor(Math.random() * 4));
+    seq.forEach((p, k) => addArcadeTimer(setTimeout(() => {
+      flash(p);
+      if (k === seq.length - 1) addArcadeTimer(setTimeout(() => {
+        accepting = true;
+        inputIdx = 0;
+        status.textContent = 'Your turn!';
+      }, 500));
+    }, 600 + k * 500)));
+  };
+
+  pads.forEach((pad, i) => pad.addEventListener('pointerdown', () => {
+    if (!accepting) return;
+    flash(i, 200);
+    if (i !== seq[inputIdx]) {
+      accepting = false;
+      const payout = round > 0 ? c.rounds[round - 1] : c.flub;
+      const headline = round > 0
+        ? `Slipped on round ${round + 1} — still earned round ${round} pay!`
+        : 'Off beat! Pity coins.';
+      addArcadeTimer(setTimeout(() => arcadeAward(payout, headline), 600));
+      return;
+    }
+    inputIdx++;
+    if (inputIdx === seq.length) {
+      accepting = false;
+      round++;
+      if (round === c.rounds.length) {
+        addArcadeTimer(setTimeout(() =>
+          arcadeAward(c.rounds[round - 1], '🏆 PERFECT echo! All rounds!'), 600));
+      } else {
+        status.textContent = 'Nice! Next round…';
+        addArcadeTimer(setTimeout(playSeq, 900));
+      }
+    }
+  }));
+
+  playSeq();
 }

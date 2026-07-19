@@ -128,15 +128,15 @@ function doPull(machine, card) {
   saveGame();
   updateHeader();
   updateFooter();
-  machineSims[machine.tierId].shakeAndDispense();
-  setTimeout(() => showReveal(item, isNew, machine, card), 750);
+  const capColor = machineSims[machine.tierId].shakeAndDispense();
+  setTimeout(() => showReveal(item, isNew, machine, card, capColor), 900);
 }
 
 // ---------- reveal overlay ----------
 
-function showReveal(item, isNew, machine, card) {
+function showReveal(item, isNew, machine, card, capColor) {
   const rar = RARITIES[item.rarity];
-  const capColor = CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
+  capColor ??= CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
   const ov = $('#overlay');
   ov.hidden = false;
   ov.innerHTML = `

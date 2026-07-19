@@ -30,41 +30,56 @@ class MachineSim {
     });
   }
 
+  // The bottom-most capsule falls out through the floor during the shake.
+  // Returns its color so the reveal can show the same capsule landing in
+  // the player's hand — one continuous event, and it never hints at rarity.
   shakeAndDispense() {
     this.shakeFrames = 45;
     this.canvas.classList.remove('shaking');
     void this.canvas.offsetWidth; // restart CSS animation
     this.canvas.classList.add('shaking');
-    // one capsule leaves the machine; restock shortly after
-    if (this.capsules.length > 0) {
-      this.capsules.splice(Math.floor(Math.random() * this.capsules.length), 1);
+    let pick = null;
+    for (const c of this.capsules) {
+      if (!c.dispensing && (!pick || c.y > pick.y)) pick = c;
     }
-    setTimeout(() => this.spawnCapsule(false), 1600);
+    if (!pick) return CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
+    pick.dispensing = true;
+    return pick.color;
   }
 
   step() {
     const g = 0.35, rest = 0.35;
     for (const c of this.capsules) {
-      if (this.shakeFrames > 0) {
+      if (this.shakeFrames > 0 && !c.dispensing) {
         c.vx += (Math.random() - 0.5) * 2.2;
         c.vy -= Math.random() * 1.4;
       }
       c.vy += g;
+      if (c.dispensing) c.vx += (this.w / 2 - c.x) * 0.01; // drift to center exit
       c.x += c.vx;
       c.y += c.vy;
       c.rot += c.vx * 0.03;
       if (c.x < c.r) { c.x = c.r; c.vx = Math.abs(c.vx) * rest; }
       if (c.x > this.w - c.r) { c.x = this.w - c.r; c.vx = -Math.abs(c.vx) * rest; }
-      if (c.y > this.h - c.r) {
+      if (!c.dispensing && c.y > this.h - c.r) {
         c.y = this.h - c.r;
         c.vy = -Math.abs(c.vy) * rest;
         c.vx *= 0.92;
       }
     }
-    // simple pairwise separation
+    // dispensed capsules leave through the floor; restock once they're gone
+    for (let i = this.capsules.length - 1; i >= 0; i--) {
+      const c = this.capsules[i];
+      if (c.dispensing && c.y > this.h + c.r) {
+        this.capsules.splice(i, 1);
+        setTimeout(() => this.spawnCapsule(false), 900);
+      }
+    }
+    // simple pairwise separation (skip the escaping capsule so it slips out)
     for (let i = 0; i < this.capsules.length; i++) {
       for (let j = i + 1; j < this.capsules.length; j++) {
         const a = this.capsules[i], b = this.capsules[j];
+        if (a.dispensing || b.dispensing) continue;
         const dx = b.x - a.x, dy = b.y - a.y;
         const dist = Math.hypot(dx, dy) || 0.01;
         const overlap = a.r + b.r - dist;
