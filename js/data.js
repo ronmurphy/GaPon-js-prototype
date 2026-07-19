@@ -34,7 +34,7 @@ const ARCADE = {
   playsPerDay: 3,
   timing: { gold: 15, silver: 10, bronze: 5, miss: 2 },
   match:  { perfect: 15, missPenalty: 3, floor: 5 },
-  chase:  { seconds: 10, goldTaps: 12, silverTaps: 8, bronzeTaps: 4,
+  chase:  { seconds: 10, goldTaps: 10, silverTaps: 7, bronzeTaps: 4,
             gold: 15, silver: 10, bronze: 5, miss: 2 },
   shell:  { swaps: 6, win: 12, wrong: 3 },
   echo:   { rounds: [5, 10, 15], flub: 2 },  // payout per round survived

@@ -227,9 +227,9 @@ function startChaseGame() {
       hole.querySelector('.w-cap').style.background =
         `linear-gradient(180deg, ${CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)]} 50%, #f2f0eb 50%)`;
       hole.classList.add('up');
-      addArcadeTimer(setTimeout(() => hole.classList.remove('up'), 650 + Math.random() * 250));
+      addArcadeTimer(setTimeout(() => hole.classList.remove('up'), 850 + Math.random() * 300));
     }
-    addArcadeTimer(setTimeout(popOne, 380 + Math.random() * 320));
+    addArcadeTimer(setTimeout(popOne, 520 + Math.random() * 380));
   };
   popOne();
 
@@ -297,7 +297,7 @@ function startShellGame() {
       [slots[a], slots[b]] = [slots[b], slots[a]];
       place();
     }, t));
-    t += 340;
+    t += 450;
   }
 
   addArcadeTimer(setTimeout(() => {
