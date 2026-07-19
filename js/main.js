@@ -103,7 +103,7 @@ function renderMachines() {
 }
 
 function updateRotateTimer() {
-  const ms = msUntilMidnight();
+  const ms = msUntilRotate();
   const h = Math.floor(ms / 3600000), min = Math.floor((ms % 3600000) / 60000);
   $('#rotate-timer').textContent = `new machines in ${h}h ${min}m`;
 }
@@ -313,6 +313,38 @@ function renderMarket() {
     }));
 }
 
+// ---------- save backup / restore ----------
+
+function applyRestoreCode(code) {
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(code))));
+    if (typeof data.coins !== 'number' || typeof data.inv !== 'object') throw new Error();
+    if (!confirm(`This backup holds: ${saveSummary(data)}.\n\nReplace your current save with it?`)) return;
+    state = Object.assign(defaultState(), data);
+    saveGame();
+    location.reload();
+  } catch {
+    toast("That code didn't parse — was the whole thing pasted?", 'warn');
+  }
+}
+
+function saveSummary(data) {
+  const unique = Object.keys(data.inv || {}).length;
+  const total = Object.values(data.inv || {}).reduce((a, b) => a + b, 0);
+  return `${fmtCoins(data.coins)} coins · ${unique} unique stickers (${total} total) · ${(data.days || []).length} days played`;
+}
+
+function showSaveModal(html) {
+  const ov = $('#overlay');
+  ov.hidden = false;
+  ov.innerHTML = `<div class="save-modal">${html}</div>`;
+  ov.querySelector('#sm-close').addEventListener('click', () => {
+    ov.hidden = true;
+    ov.innerHTML = '';
+  });
+  return ov;
+}
+
 // ---------- boot ----------
 
 function boot() {
@@ -332,26 +364,64 @@ function boot() {
   // save codes are base64 JSON — same trust level as localStorage itself
   $('#export-save').addEventListener('click', () => {
     const code = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
-    const fallback = () => prompt('Copy your save code somewhere safe:', code);
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(code).then(
-        () => toast('Save code copied to clipboard!', 'good'), fallback);
-    } else fallback();
+    const ov = showSaveModal(`
+      <h3>Backup code</h3>
+      <p class="sm-sub">This code holds: <b>${saveSummary(state)}</b></p>
+      <textarea id="sm-text" readonly></textarea>
+      <div class="r-btns">
+        <button class="btn ghost" id="sm-close">Close</button>
+        <button class="btn" id="sm-copy">Copy code</button>
+      </div>`);
+    const ta = ov.querySelector('#sm-text');
+    ta.value = code;
+    ov.querySelector('#sm-copy').addEventListener('click', () => {
+      ta.select();
+      ta.setSelectionRange(0, code.length);
+      const done = () => toast('Code copied — keep it somewhere safe!', 'good');
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(code).then(done,
+          () => { document.execCommand('copy'); done(); });
+      } else { document.execCommand('copy'); done(); }
+    });
   });
 
   $('#import-save').addEventListener('click', () => {
-    const code = prompt('Paste your save code:');
-    if (!code) return;
-    try {
-      const data = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
-      if (typeof data.coins !== 'number' || typeof data.inv !== 'object') throw new Error();
-      if (!confirm('Replace your current save with this backup?')) return;
-      state = Object.assign(defaultState(), data);
-      saveGame();
-      location.reload();
-    } catch {
-      toast("That save code didn't work — bad paste?", 'warn');
-    }
+    const ov = showSaveModal(`
+      <h3>Restore backup</h3>
+      <p class="sm-sub">Paste a backup code — or load a saved wall PNG,
+        every exported wall picture secretly carries your full save.</p>
+      <textarea id="sm-text" placeholder="paste your save code here"></textarea>
+      <div class="r-btns">
+        <label class="btn ghost sm-filebtn">From wall PNG
+          <input type="file" id="sm-file" accept="image/png" hidden>
+        </label>
+        <button class="btn ghost" id="sm-close">Cancel</button>
+        <button class="btn" id="sm-apply">Restore</button>
+      </div>`);
+    ov.querySelector('#sm-apply').addEventListener('click', () =>
+      applyRestoreCode(ov.querySelector('#sm-text').value.trim()));
+    ov.querySelector('#sm-file').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = () => {
+        URL.revokeObjectURL(url);
+        const cv = document.createElement('canvas');
+        cv.width = im.naturalWidth;
+        cv.height = im.naturalHeight;
+        const cx = cv.getContext('2d');
+        cx.drawImage(im, 0, 0);
+        const code = stegExtract(cx.getImageData(0, 0, cv.width, cv.height));
+        if (code) applyRestoreCode(code);
+        else toast('No save data in that image — was it re-compressed or resized?', 'warn');
+      };
+      im.onerror = () => {
+        URL.revokeObjectURL(url);
+        toast('Could not read that file.', 'warn');
+      };
+      im.src = url;
+    });
   });
 
   if (firstRun) {

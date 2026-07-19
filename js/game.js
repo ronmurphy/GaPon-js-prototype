@@ -18,18 +18,18 @@ function defaultState() {
   };
 }
 
-// Lazily resets the play counter when the date rolls over.
+// Lazily resets the play counter when the half-day period rolls over.
 function arcadeState() {
-  const today = todayStr();
-  if (!state.arcade || state.arcade.date !== today) {
-    state.arcade = { date: today, used: 0 };
+  const period = currentPeriod();
+  if (!state.arcade || state.arcade.date !== period) {
+    state.arcade = { date: period, used: 0 };
     saveGame();
   }
   return state.arcade;
 }
 
 function arcadePlaysLeft() {
-  return Math.max(0, ARCADE.playsPerDay - arcadeState().used);
+  return Math.max(0, ARCADE.playsPerRotation - arcadeState().used);
 }
 
 function useArcadePlay() {
@@ -67,29 +67,40 @@ function dateStr(d) {
 
 function todayStr() { return dateStr(new Date()); }
 
+// Machines, bonus, and arcade plays all reset at midnight AND noon.
+// Periods look like '2026-07-19a' (morning) / '2026-07-19b' (afternoon).
+function currentPeriod() {
+  return todayStr() + (new Date().getHours() < 12 ? 'a' : 'b');
+}
+
 function yesterdayStr() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return dateStr(d);
 }
 
-function msUntilMidnight() {
+function msUntilRotate() {
   const now = new Date();
-  const mid = new Date(now);
-  mid.setHours(24, 0, 0, 0);
-  return mid - now;
+  const next = new Date(now);
+  next.setHours(now.getHours() < 12 ? 12 : 24, 0, 0, 0);
+  return next - now;
 }
 
-// Returns {bonus, streak} if a daily bonus was granted, else null.
+// Returns {bonus, streak} if a login bonus was granted, else null.
+// The bonus is claimable once per half-day period, but the streak only
+// counts calendar days — evening-only players never lose their streak.
 function checkDaily() {
+  const period = currentPeriod();
+  if (state.lastDaily === period) return null;
   const today = todayStr();
-  if (state.lastDaily === today) return null;
-  state.streak = (state.lastDaily === yesterdayStr()) ? state.streak + 1 : 1;
+  if (!state.days.includes(today)) {
+    state.streak = state.days.includes(yesterdayStr()) ? state.streak + 1 : 1;
+    state.days.push(today);
+  }
   const bonus = ECON.dailyBase +
     Math.min(ECON.dailyStreakCap, (state.streak - 1) * ECON.dailyStreakStep);
   state.coins += bonus;
-  state.lastDaily = today;
-  if (!state.days.includes(today)) state.days.push(today);
+  state.lastDaily = period;
   saveGame();
   return { bonus, streak: state.streak };
 }
@@ -116,9 +127,9 @@ function mulberry32(seed) {
   };
 }
 
-// 3 of the 5 collections are available each day, one per cost tier.
+// 3 of the 5 collections are available each half-day, one per cost tier.
 function getTodaysMachines() {
-  const rng = mulberry32(hashString('gapon:' + todayStr()));
+  const rng = mulberry32(hashString('gapon:' + currentPeriod()));
   const pool = COLLECTIONS.slice();
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));

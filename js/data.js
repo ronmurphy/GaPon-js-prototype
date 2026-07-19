@@ -26,12 +26,12 @@ const ECON = {
   setBonus: 150,        // claim once per completed collection
 };
 
-// Arcade: capped daily plays so minigames stay a snack, not the meal.
-// Every game tops out at 15 coins, so max arcade income (3 × 15 = 45/day)
-// stays in the same league as the daily login bonus and capsule pulls
-// remain the scarce, exciting spend.
+// Arcade: capped plays per half-day rotation so minigames stay a snack,
+// not the meal. Every game tops out at 15 coins, so max arcade income
+// (3 × 15 = 45 per rotation) stays in the same league as the login bonus
+// and capsule pulls remain the scarce, exciting spend.
 const ARCADE = {
-  playsPerDay: 3,
+  playsPerRotation: 3,
   timing: { gold: 15, silver: 10, bronze: 5, miss: 2 },
   match:  { perfect: 15, missPenalty: 3, floor: 5 },
   chase:  { seconds: 10, goldTaps: 10, silverTaps: 7, bronzeTaps: 4,

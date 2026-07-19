@@ -110,6 +110,70 @@ function drawWall() {
   }
 }
 
+// ---------- save-in-the-picture (LSB steganography) ----------
+// The exported PNG hides the full save code in the low bit of each R/G/B
+// channel (alpha untouched — it stays 255, so canvas round-trips exactly).
+// A 1080² wall holds ~437 KB; a save code is ~3 KB. PNG is lossless, so the
+// data survives as long as nobody recompresses/resizes the image.
+
+const STEG_MAGIC = 'GAPN1';
+
+function stegChannel(bitIndex) {
+  // pack bits into R,G,B and skip every alpha byte
+  return Math.floor(bitIndex / 3) * 4 + (bitIndex % 3);
+}
+
+function stegEmbed(imgData, text) {
+  const enc = new TextEncoder();
+  const bytes = enc.encode(text);
+  const head = enc.encode(STEG_MAGIC);
+  const payload = new Uint8Array(head.length + 4 + bytes.length);
+  payload.set(head, 0);
+  for (let i = 0; i < 4; i++) {
+    payload[head.length + i] = (bytes.length >>> (8 * (3 - i))) & 255;
+  }
+  payload.set(bytes, head.length + 4);
+  const d = imgData.data;
+  if (stegChannel(payload.length * 8) >= d.length) return false; // never at 1080²
+  for (let i = 0; i < payload.length * 8; i++) {
+    const bit = (payload[i >> 3] >> (7 - (i & 7))) & 1;
+    const ch = stegChannel(i);
+    d[ch] = (d[ch] & 0xFE) | bit;
+  }
+  return true;
+}
+
+function stegExtract(imgData) {
+  const d = imgData.data;
+  const readByte = idx => {
+    let v = 0;
+    for (let k = 0; k < 8; k++) {
+      const ch = stegChannel(idx * 8 + k);
+      if (ch >= d.length) return -1;
+      v = (v << 1) | (d[ch] & 1);
+    }
+    return v;
+  };
+  const dec = new TextDecoder();
+  const head = new Uint8Array(STEG_MAGIC.length);
+  for (let i = 0; i < head.length; i++) {
+    const b = readByte(i);
+    if (b < 0) return null;
+    head[i] = b;
+  }
+  if (dec.decode(head) !== STEG_MAGIC) return null;
+  let len = 0;
+  for (let i = 0; i < 4; i++) len = (len * 256) + readByte(head.length + i);
+  if (len <= 0 || stegChannel((head.length + 4 + len) * 8) >= d.length) return null;
+  const out = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    const b = readByte(head.length + 4 + i);
+    if (b < 0) return null;
+    out[i] = b;
+  }
+  return dec.decode(out);
+}
+
 // ---------- interaction ----------
 
 // swatch row under the canvas: visible only while a sticker is selected
@@ -270,14 +334,22 @@ function renderWall() {
     wallSel = -1;
     drawWall();
     syncWallPalette();
-    wallCanvas.toBlob(blob => {
+    // bake the full save into a copy's pixels — the picture IS a backup
+    const tmp = document.createElement('canvas');
+    tmp.width = tmp.height = WALL.size;
+    const tctx = tmp.getContext('2d');
+    tctx.drawImage(wallCanvas, 0, 0);
+    const img = tctx.getImageData(0, 0, WALL.size, WALL.size);
+    stegEmbed(img, btoa(unescape(encodeURIComponent(JSON.stringify(state)))));
+    tctx.putImageData(img, 0, 0);
+    tmp.toBlob(blob => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'gapon-wall.png';
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 3000);
     });
-    toast('Wall saved as PNG!', 'good');
+    toast('Wall saved — the PNG doubles as a full save backup!', 'good');
   });
 
   $('#wall-clear').addEventListener('click', () => {

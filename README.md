@@ -1,12 +1,12 @@
 # GaPon 🎰
 
-**Free browser gacha machines that change every day. Pull capsules, fill your sticker album, chase the rares. No install, no money, just the fun part.**
+**Free browser gacha machines that change twice a day. Pull capsules, fill your sticker album, chase the rares. No install, no money, just the fun part.**
 
 ▶️ **Play it here:** https://ronmurphy.github.io/GaPon-js-prototype/
 
 ## What is this?
 
-A little capsule-toy machine game. You get coins every day you check in, and there are three gacha machines to spend them in — cheap, mid, and pricey, with better odds of rare stuff the more you spend. The machines swap out every day at midnight with different collections (stickers of space stuff, critters, snacks, and more), and everything you pull goes into your album. Dupes can be sold off for more coins, and if you finish a full set there's a bonus. There's also a little arcade corner — six quick minigames (three plays a day) for a few extra coins when you've pulled yourself broke. And once you've got some stickers, there's a Wall tab: arrange your favorites (drag, spin, resize — works with mouse or touch) and save the result as a PNG to show off your collection.
+A little capsule-toy machine game. You get coins every time you check in (morning and evening — bonuses and machines refresh at noon and midnight), and there are three gacha machines to spend them in — cheap, mid, and pricey, with better odds of rare stuff the more you spend. Each rotation swaps in different collections (stickers of space stuff, critters, snacks, and more), and everything you pull goes into your album. Dupes can be sold off for more coins, and if you finish a full set there's a bonus. There's also a little arcade corner — six quick minigames (three plays per rotation) for a few extra coins when you've pulled yourself broke. And once you've got some stickers, there's a Wall tab: arrange your favorites (drag, spin, resize — works with mouse or touch) and save the result as a PNG to show off your collection.
 
 Heads up: **it's a prototype, so it's simple on purpose** — placeholder icons instead of real art, just the core game. I'm testing whether the *idea* is fun before building the fancy version.
 

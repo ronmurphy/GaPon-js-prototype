@@ -34,8 +34,8 @@ function renderArcade() {
     <h2>Arcade Corner</h2>
     <p class="arcade-sub">
       Quick games for a few extra coins —
-      <b>${left}/${ARCADE.playsPerDay}</b> plays left today.
-      ${left === 0 ? 'New plays tomorrow!' : ''}
+      <b>${left}/${ARCADE.playsPerRotation}</b> plays left this rotation.
+      ${left === 0 ? 'New plays when the machines rotate!' : ''}
     </p>
     <div class="arcade-games">
       <div class="game-card">
