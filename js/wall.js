@@ -69,7 +69,7 @@ function drawWall() {
     ctx.strokeStyle = 'rgba(0,0,0,0.1)';
     ctx.lineWidth = 3;
     ctx.stroke();
-    ctx.fillStyle = col.color;
+    ctx.fillStyle = st.color || col.color;
     ctx.font = `${Math.round(r * 1.2)}px "Material Symbols Rounded"`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -112,6 +112,20 @@ function drawWall() {
 
 // ---------- interaction ----------
 
+// swatch row under the canvas: visible only while a sticker is selected
+function syncWallPalette() {
+  const pal = $('#wall-palette');
+  if (!pal) return;
+  const st = wallItems()[wallSel];
+  pal.hidden = !st;
+  if (!st) return;
+  const it = ITEMS_BY_ID[st.id];
+  const col = COLLECTIONS.find(c => c.id === it.collection);
+  pal.querySelector('.wp-auto').style.background = col.color;
+  pal.querySelectorAll('.wp-swatch').forEach(sw =>
+    sw.classList.toggle('active', (sw.dataset.color || '') === (st.color || '')));
+}
+
 function wallPointerDown(e) {
   e.preventDefault();
   const p = wallPos(e);
@@ -131,6 +145,7 @@ function wallPointerDown(e) {
       wallSel = -1;
       saveGame();
       drawWall();
+      syncWallPalette();
       return;
     }
   }
@@ -145,12 +160,14 @@ function wallPointerDown(e) {
       wallDrag = { mode: 'move', dx: sx - p.x, dy: sy - p.y };
       wallCanvas.setPointerCapture(e.pointerId);
       drawWall();
+      syncWallPalette();
       return;
     }
   }
 
   wallSel = -1;
   drawWall();
+  syncWallPalette();
 }
 
 function wallPointerMove(e) {
@@ -193,6 +210,12 @@ function renderWall() {
     <p class="wall-sub">Tap a sticker below to add it · drag to move ·
       yellow handle spins &amp; sizes · then save a PNG and show off!</p>
     <canvas id="wall-canvas" width="${WALL.size}" height="${WALL.size}"></canvas>
+    <div class="wall-palette" id="wall-palette" hidden>
+      <span class="wp-label">Color:</span>
+      <button class="wp-swatch wp-auto" data-color="" title="Collection color"></button>
+      ${CAPSULE_COLORS.map(c =>
+        `<button class="wp-swatch" data-color="${c}" style="background:${c}"></button>`).join('')}
+    </div>
     <div class="wall-actions">
       <button class="btn" id="wall-save"><span class="msr">download</span> Save PNG</button>
       <button class="btn ghost" id="wall-clear" ${wallItems().length ? '' : 'disabled'}>Clear wall</button>
@@ -229,11 +252,24 @@ function renderWall() {
       wallSel = wallItems().length - 1;
       saveGame();
       drawWall();
+      syncWallPalette();
+    }));
+
+  host.querySelectorAll('.wp-swatch').forEach(sw =>
+    sw.addEventListener('click', () => {
+      const st = wallItems()[wallSel];
+      if (!st) return;
+      if (sw.dataset.color) st.color = sw.dataset.color;
+      else delete st.color;   // "auto" = back to collection color
+      saveGame();
+      drawWall();
+      syncWallPalette();
     }));
 
   $('#wall-save').addEventListener('click', () => {
     wallSel = -1;
     drawWall();
+    syncWallPalette();
     wallCanvas.toBlob(blob => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);

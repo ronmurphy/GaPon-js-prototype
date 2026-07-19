@@ -610,6 +610,36 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 #wall-canvas:active { cursor: grabbing; }
 
+.wall-palette {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.wp-label { color: var(--ink-dim); font-size: 0.85rem; font-weight: 600; }
+
+.wp-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: transform 0.1s;
+  touch-action: manipulation;
+}
+
+.wp-swatch:hover { transform: scale(1.12); }
+
+.wp-swatch.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.wp-auto { border-style: dashed; }
+
 .wall-actions {
   display: flex;
   gap: 10px;
