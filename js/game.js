@@ -13,7 +13,29 @@ function defaultState() {
     streak: 0,
     totalPulls: 0,
     days: [],           // distinct days played
+    arcade: { date: null, used: 0 },  // daily minigame plays
   };
+}
+
+// Lazily resets the play counter when the date rolls over.
+function arcadeState() {
+  const today = todayStr();
+  if (!state.arcade || state.arcade.date !== today) {
+    state.arcade = { date: today, used: 0 };
+    saveGame();
+  }
+  return state.arcade;
+}
+
+function arcadePlaysLeft() {
+  return Math.max(0, ARCADE.playsPerDay - arcadeState().used);
+}
+
+function useArcadePlay() {
+  if (arcadePlaysLeft() <= 0) return false;
+  arcadeState().used++;
+  saveGame();
+  return true;
 }
 
 function saveGame() {

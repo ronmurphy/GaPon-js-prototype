@@ -57,11 +57,12 @@ function confetti(count = 26) {
 function showTab(name) {
   document.querySelectorAll('.tabs button').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === name));
-  for (const t of ['machines', 'album', 'market']) {
+  for (const t of ['machines', 'album', 'market', 'arcade']) {
     $('#tab-' + t).hidden = (t !== name);
   }
   if (name === 'album') renderAlbum();
   if (name === 'market') renderMarket();
+  if (name === 'arcade') renderArcade();
 }
 
 // ---------- machines ----------

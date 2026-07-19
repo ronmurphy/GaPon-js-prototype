@@ -26,6 +26,15 @@ const ECON = {
   setBonus: 150,        // claim once per completed collection
 };
 
+// Arcade: capped daily plays so minigames stay a snack, not the meal.
+// Max arcade income (3 × 15 = 45/day) stays in the same league as the
+// daily login bonus so capsule pulls remain the scarce, exciting spend.
+const ARCADE = {
+  playsPerDay: 3,
+  timing: { gold: 15, silver: 10, bronze: 5, miss: 2 },
+  match:  { perfect: 15, missPenalty: 3, floor: 5 },
+};
+
 // Each collection: 6 common, 3 uncommon, 2 rare, 1 chase.
 // icon = Material Symbols ligature name.
 const COLLECTIONS = [

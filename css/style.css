@@ -377,6 +377,120 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .empty { color: var(--ink-dim); padding: 20px; text-align: center; }
 
+/* ---------- arcade ---------- */
+
+.arcade-sub { color: var(--ink-dim); margin-bottom: 14px; }
+
+.arcade-games {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.game-card {
+  background: linear-gradient(180deg, var(--card2), var(--card));
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.g-icon { font-size: 44px; color: var(--gold); }
+.g-name { font-weight: 700; font-size: 1.1rem; }
+.g-desc { color: var(--ink-dim); font-size: 0.9rem; }
+.g-pay { display: flex; align-items: center; gap: 4px; color: var(--ink-dim); font-size: 0.85rem; }
+
+#arcade-stage { margin-top: 18px; }
+
+.tgame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 24px 0;
+}
+
+.tbar {
+  position: relative;
+  width: min(340px, 90%);
+  height: 26px;
+  border-radius: 13px;
+  background: linear-gradient(90deg,
+    #3a3654 0%, #3a3654 22%,
+    #8d6e63 22%, #8d6e63 35%,
+    #b0bec5 35%, #b0bec5 44%,
+    #ffc107 44%, #ffc107 56%,
+    #b0bec5 56%, #b0bec5 65%,
+    #8d6e63 65%, #8d6e63 78%,
+    #3a3654 78%, #3a3654 100%);
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+.tmarker {
+  position: absolute;
+  top: -6px;
+  width: 4px;
+  height: 34px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(255,255,255,0.8);
+}
+
+.mgame { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 12px 0; }
+
+.mem-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: min(360px, 92vw);
+}
+
+.mem-card { aspect-ratio: 1; perspective: 500px; cursor: pointer; }
+
+.mem-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.35s;
+}
+
+.mem-card.flipped .mem-inner { transform: rotateY(180deg); }
+.mem-card.matched { cursor: default; }
+.mem-card.matched .mem-front { box-shadow: 0 0 12px var(--gold); }
+
+.mem-back, .mem-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+}
+
+.mem-back { background: var(--card2); border: 2px solid rgba(255,255,255,0.12); }
+.mem-back .msr { font-size: 30px; color: var(--ink-dim); }
+
+.mem-front { background: var(--bg2); border: 2px solid rgba(255,255,255,0.2); transform: rotateY(180deg); }
+.mem-front .msr { font-size: 38px; }
+
+.mem-status { color: var(--ink-dim); font-size: 0.9rem; }
+
+.arcade-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 0;
+}
+
+.ar-head { font-size: 1.3rem; font-weight: 700; }
+.ar-pay { display: flex; align-items: center; gap: 6px; font-size: 1.1rem; color: var(--gold); font-weight: 700; }
+
 /* ---------- toasts / confetti / footer ---------- */
 
 #toasts {
