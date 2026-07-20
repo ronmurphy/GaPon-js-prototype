@@ -62,7 +62,7 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'critters', name: 'Critter Pals', color: '#66bb6a',
+    id: 'critters', name: 'Critter Pals', color: '#66bb6a', artDir: 'CritterPalsPngs',
     items: [
       { id: 'cr_paw',     name: 'Paw Print',      icon: 'pets',                icon_note: '', rarity: 'common' },
       { id: 'cr_egg',     name: 'Mystery Egg',    icon: 'egg',                 rarity: 'common' },

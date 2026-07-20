@@ -155,7 +155,7 @@ function showReveal(item, isNew, machine, card, capColor) {
       <div class="ov-hint">tap the capsule!</div>
       <div class="result" hidden>
         <div class="r-ring" style="--glow:${rar.color}">
-          <span class="msr r-icon" style="color:${COLLECTIONS.find(c => c.id === item.collection).color}">${item.icon}</span>
+          ${stickerFace(item, { cls: 'r-icon' })}
         </div>
         <div class="r-name">${item.name}</div>
         <div class="r-chips">
@@ -259,7 +259,7 @@ function renderAlbum() {
           const rar = RARITIES[it.rarity];
           return `<div class="cell ${n ? '' : 'locked'}" title="${n ? it.name : '???'}"
                        style="--rar:${rar.color}">
-            <span class="msr" style="${n ? `color:${col.color}` : ''}">${it.icon}</span>
+            ${stickerFace(it, { owned: n > 0 })}
             ${n > 1 ? `<span class="count">×${n}</span>` : ''}
           </div>`;
         }).join('')}
@@ -303,7 +303,7 @@ function renderMarket() {
         const rar = RARITIES[it.rarity];
         const col = COLLECTIONS.find(c => c.id === it.collection);
         return `<div class="m-row">
-          <span class="msr row-ic" style="color:${col.color}">${it.icon}</span>
+          ${stickerFace(it, { cls: 'row-ic' })}
           <span class="row-name">${it.name}<small>${col.name}</small></span>
           <span class="chip" style="background:${rar.color}">${rar.label}</span>
           <span class="row-n">×${n}</span>
@@ -344,6 +344,10 @@ function applyRestoreCode(code) {
   }
 }
 
+function updateArtToggle() {
+  $('#toggle-art').textContent = ART.enabled ? 'stickers: art' : 'stickers: glyphs';
+}
+
 function saveSummary(data) {
   const unique = Object.keys(data.inv || {}).length;
   const total = Object.values(data.inv || {}).reduce((a, b) => a + b, 0);
@@ -375,6 +379,14 @@ function boot() {
     b.addEventListener('click', () => showTab(b.dataset.tab)));
   $('#reset-save').addEventListener('click', () => {
     if (confirm('Wipe your GaPon save and start over?')) resetGame();
+  });
+
+  updateArtToggle();
+  $('#toggle-art').addEventListener('click', () => {
+    setArtEnabled(!ART.enabled);
+    updateArtToggle();
+    const active = document.querySelector('.tabs button.active')?.dataset.tab;
+    if (active && active !== 'machines') showTab(active);
   });
 
   // save codes are base64 JSON — same trust level as localStorage itself

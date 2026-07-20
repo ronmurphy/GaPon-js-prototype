@@ -130,23 +130,48 @@ function drawWall() {
     ctx.save();
     ctx.translate(st.x * S, st.y * S);
     ctx.rotate(st.rot);
-    // white die-cut backing with a drop shadow, like a real sticker
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 16;
-    ctx.shadowOffsetY = 6;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#f5f3ee';
-    ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = st.color || col.color;
-    ctx.font = `${Math.round(r * 1.2)}px "Material Symbols Rounded"`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(it.icon, 0, r * 0.05);
+    const src = itemArtSrc(it);
+    const img = src ? artImage(src) : null;
+    const artReady = img && img.complete && img.naturalWidth;
+    const transparent = artReady && st.nobg;   // art on the wallpaper, no pog
+
+    // white die-cut backing with a drop shadow, like a real sticker —
+    // drawn for glyphs and for white-mode art, skipped in transparent mode
+    if (!transparent) {
+      ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetY = 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#f5f3ee';
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    if (artReady && transparent) {
+      // give the character its own soft shadow so it still lifts off the wall
+      ctx.shadowColor = 'rgba(0,0,0,0.4)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 5;
+      ctx.drawImage(img, -r, -r, r * 2, r * 2);
+      ctx.shadowColor = 'transparent';
+    } else if (artReady) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img, -r, -r, r * 2, r * 2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = st.color || col.color;
+      ctx.font = `${Math.round(r * 1.2)}px "Material Symbols Rounded"`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(it.icon, 0, r * 0.05);
+    }
     ctx.restore();
   }
 
@@ -249,14 +274,25 @@ function stegExtract(imgData) {
 
 // ---------- interaction ----------
 
-// swatch row under the canvas: visible only while a sticker is selected
+// controls under the canvas, shown only while a sticker is selected:
+// glyph stickers get the color swatches; art stickers get a backing toggle
 function syncWallPalette() {
   const pal = $('#wall-palette');
   if (!pal) return;
+  const back = $('#wall-backing');
   const st = wallItems()[wallSel];
-  pal.hidden = !st;
-  if (!st) return;
-  const it = ITEMS_BY_ID[st.id];
+  const it = st && ITEMS_BY_ID[st.id];
+  const hasArt = !!itemArtSrc(it);
+  // PNG art can't be recolored by the swatches — offer a backing toggle instead
+  pal.hidden = !st || hasArt;
+  if (back) {
+    back.hidden = !st || !hasArt;
+    if (!back.hidden) {
+      back.querySelector('#wb-toggle').textContent =
+        st.nobg ? 'Backing: transparent' : 'Backing: white circle';
+    }
+  }
+  if (pal.hidden || !st) return;
   const col = COLLECTIONS.find(c => c.id === it.collection);
   pal.querySelector('.wp-auto').style.background = col.color;
   pal.querySelectorAll('.wp-swatch').forEach(sw =>
@@ -341,6 +377,8 @@ function renderWall() {
   for (const col of COLLECTIONS) {
     for (const it of col.items) if (ownedCount(it.id) > 0) owned.push(it);
   }
+  // warm the canvas image cache so placed stickers export as art, not glyphs
+  for (const it of owned) { const s = itemArtSrc(it); if (s) artImage(s); }
 
   host.innerHTML = `
     <h2>Sticker Wall</h2>
@@ -360,6 +398,9 @@ function renderWall() {
       ${CAPSULE_COLORS.map(c =>
         `<button class="wp-swatch" data-color="${c}" style="background:${c}"></button>`).join('')}
     </div>
+    <div class="wall-palette" id="wall-backing" hidden>
+      <button class="btn small" id="wb-toggle">Backing: white circle</button>
+    </div>
     <div class="wall-actions">
       <button class="btn" id="wall-save"><span class="msr">download</span> Save PNG</button>
       <button class="btn ghost" id="wall-clear" ${wallItems().length ? '' : 'disabled'}>Clear wall</button>
@@ -370,7 +411,7 @@ function renderWall() {
             const col = COLLECTIONS.find(c => c.id === it.collection);
             return `<div class="cell wall-pick" data-add="${it.id}" title="${it.name}"
                          style="--rar:${RARITIES[it.rarity].color}">
-              <span class="msr" style="color:${col.color}">${it.icon}</span>
+              ${stickerFace(it)}
             </div>`;
           }).join('')
         : '<p class="empty">No stickers yet — go pull some capsules!</p>'}
@@ -395,6 +436,15 @@ function renderWall() {
   wallCanvas.addEventListener('pointermove', wallPointerMove);
   wallCanvas.addEventListener('pointerup', wallPointerUp);
   wallCanvas.addEventListener('pointercancel', wallPointerUp);
+
+  $('#wb-toggle').addEventListener('click', () => {
+    const st = wallItems()[wallSel];
+    if (!st) return;
+    st.nobg = !st.nobg;
+    saveGame();
+    drawWall();
+    syncWallPalette();
+  });
 
   host.querySelectorAll('[data-add]').forEach(cell =>
     cell.addEventListener('click', () => {

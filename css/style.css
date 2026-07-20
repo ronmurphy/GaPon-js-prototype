@@ -325,6 +325,20 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .r-btns { display: flex; gap: 10px; margin-top: 6px; }
 
+/* ---------- sticker art (PNG) ---------- */
+
+.sticker-img {
+  display: block;
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.cell .sticker-img { width: 84%; height: 84%; }
+.r-ring .sticker-img { width: 116px; height: 116px; }
+.sticker-img.row-ic { width: 40px; height: 40px; }
+.mem-front .sticker-img { width: 82%; height: 82%; }
+
 /* ---------- album ---------- */
 
 .album-col {
@@ -880,6 +894,7 @@ footer button {
 
   .r-ring { width: 120px; height: 120px; }
   .r-icon { font-size: 68px; }
+  .r-ring .sticker-img { width: 92px; height: 92px; }
   .r-name { font-size: 1.3rem; }
 
   footer { font-size: 0.7rem; padding: 6px 12px; gap: 8px; }

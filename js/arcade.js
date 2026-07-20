@@ -162,7 +162,7 @@ function startMatchGame() {
             <div class="mem-inner">
               <div class="mem-back"><span class="msr">help</span></div>
               <div class="mem-front">
-                <span class="msr" style="color:${COLLECTIONS.find(col => col.id === c.item.collection).color}">${c.item.icon}</span>
+                ${stickerFace(c.item)}
               </div>
             </div>
           </div>`).join('')}
