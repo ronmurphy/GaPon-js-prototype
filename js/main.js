@@ -26,7 +26,13 @@ function toast(msg, cls = '') {
 function coinIcon() { return '<span class="msr coin-ic">toll</span>'; }
 
 function updateHeader() {
-  $('#coin-count').textContent = fmtCoins(state.coins);
+  const coinEl = $('#coin-count');
+  const first = coinEl.dataset.fxVal === undefined;
+  const prev = parseInt(coinEl.dataset.fxVal ?? '0', 10) || 0;
+  if (!first && state.coins > prev) {
+    fxFloat('+' + fmtCoins(state.coins - prev), coinEl.parentElement);
+  }
+  fxCountTo(coinEl, state.coins);
   $('#streak-count').textContent = state.streak;
 }
 
@@ -60,6 +66,7 @@ function showTab(name) {
   for (const t of ['machines', 'album', 'market', 'arcade', 'wall']) {
     $('#tab-' + t).hidden = (t !== name);
   }
+  fxTabIn($('#tab-' + name));
   if (name === 'album') renderAlbum();
   if (name === 'market') renderMarket();
   if (name === 'arcade') renderArcade();
@@ -193,8 +200,17 @@ function showReveal(item, isNew, machine, card, capColor) {
         { opacity: 0, transform: 'scale(0.6)' },
         { opacity: 1, transform: 'scale(1)' },
       ], { duration: 350, easing: 'cubic-bezier(.2,1.6,.4,1)' });
-      if (item.rarity === 'chase') confetti(40);
-      else if (item.rarity === 'rare') confetti(18);
+      const ring = ov.querySelector('.r-ring');
+      if (item.rarity === 'chase') {
+        confetti(40);
+        fxSparkleBurst(ring, { count: 26, color: rar.color, spread: 140 });
+        setTimeout(() => fxSparkleBurst(ring, { count: 14, color: '#ffffff', spread: 110 }), 450);
+      } else if (item.rarity === 'rare') {
+        confetti(18);
+        fxSparkleBurst(ring, { count: 13, color: rar.color, spread: 110 });
+      } else if (item.rarity === 'uncommon') {
+        fxSparkleBurst(ring, { count: 7, color: rar.color, spread: 80 });
+      }
       ov.querySelector('#r-close').addEventListener('click', closeReveal);
       ov.querySelector('#r-again').addEventListener('click', () => {
         closeReveal();

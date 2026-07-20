@@ -49,6 +49,14 @@ class MachineSim {
 
   step() {
     const g = 0.35, rest = 0.35;
+    // ambient stir: a random capsule shifts now and then so the pile never freezes
+    if (this.shakeFrames === 0 && this.capsules.length && Math.random() < 0.012) {
+      const c = this.capsules[Math.floor(Math.random() * this.capsules.length)];
+      if (!c.dispensing) {
+        c.vy -= 1 + Math.random() * 1.5;
+        c.vx += (Math.random() - 0.5) * 1.6;
+      }
+    }
     for (const c of this.capsules) {
       if (this.shakeFrames > 0 && !c.dispensing) {
         c.vx += (Math.random() - 0.5) * 2.2;

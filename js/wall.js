@@ -10,6 +10,82 @@ const WALL = {
   hitR: 100,         // generous hit radius so handles are tappable on phones
 };
 
+// Wallpapers are deterministic draw functions (seeded rng where needed), so
+// the editor, the swatch thumbnails, and the PNG export all render the same.
+const WALL_BGS = [
+  { id: 'plum', name: 'Plum Night', dark: true, draw(ctx, S) {
+    const g = ctx.createLinearGradient(0, 0, 0, S);
+    g.addColorStop(0, '#332f4d');
+    g.addColorStop(1, '#211e2e');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+  } },
+  { id: 'sunset', name: 'Sunset', dark: true, draw(ctx, S) {
+    const g = ctx.createLinearGradient(0, 0, 0, S);
+    g.addColorStop(0, '#2b1a3d');
+    g.addColorStop(0.55, '#7e3b5c');
+    g.addColorStop(1, '#ff8a65');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+  } },
+  { id: 'night', name: 'Starry Sky', dark: true, draw(ctx, S) {
+    const g = ctx.createLinearGradient(0, 0, 0, S);
+    g.addColorStop(0, '#0f1626');
+    g.addColorStop(1, '#1c2742');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+    const rng = mulberry32(hashString('gapon-bg-night'));
+    for (let i = 0; i < 130; i++) {
+      const r = (0.5 + rng() * 1.6) * (S / 540);
+      ctx.beginPath();
+      ctx.arc(rng() * S, rng() * S, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${0.25 + rng() * 0.6})`;
+      ctx.fill();
+    }
+  } },
+  { id: 'dots', name: 'Party Dots', dark: false, draw(ctx, S) {
+    ctx.fillStyle = '#f6efe3';
+    ctx.fillRect(0, 0, S, S);
+    const cols = ['#f8bbd0', '#b3e5fc', '#c8e6c9', '#ffe0b2'];
+    const gap = S / 9;
+    let k = 0;
+    for (let y = gap / 2; y < S + gap; y += gap) {
+      for (let x = ((y / gap) % 2 ? gap / 2 : 0); x < S + gap; x += gap) {
+        ctx.beginPath();
+        ctx.arc(x, y, S / 42, 0, Math.PI * 2);
+        ctx.fillStyle = cols[k++ % cols.length];
+        ctx.fill();
+      }
+    }
+  } },
+  { id: 'cork', name: 'Cork Board', dark: false, draw(ctx, S) {
+    ctx.fillStyle = '#c19a6b';
+    ctx.fillRect(0, 0, S, S);
+    const rng = mulberry32(hashString('gapon-bg-cork'));
+    for (let i = 0; i < 480; i++) {
+      ctx.beginPath();
+      ctx.arc(rng() * S, rng() * S, (1 + rng() * 4) * (S / 1080), 0, Math.PI * 2);
+      ctx.fillStyle = rng() < 0.5
+        ? `rgba(140,100,60,${0.12 + rng() * 0.2})`
+        : `rgba(230,200,160,${0.12 + rng() * 0.2})`;
+      ctx.fill();
+    }
+  } },
+  { id: 'grid', name: 'Graph Paper', dark: false, draw(ctx, S) {
+    ctx.fillStyle = '#f2f4f7';
+    ctx.fillRect(0, 0, S, S);
+    ctx.strokeStyle = '#c9d7ea';
+    ctx.lineWidth = Math.max(1, S / 540);
+    const gap = S / 20;
+    ctx.beginPath();
+    for (let p = gap; p < S; p += gap) {
+      ctx.moveTo(p, 0); ctx.lineTo(p, S);
+      ctx.moveTo(0, p); ctx.lineTo(S, p);
+    }
+    ctx.stroke();
+  } },
+];
+
 let wallCanvas = null;
 let wallCtx = null;
 let wallSel = -1;       // index into state.wall
@@ -43,11 +119,8 @@ function drawWall() {
   if (!wallCtx) return;
   const ctx = wallCtx, S = WALL.size;
 
-  const grad = ctx.createLinearGradient(0, 0, 0, S);
-  grad.addColorStop(0, '#332f4d');
-  grad.addColorStop(1, '#211e2e');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, S, S);
+  const bg = WALL_BGS.find(b => b.id === state.wallBg) || WALL_BGS[0];
+  bg.draw(ctx, S);
 
   for (const st of wallItems()) {
     const it = ITEMS_BY_ID[st.id];
@@ -77,7 +150,7 @@ function drawWall() {
     ctx.restore();
   }
 
-  ctx.fillStyle = 'rgba(240,237,247,0.45)';
+  ctx.fillStyle = bg.dark ? 'rgba(240,237,247,0.45)' : 'rgba(28,26,38,0.4)';
   ctx.font = '600 34px Fredoka, sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
@@ -273,6 +346,13 @@ function renderWall() {
     <h2>Sticker Wall</h2>
     <p class="wall-sub">Tap a sticker below to add it · drag to move ·
       yellow handle spins &amp; sizes · then save a PNG and show off!</p>
+    <div class="wall-bgs">
+      ${WALL_BGS.map(b => `
+        <button class="bg-swatch ${state.wallBg === b.id ? 'active' : ''}"
+                data-bg="${b.id}" title="${b.name}">
+          <canvas width="48" height="48"></canvas>
+        </button>`).join('')}
+    </div>
     <canvas id="wall-canvas" width="${WALL.size}" height="${WALL.size}"></canvas>
     <div class="wall-palette" id="wall-palette" hidden>
       <span class="wp-label">Color:</span>
@@ -298,6 +378,18 @@ function renderWall() {
 
   wallCanvas = $('#wall-canvas');
   wallCtx = wallCanvas.getContext('2d');
+
+  host.querySelectorAll('.bg-swatch').forEach(btn => {
+    const b = WALL_BGS.find(x => x.id === btn.dataset.bg);
+    b.draw(btn.querySelector('canvas').getContext('2d'), 48);
+    btn.addEventListener('click', () => {
+      state.wallBg = b.id;
+      saveGame();
+      host.querySelectorAll('.bg-swatch').forEach(x =>
+        x.classList.toggle('active', x === btn));
+      drawWall();
+    });
+  });
 
   wallCanvas.addEventListener('pointerdown', wallPointerDown);
   wallCanvas.addEventListener('pointermove', wallPointerMove);

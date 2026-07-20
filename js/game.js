@@ -15,6 +15,7 @@ function defaultState() {
     days: [],           // distinct days played
     arcade: { date: null, used: 0 },  // daily minigame plays
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
+    wallBg: 'plum',     // sticker wall wallpaper id
   };
 }
 
