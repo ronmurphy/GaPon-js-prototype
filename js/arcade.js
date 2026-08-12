@@ -15,6 +15,7 @@ function arcadeAward(payout, headline) {
   state.coins += payout;
   saveGame();
   updateHeader();
+  if (headline.includes('🏆')) sfx.fanfare(); else sfx.chime();
   const stage = $('#arcade-stage');
   stage.innerHTML = `
     <div class="arcade-result">
@@ -25,77 +26,99 @@ function arcadeAward(payout, headline) {
   $('#ar-back').addEventListener('click', renderArcade);
 }
 
+// The back room: six cabinets under a neon sign. Daily plays are "tokens";
+// tapping a cabinet spends one and boots the game on a CRT overlay.
+const ARCADE_GAMES = [
+  { id: 'timing', name: 'Capsule Stop', icon: 'timer', pay: '2–15', color: '#ec407a',
+    desc: 'Stop the slider in the gold zone!' },
+  { id: 'match', name: 'Sticker Match', icon: 'style', pay: '5–15', color: '#ab47bc',
+    desc: 'Match pairs from your album.' },
+  { id: 'chase', name: 'Capsule Chase', icon: 'ads_click', pay: '2–15', color: '#ef5350',
+    desc: 'Tap capsules before they drop!' },
+  { id: 'shell', name: 'Shuffle Shells', icon: 'visibility', pay: '3–12', color: '#8d6e63',
+    desc: 'Follow the capsule under the cups.' },
+  { id: 'echo', name: 'Echo Pads', icon: 'music_note', pay: '2–15', color: '#66bb6a',
+    desc: 'Repeat the growing beat pattern.' },
+  { id: 'pong', name: 'Capsule Pong', icon: 'sports_tennis', pay: '3–15', color: '#29b6f6',
+    desc: 'Beat the robo-paddle!' },
+];
+
+function openCrt(game) {
+  const ov = $('#arcade-crt');
+  const title = $('#crt-title');
+  title.textContent = game.name;
+  title.style.color = game.color;
+  ov.hidden = false;
+  ov.classList.remove('on');
+  void ov.offsetWidth;              // restart the power-on flicker
+  ov.classList.add('on');
+}
+
+function closeCrt() {
+  const ov = $('#arcade-crt');
+  ov.hidden = true;
+  ov.classList.remove('on');
+  $('#arcade-stage').innerHTML = '';
+}
+
 function renderArcade() {
   if (arcadeRaf) { cancelAnimationFrame(arcadeRaf); arcadeRaf = null; }
   clearArcadeTimers();
+  closeCrt();
   const left = arcadePlaysLeft();
+  const max = ARCADE.playsPerRotation;
   const host = $('#tab-arcade');
   host.innerHTML = `
-    <h2>Arcade Corner</h2>
-    <p class="arcade-sub">
-      Quick games for a few extra coins —
-      <b>${left}/${ARCADE.playsPerRotation}</b> plays left this rotation.
-      ${left === 0 ? 'New plays when the machines rotate!' : ''}
-    </p>
-    <div class="arcade-games">
-      <div class="game-card">
-        <span class="msr g-icon">timer</span>
-        <div class="g-name">Capsule Stop</div>
-        <div class="g-desc">Stop the slider in the gold zone!</div>
-        <div class="g-pay">${coinIcon()} 2–15</div>
-        <button class="btn" data-game="timing" ${left ? '' : 'disabled'}>Play</button>
+    <div class="aroom">
+      <div class="aroom-sign">ARCADE</div>
+      <div class="aroom-tokens" title="${left}/${max} tokens">
+        ${Array.from({ length: max }, (_, i) =>
+          `<i class="tok${i < left ? '' : ' spent'}"></i>`).join('')}
       </div>
-      <div class="game-card">
-        <span class="msr g-icon">style</span>
-        <div class="g-name">Sticker Match</div>
-        <div class="g-desc">Match pairs from your album.</div>
-        <div class="g-pay">${coinIcon()} 5–15</div>
-        <button class="btn" data-game="match" ${left ? '' : 'disabled'}>Play</button>
-      </div>
-      <div class="game-card">
-        <span class="msr g-icon">ads_click</span>
-        <div class="g-name">Capsule Chase</div>
-        <div class="g-desc">Tap capsules before they drop — 10 seconds!</div>
-        <div class="g-pay">${coinIcon()} 2–15</div>
-        <button class="btn" data-game="chase" ${left ? '' : 'disabled'}>Play</button>
-      </div>
-      <div class="game-card">
-        <span class="msr g-icon">visibility</span>
-        <div class="g-name">Shuffle Shells</div>
-        <div class="g-desc">Follow the capsule under the cups.</div>
-        <div class="g-pay">${coinIcon()} 3–12</div>
-        <button class="btn" data-game="shell" ${left ? '' : 'disabled'}>Play</button>
-      </div>
-      <div class="game-card">
-        <span class="msr g-icon">music_note</span>
-        <div class="g-name">Echo Pads</div>
-        <div class="g-desc">Repeat the growing beat pattern.</div>
-        <div class="g-pay">${coinIcon()} 2–15</div>
-        <button class="btn" data-game="echo" ${left ? '' : 'disabled'}>Play</button>
-      </div>
-      <div class="game-card">
-        <span class="msr g-icon">sports_tennis</span>
-        <div class="g-name">Capsule Pong</div>
-        <div class="g-desc">Beat the robo-paddle — first to ${ARCADE.pong.winScore}!</div>
-        <div class="g-pay">${coinIcon()} 3–15</div>
-        <button class="btn" data-game="pong" ${left ? '' : 'disabled'}>Play</button>
+      <div class="aroom-scroll">
+        <div class="aroom-scene">
+          ${ARCADE_GAMES.map(g => `
+            <div class="cab${left ? '' : ' dead'}" data-game="${g.id}" style="--cabc:${g.color}">
+              <div class="cab-marquee">${g.name}</div>
+              <div class="cab-body">
+                <div class="cab-screen">
+                  <span class="msr cab-ic">${g.icon}</span>
+                  <span class="cab-desc">${g.desc}</span>
+                  <span class="cab-token">${left ? 'INSERT TOKEN' : 'NO TOKENS'}</span>
+                </div>
+                <div class="cab-deck">
+                  <i class="cab-stick"></i>
+                  <span class="cab-btns"><i></i><i></i></span>
+                </div>
+                <span class="cab-pay">${coinIcon()} ${g.pay}</span>
+              </div>
+              <div class="cab-kick"></div>
+            </div>`).join('')}
+        </div>
       </div>
     </div>
-    <div id="arcade-stage"></div>`;
-  host.querySelectorAll('[data-game]').forEach(btn =>
-    btn.addEventListener('click', () => {
-      if (!useArcadePlay()) return;
-      host.querySelector('.arcade-games').remove();
-      host.querySelector('.arcade-sub').remove();
-      const start = {
+    <p class="shop-tip">${left
+      ? 'tap a cabinet to drop a token in'
+      : 'out of tokens — more at the next restock!'}</p>`;
+
+  host.querySelectorAll('.cab').forEach(cab =>
+    cab.addEventListener('click', () => {
+      const game = ARCADE_GAMES.find(g => g.id === cab.dataset.game);
+      if (!useArcadePlay()) {
+        sfx.buzz();
+        toast('No tokens left — more at the next restock!', 'warn');
+        return;
+      }
+      sfx.coin();
+      openCrt(game);
+      ({
         timing: startTimingGame,
         match: startMatchGame,
         chase: startChaseGame,
         shell: startShellGame,
         echo: startEchoGame,
         pong: startPongGame,
-      }[btn.dataset.game];
-      start();
+      })[game.id]();
     }));
 }
 

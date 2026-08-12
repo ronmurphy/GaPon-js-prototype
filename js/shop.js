@@ -140,6 +140,40 @@ function initShopOnce() {
     if (e.key === 'Escape' &&
         (focusState.stage === 'zoom' || focusState.stage === 'coin')) shopUnfocus();
   });
+  initFern();
+}
+
+// Secret: each visit, the shop fern hides a few coins. Tap it enough times
+// (a random 5–15, rerolled per page load) and they shake loose. No hints —
+// it's an easter egg for the curious.
+function initFern() {
+  const fern = document.querySelector('.dec-plant');
+  if (!fern) return;
+  const goal = 5 + Math.floor(Math.random() * 11);
+  let taps = 0;
+  let paid = false;
+  fern.addEventListener('click', () => {
+    sfx.rustle();
+    // wiggles get more excited the closer you are
+    const amp = paid ? 4 : 4 + (taps / goal) * 10;
+    fern.animate([
+      { transform: 'rotate(0deg)' },
+      { transform: `rotate(${-amp}deg)` },
+      { transform: `rotate(${amp * 0.8}deg)` },
+      { transform: 'rotate(0deg)' },
+    ], { duration: 260, easing: 'ease-in-out' });
+    if (paid) return;
+    if (++taps < goal) return;
+    paid = true;
+    const found = 8 + Math.floor(Math.random() * 18);   // 8–25 coins
+    state.coins += found;
+    saveGame();
+    updateHeader();
+    sfx.coin();
+    sfx.chime();
+    fxSparkleBurst(fern, { count: 16, color: '#9ccc65', spread: 90 });
+    toast(`You found ${found} coins in the fern?! 🌿`, 'good');
+  });
 }
 
 function setHint(text) {

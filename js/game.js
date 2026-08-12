@@ -128,7 +128,7 @@ function mulberry32(seed) {
   };
 }
 
-// 3 of the 5 collections are available each half-day, one per cost tier.
+// 3 of the collections are available each half-day, one per cost tier.
 function getTodaysMachines() {
   const rng = mulberry32(hashString('gapon:' + currentPeriod()));
   const pool = COLLECTIONS.slice();

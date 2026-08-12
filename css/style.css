@@ -276,6 +276,12 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   line-height: 1;
   margin-bottom: -4px;
   filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.4));
+  /* secretly tappable (easter egg) — default cursor keeps the secret */
+  pointer-events: auto;
+  cursor: default;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* --- hanging restock sign --- */
@@ -816,24 +822,197 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .sticker-img.row-ic { width: 40px; height: 40px; }
 .mem-front .sticker-img { width: 82%; height: 82%; }
 
-/* ---------- album ---------- */
+/* ---------- album binder ---------- */
 
-.album-col {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 14px;
-  margin-bottom: 16px;
+.binder {
+  position: relative;
+  display: flex;
+  max-width: 620px;
+  margin: 0 auto;
+  background:
+    radial-gradient(120% 90% at 30% 0%, rgba(255, 255, 255, 0.08), transparent 50%),
+    linear-gradient(160deg, #5d4037, #3e2723);
+  border: 2px solid #2b1b15;
+  border-radius: 14px;
+  padding: 16px 20px 16px 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  perspective: 1400px;
 }
 
-.a-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.a-name { font-weight: 700; font-size: 1.1rem; }
-.a-prog { color: var(--ink-dim); flex: 1; }
+.binder-rings {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  margin-right: -13px;
+  z-index: 2;
+  pointer-events: none;
+}
 
-.a-grid {
+.binder-rings i {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 4px #aeb6bc, inset 0 0 0 5px #78838a, 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.binder-page {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.10), transparent 5%),
+    linear-gradient(180deg, #f8f1e0, #efe5cd);
+  border-radius: 4px 10px 10px 4px;
+  padding: 12px 14px 16px;
+  transform-origin: left center;
+  touch-action: pan-y;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.page-title { font-weight: 700; font-size: 1.15rem; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+.page-prog { color: #8d6e63; font-weight: 700; flex: 1; }
+
+.pockets {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
 }
+
+.pocket {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px 5px 3px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.pocket::after {   /* plastic sleeve shine */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.5) 42%, transparent 55%);
+  pointer-events: none;
+}
+
+.pkt-card {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--rar) 26%, #241a45);
+  box-shadow: inset 0 0 0 2px var(--rar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pkt-card .msr { font-size: 34px; }
+.pkt-card .sticker-img { width: 78%; height: 78%; }
+
+.pocket.locked .pkt-card {
+  background: #ddd2ba;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.12);
+}
+
+.pocket.locked .pkt-card .msr { color: #b7a98c; }
+
+.pkt-name {
+  max-width: 100%;
+  margin-top: 3px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #5d4037;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pocket.locked .pkt-name { color: #a1887f; }
+
+.pkt-count {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 6px;
+}
+
+/* the chase card gets a holo-foil sleeve once owned */
+.pocket.holo.owned .pkt-card {
+  background: linear-gradient(115deg, #f6d5f7, #c2e9fb, #fbed96, #d5f7e0, #f6d5f7);
+  background-size: 300% 300%;
+  animation: holo 5s linear infinite alternate;
+  box-shadow: inset 0 0 0 2px var(--rar), 0 0 12px color-mix(in srgb, var(--rar) 55%, transparent);
+}
+
+@keyframes holo {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+.page-stamp {
+  position: absolute;
+  bottom: 22px;
+  right: 26px;
+  transform: rotate(-12deg);
+  border: 3px solid #c62828;
+  color: #c62828;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.binder-tabs {
+  position: absolute;
+  right: -11px;
+  top: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  z-index: 3;
+}
+
+.b-tab {
+  width: 20px;
+  height: 30px;
+  border: none;
+  border-radius: 0 7px 7px 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tabc) 70%, #000), var(--tabc));
+  opacity: 0.65;
+  cursor: pointer;
+  transition: width 0.15s, opacity 0.15s;
+  box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.b-tab.active { width: 27px; opacity: 1; }
+
+.binder-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 14px 0;
+}
+
+.pg-num { color: var(--ink-dim); font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .cell {
   position: relative;
@@ -896,33 +1075,313 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .empty { color: var(--ink-dim); padding: 20px; text-align: center; }
 
-/* ---------- arcade ---------- */
+/* ---------- arcade back room ---------- */
 
-.arcade-sub { color: var(--ink-dim); margin-bottom: 14px; }
-
-.arcade-games {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+.aroom {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.5);
 }
 
-.game-card {
-  background: linear-gradient(180deg, var(--card2), var(--card));
-  border-radius: var(--radius);
-  padding: 18px;
+.aroom-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--card2) transparent;
+}
+
+.aroom-scroll::-webkit-scrollbar { height: 8px; }
+.aroom-scroll::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 4px; }
+
+.aroom-scene {
+  display: flex;
+  align-items: flex-end;
+  gap: 26px;
+  height: 430px;
+  width: max-content;
+  min-width: 100%;
+  padding: 0 30px 26px;
+  background:
+    /* ceiling darkness */
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 16%) top/100% 100% no-repeat,
+    /* neon wash on the wall */
+    radial-gradient(320px 200px at 50% 0%, rgba(255, 64, 129, 0.10), transparent 70%) top/100% 74% no-repeat,
+    /* classic arcade carpet: crossing neon flecks */
+    repeating-linear-gradient(45deg, rgba(0, 229, 255, 0.09) 0 5px, transparent 5px 42px) bottom/100% 26% no-repeat,
+    repeating-linear-gradient(-45deg, rgba(255, 64, 129, 0.09) 0 5px, transparent 5px 34px) bottom/100% 26% no-repeat,
+    /* wall + carpet base */
+    linear-gradient(180deg, #17102c 0%, #1d1538 74%, #0d0a1e 74%, #131026 100%);
+}
+
+.aroom-sign {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 7px;
+  padding: 5px 18px 5px 25px;   /* extra left pad balances letter-spacing */
+  color: #ff5c94;
+  text-shadow: 0 0 6px rgba(255, 64, 129, 0.9), 0 0 20px rgba(255, 64, 129, 0.6);
+  border: 2px solid rgba(255, 64, 129, 0.55);
+  border-radius: 12px;
+  box-shadow: 0 0 18px rgba(255, 64, 129, 0.35), inset 0 0 14px rgba(255, 64, 129, 0.18);
+  pointer-events: none;
+  animation: neonflicker 7s linear infinite;
+}
+
+@keyframes neonflicker {
+  0%, 41%, 43%, 100% { opacity: 1; }
+  42% { opacity: 0.55; }
+  71% { opacity: 1; }
+  71.5% { opacity: 0.7; }
+  72% { opacity: 1; }
+}
+
+.aroom-tokens {
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.tok {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe082, var(--gold) 60%, #b28704);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 193, 7, 0.5);
+}
+
+.tok.spent {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+/* --- cabinets --- */
+
+.cab {
+  position: relative;
+  flex-shrink: 0;
+  width: 174px;
+  scroll-snap-align: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.cab:not(.dead):hover { transform: translateY(-4px); }
+
+.cab::after {
+  content: '';
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: -12px;
+  height: 16px;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5), transparent 68%);
+}
+
+.cab-marquee {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cabc) 85%, #fff), color-mix(in srgb, var(--cabc) 62%, #000));
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: 10px 10px 0 0;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  border-bottom: none;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--cabc) 45%, transparent);
+}
+
+.cab-body {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10), transparent 20%, rgba(0, 0, 0, 0.25) 90%),
+    linear-gradient(180deg, color-mix(in srgb, var(--cabc) 42%, #191233), color-mix(in srgb, var(--cabc) 24%, #100b22));
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  border-top: none;
+  padding: 9px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.cab-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  text-align: center;
+  justify-content: center;
+  gap: 5px;
+  aspect-ratio: 5 / 4;
+  border-radius: 8px;
+  padding: 4px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 120% at 50% 30%, #101b2e, #05070f);
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.85), 0 0 10px color-mix(in srgb, var(--cabc) 25%, transparent);
 }
 
-.g-icon { font-size: 44px; color: var(--gold); }
-.g-name { font-weight: 700; font-size: 1.1rem; }
-.g-desc { color: var(--ink-dim); font-size: 0.9rem; }
-.g-pay { display: flex; align-items: center; gap: 4px; color: var(--ink-dim); font-size: 0.85rem; }
+.cab-ic { font-size: 34px; color: var(--cabc); filter: drop-shadow(0 0 8px var(--cabc)); }
 
-#arcade-stage { margin-top: 18px; }
+.cab-desc {
+  font-size: 0.58rem;
+  line-height: 1.3;
+  color: #9fb3d9;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.cab-token {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--gold);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.cab.dead { cursor: default; }
+.cab.dead .cab-ic { filter: none; opacity: 0.4; }
+.cab.dead .cab-token { animation: none; color: #66627e; }
+
+.cab-deck {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 38px;
+  padding: 0 10px 5px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(0, 0, 0, 0.22));
+}
+
+.cab-stick {
+  position: relative;
+  width: 7px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #cfd8dc, #78909c);
+}
+
+.cab-stick::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff8a80, #e53935 60%, #8e0000);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+.cab-btns { display: flex; gap: 7px; }
+
+.cab-btns i {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff59d, #fbc02d 60%, #8d6c00);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.35), 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.cab-btns i:last-child {
+  background: radial-gradient(circle at 35% 30%, #84ffff, #00bcd4 60%, #005662);
+}
+
+.cab-pay {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.cab-pay .coin-ic { font-size: 13px; }
+
+.cab-kick {
+  height: 14px;
+  margin: 0 6px;
+  background: linear-gradient(180deg, #16112c, #0b0819);
+  border-radius: 0 0 6px 6px;
+}
+
+/* --- CRT overlay (the game plays "on the cabinet screen") --- */
+
+#arcade-crt {
+  position: fixed;
+  inset: 0;
+  z-index: 48;
+  background: rgba(8, 4, 20, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.crt-frame {
+  width: min(600px, 96vw);
+  background: linear-gradient(160deg, #2e2352, #1d1538);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 8px 14px 16px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+}
+
+.crt-marquee {
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 2px;
+  padding: 7px;
+  text-shadow: 0 0 14px currentColor;
+}
+
+.crt-screen {
+  position: relative;
+  border-radius: 12px;
+  border: 3px solid #05030c;
+  background: radial-gradient(120% 120% at 50% 30%, #131c30, #070a14);
+  box-shadow: inset 0 0 34px rgba(0, 0, 0, 0.8);
+  min-height: 300px;
+  padding: 10px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#arcade-stage { width: 100%; }
+
+.crt-scan {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 110% at 50% 50%, transparent 62%, rgba(0, 0, 0, 0.4));
+}
+
+#arcade-crt.on .crt-screen { animation: crtOn 0.4s ease-out; }
+
+@keyframes crtOn {
+  0% { transform: scaleY(0.01); filter: brightness(3); }
+  55% { transform: scaleY(1.03); filter: brightness(1.4); }
+  100% { transform: scaleY(1); filter: brightness(1); }
+}
 
 .tgame {
   display: flex;
@@ -964,7 +1423,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
-  width: min(360px, 92vw);
+  width: min(360px, 100%);
 }
 
 .mem-card { aspect-ratio: 1; perspective: 500px; cursor: pointer; }
@@ -1006,7 +1465,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .w-head {
   display: flex;
   justify-content: space-between;
-  width: min(340px, 92vw);
+  width: min(340px, 100%);
   font-weight: 700;
   color: var(--ink-dim);
 }
@@ -1017,7 +1476,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  width: min(340px, 92vw);
+  width: min(340px, 100%);
 }
 
 .w-hole {
@@ -1051,7 +1510,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .s-status { color: var(--ink-dim); font-weight: 600; }
 
-.s-row { position: relative; width: min(320px, 88vw); height: 130px; }
+.s-row { position: relative; width: min(320px, 100%); height: 130px; }
 
 .s-ball {
   position: absolute;
@@ -1092,7 +1551,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  width: min(280px, 80vw);
+  width: min(280px, 100%);
 }
 
 .e-pad {
@@ -1120,7 +1579,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .p-score b { color: var(--ink); font-size: 1.15rem; }
 
 #pong {
-  width: min(480px, 92vw);
+  width: min(440px, 100%);
   aspect-ratio: 8 / 5;
   background: var(--bg2);
   border-radius: 12px;
@@ -1310,6 +1769,10 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   .mach.focused { transition: none; }
   .chute-cap { animation: none; }
   .crank.armed::after, .mach.await-coin .coin-slot::after { animation: none; }
+  .pocket.holo.owned .pkt-card { animation: none; }
+  .aroom-sign { animation: none; }
+  .cab-token { animation: none; }
+  #arcade-crt.on .crt-screen { animation: none; }
 }
 
 .confetti {
@@ -1374,6 +1837,18 @@ footer button {
   .chute-hole { height: 44px; }
   .dec-window { margin-top: 76px; width: 104px; height: 132px; }
   .dec-poster { margin-top: 96px; }
+
+  /* binder: 3-across pockets, tighter page */
+  .pockets { grid-template-columns: repeat(3, 1fr); }
+  .binder { padding: 12px 16px 12px 4px; }
+  .binder-page { padding: 10px 10px 14px; }
+  .binder-tabs { right: -8px; }
+  .page-title { font-size: 1rem; }
+
+  /* arcade back room goes full-bleed like the shop */
+  .aroom { margin: 0 -12px; border-radius: 0; border-left: none; border-right: none; }
+  .aroom-scene { height: 400px; gap: 20px; padding: 0 20px 22px; }
+  .cab { width: 164px; }
 }
 
 /* touch devices get no scrollbar under the shop — you just swipe */

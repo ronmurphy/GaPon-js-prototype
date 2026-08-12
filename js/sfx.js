@@ -112,4 +112,12 @@ const sfx = {
     sfxTone({ type: 'square', freq: 110, dur: 0.16, vol: 0.08 });
     sfxTone({ type: 'square', freq: 104, dur: 0.16, vol: 0.08 });
   },
+  flip() {          // binder page turn (paper swish)
+    sfxHiss({ dur: 0.09, vol: 0.16, freq: 1300, q: 0.7 });
+    sfxHiss({ t: 0.05, dur: 0.06, vol: 0.10, freq: 2600, q: 0.8 });
+  },
+  rustle() {        // leaves
+    sfxHiss({ dur: 0.05, vol: 0.09, freq: 4200, q: 0.6 });
+    sfxHiss({ t: 0.03, dur: 0.04, vol: 0.06, freq: 5600, q: 0.7 });
+  },
 };

@@ -179,51 +179,6 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
   }
 }
 
-// ---------- album ----------
-
-function renderAlbum() {
-  const host = $('#tab-album');
-  host.innerHTML = '<h2>Sticker Album</h2>';
-  for (const col of COLLECTIONS) {
-    const prog = collectionProgress(col);
-    const complete = isSetComplete(col);
-    const claimed = state.claimedSets.includes(col.id);
-    const card = document.createElement('div');
-    card.className = 'album-col';
-    card.innerHTML = `
-      <div class="a-head">
-        <span class="a-name" style="color:${col.color}">${col.name}</span>
-        <span class="a-prog">${prog}/${col.items.length}</span>
-        ${complete && !claimed
-          ? `<button class="btn small claim">${coinIcon()} Claim ${ECON.setBonus}!</button>`
-          : (claimed ? '<span class="chip done">Set complete ✓</span>' : '')}
-      </div>
-      <div class="a-grid">
-        ${col.items.map(it => {
-          const n = ownedCount(it.id);
-          const rar = RARITIES[it.rarity];
-          return `<div class="cell ${n ? '' : 'locked'}" title="${n ? it.name : '???'}"
-                       style="--rar:${rar.color}">
-            ${stickerFace(it, { owned: n > 0 })}
-            ${n > 1 ? `<span class="count">×${n}</span>` : ''}
-          </div>`;
-        }).join('')}
-      </div>`;
-    host.appendChild(card);
-    const claimBtn = card.querySelector('.claim');
-    if (claimBtn) claimBtn.addEventListener('click', () => {
-      const got = claimSetBonus(col);
-      if (got) {
-        toast(`${col.name} complete! +${got} coins`, 'good');
-        sfx.fanfare();
-        confetti(30);
-        updateHeader();
-        renderAlbum();
-      }
-    });
-  }
-}
-
 // ---------- market ----------
 
 function renderMarket() {
