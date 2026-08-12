@@ -5,19 +5,24 @@ const CAPSULE_COLORS = ['#ef5350', '#ec407a', '#ab47bc', '#5c6bc0',
 
 const activeSims = [];
 
+const CAP_GOLD = '#ffc107';
+
 class MachineSim {
-  constructor(canvas) {
+  // `count` mirrors the machine's real remaining stock — the pile IS the
+  // stock display, so it never refills on its own. `goldCount` of them are
+  // golden FREE PLAY ticket capsules, visible in the dome.
+  constructor(canvas, count = 11, goldCount = 0) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.w = canvas.width;
     this.h = canvas.height;
     this.shakeFrames = 0;
     this.capsules = [];
-    for (let i = 0; i < 11; i++) this.spawnCapsule(true);
+    for (let i = 0; i < count; i++) this.spawnCapsule(true, i < goldCount);
     activeSims.push(this);
   }
 
-  spawnCapsule(settled) {
+  spawnCapsule(settled, gold = false) {
     const r = 15;
     this.capsules.push({
       x: r + Math.random() * (this.w - 2 * r),
@@ -25,7 +30,8 @@ class MachineSim {
       vx: (Math.random() - 0.5) * 2,
       vy: 0,
       r,
-      color: CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)],
+      gold,
+      color: gold ? CAP_GOLD : CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)],
       rot: Math.random() * Math.PI * 2,
     });
   }
@@ -33,16 +39,22 @@ class MachineSim {
   // The bottom-most capsule falls out through the floor during the shake.
   // Returns its color so the reveal can show the same capsule landing in
   // the player's hand — one continuous event, and it never hints at rarity.
-  shakeAndDispense() {
+  // `wantGold` steers which kind leaves, so ticket pulls visibly eject the
+  // golden capsule and normal pulls never do.
+  shakeAndDispense(wantGold = false) {
     this.shakeFrames = 45;
     this.canvas.classList.remove('shaking');
     void this.canvas.offsetWidth; // restart CSS animation
     this.canvas.classList.add('shaking');
-    let pick = null;
+    let pick = null, fallback = null;
     for (const c of this.capsules) {
-      if (!c.dispensing && (!pick || c.y > pick.y)) pick = c;
+      if (c.dispensing) continue;
+      if (!fallback || c.y > fallback.y) fallback = c;
+      if (c.gold === wantGold && (!pick || c.y > pick.y)) pick = c;
     }
-    if (!pick) return CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
+    pick = pick || fallback;
+    if (!pick) return wantGold ? CAP_GOLD
+      : CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
     pick.dispensing = true;
     return pick.color;
   }
@@ -75,13 +87,10 @@ class MachineSim {
         c.vx *= 0.92;
       }
     }
-    // dispensed capsules leave through the floor; restock once they're gone
+    // dispensed capsules leave through the floor for good — stock is real
     for (let i = this.capsules.length - 1; i >= 0; i--) {
       const c = this.capsules[i];
-      if (c.dispensing && c.y > this.h + c.r) {
-        this.capsules.splice(i, 1);
-        setTimeout(() => this.spawnCapsule(false), 900);
-      }
+      if (c.dispensing && c.y > this.h + c.r) this.capsules.splice(i, 1);
     }
     // simple pairwise separation (skip the escaping capsule so it slips out)
     for (let i = 0; i < this.capsules.length; i++) {
@@ -111,11 +120,19 @@ class MachineSim {
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.rotate(c.rot);
-      // bottom half (white)
+      // gold ticket capsules glow a little
+      if (c.gold) {
+        ctx.beginPath();
+        ctx.arc(0, 0, c.r + 2.5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 193, 7, 0.45)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      // bottom half (white; pale gold on ticket capsules)
       ctx.beginPath();
       ctx.arc(0, 0, c.r, 0, Math.PI);
       ctx.closePath();
-      ctx.fillStyle = '#f2f0eb';
+      ctx.fillStyle = c.gold ? '#ffecb3' : '#f2f0eb';
       ctx.fill();
       // top half (color)
       ctx.beginPath();

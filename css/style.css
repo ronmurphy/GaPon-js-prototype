@@ -619,6 +619,40 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .mach.dispensing { animation: cshake 0.7s linear; }
 
+/* drained machine: dimmed, with a paper sign taped to the glass */
+.mach.soldout { filter: saturate(0.55) brightness(0.82); }
+.mach.soldout:hover { transform: none; }
+
+.soldout-sign {
+  display: none;
+  position: absolute;
+  top: 33%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-6deg);
+  z-index: 3;
+  background: #f6e7c8;
+  color: #c62828;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 8px 14px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.soldout-sign small {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #8d6e63;
+  margin-top: 2px;
+}
+
+.mach.soldout .soldout-sign { display: block; }
+
 /* ---------- machine focus (zoom) ---------- */
 
 #focus-layer { position: fixed; inset: 0; z-index: 44; }
@@ -804,6 +838,12 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .chip.new { background: #fff; animation: pulse 1s ease-in-out infinite; }
 .chip.dupe { background: var(--card2); color: var(--ink-dim); }
+.chip.lucky { background: var(--gold); color: #1c1a26; }
+
+/* golden FREE PLAY ticket capsule */
+.capsule.gold .cap-bottom { background: #ffecb3; }
+.r-ticket { font-size: 62px; line-height: 1; }
+.r-note { color: var(--ink-dim); font-size: 0.85rem; margin-top: 2px; }
 .chip.done { background: var(--card2); color: #66bb6a; font-size: 0.85rem; }
 
 .r-btns { display: flex; gap: 10px; margin-top: 6px; }

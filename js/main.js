@@ -93,6 +93,7 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
           <span class="chip" style="background:${rar.color}">${rar.label}</span>
           ${isNew ? '<span class="chip new">NEW!</span>'
                   : `<span class="chip dupe">×${ownedCount(item.id)} owned · sells for ${rar.sell}</span>`}
+          ${opts.pity ? '<span class="chip lucky">✨ LUCKY LAST!</span>' : ''}
         </div>
         <div class="r-btns">
           <button class="btn ghost" id="r-close">Sweet!</button>
@@ -173,6 +174,87 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
     ov.innerHTML = '';
     if (!keepFocus) {
       // step back from the machine and refresh its collection count
+      shopSyncProgress();
+      shopUnfocus();
+    }
+  }
+}
+
+// A golden capsule with no sticker inside — a FREE PLAY ticket. Pays twice
+// the machine's cost: this pull refunded, the next one on the house.
+function showTicketReveal(machine) {
+  const value = machine.tier.cost * 2;
+  const ov = $('#overlay');
+  ov.hidden = false;
+  ov.innerHTML = `
+    <div class="ov-stage">
+      <div class="capsule gold" style="--cap:#ffc107;--glow:#ffc107">
+        <div class="cap-top"></div><div class="cap-bottom"></div>
+      </div>
+      <div class="ov-hint">tap the capsule!</div>
+      <div class="result" hidden>
+        <div class="r-ring" style="--glow:#ffc107"><span class="r-ticket">🎟️</span></div>
+        <div class="r-name">FREE PLAY!</div>
+        <div class="r-chips">
+          <span class="chip lucky">✨ golden capsule</span>
+          <span class="chip new">+${value} coins</span>
+        </div>
+        <p class="r-note">pull refunded — the next one's on the house!</p>
+        <div class="r-btns">
+          <button class="btn ghost" id="r-close">Sweet!</button>
+          <button class="btn" id="r-again">${coinIcon()} Pull again · ${machine.tier.cost}</button>
+        </div>
+      </div>
+    </div>`;
+
+  const cap = ov.querySelector('.capsule');
+  const hint = ov.querySelector('.ov-hint');
+  const result = ov.querySelector('.result');
+  cap.animate([
+    { transform: 'scale(0.3) translateY(30vh)', opacity: 0.3 },
+    { transform: 'scale(1.1) translateY(-2vh)', offset: 0.75, easing: 'ease-out' },
+    { transform: 'scale(1) translateY(0)' },
+  ], { duration: 350, easing: 'ease-out' });
+  setTimeout(() => {
+    cap.classList.add('wobble', 'glow-big');
+    hint.classList.add('show');
+  }, 350);
+
+  let opened = false;
+  const open = () => {
+    if (opened) return;
+    opened = true;
+    hint.remove();
+    cap.classList.remove('wobble');
+    cap.classList.add('open');
+    sfx.pop();
+    setTimeout(() => {
+      cap.remove();
+      result.hidden = false;
+      result.animate([
+        { opacity: 0, transform: 'scale(0.6)' },
+        { opacity: 1, transform: 'scale(1)' },
+      ], { duration: 350, easing: 'cubic-bezier(.2,1.6,.4,1)' });
+      state.coins += value;
+      saveGame();
+      updateHeader();
+      sfx.fanfare();
+      confetti(24);
+      fxSparkleBurst(ov.querySelector('.r-ring'), { count: 18, color: '#ffc107', spread: 120 });
+      ov.querySelector('#r-close').addEventListener('click', () => closeReveal());
+      ov.querySelector('#r-again').addEventListener('click', () => {
+        closeReveal(true);
+        setTimeout(shopAutoPull, 120);
+      });
+    }, 450);
+  };
+  cap.addEventListener('click', open);
+  setTimeout(() => { if (!opened) open(); }, 6000);
+
+  function closeReveal(keepFocus = false) {
+    ov.hidden = true;
+    ov.innerHTML = '';
+    if (!keepFocus) {
       shopSyncProgress();
       shopUnfocus();
     }

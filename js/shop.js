@@ -50,6 +50,7 @@ function machineMarkup(m, col) {
       <span class="m-col" style="color:${col.color}">${col.name}</span>
       <span class="m-prog">${collectionProgress(col)}/${col.items.length}</span>
     </div>
+    <div class="soldout-sign">SOLD OUT!<small>back after restock</small></div>
     <div class="mach-cab">
       <div class="m-odds">${oddsRow(m.tier.odds)}</div>
       <div class="mach-panel">
@@ -82,9 +83,22 @@ function renderMachines() {
     card.style.setProperty('--accent', m.tier.accent);
     card.innerHTML = machineMarkup(m, col);
     host.appendChild(card);
-    machineSims[m.tierId] = new MachineSim(card.querySelector('canvas'));
+    machineSims[m.tierId] = new MachineSim(card.querySelector('canvas'),
+      stockLeft(m.tierId), goldCapsulesLeft(m.tierId));
+    card.classList.toggle('soldout', stockLeft(m.tierId) <= 0);
     card.addEventListener('click', () => {
-      if (focusState.stage === 'idle' && !pulling) focusMachine(m, card);
+      if (focusState.stage !== 'idle' || pulling) return;
+      if (stockLeft(m.tierId) <= 0) {
+        sfx.buzz();
+        card.animate([
+          { transform: 'translateX(0)' }, { transform: 'translateX(-5px)' },
+          { transform: 'translateX(5px)' }, { transform: 'translateX(0)' },
+        ], { duration: 250 });
+        const ms = msUntilRotate();
+        toast(`All out of capsules — restock in ${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m!`, 'warn');
+        return;
+      }
+      focusMachine(m, card);
     });
     // slot (and price tag) taps insert the coin once the machine is focused
     card.querySelector('.coin-col').addEventListener('click', e => {
@@ -101,6 +115,7 @@ function shopSyncProgress() {
   for (const { m, card } of shopMachines) {
     card.querySelector('.m-prog').textContent =
       `${collectionProgress(m.collection)}/${m.collection.items.length}`;
+    card.classList.toggle('soldout', stockLeft(m.tierId) <= 0);
   }
 }
 
@@ -151,7 +166,8 @@ function initFern() {
   if (!fern) return;
   const goal = 5 + Math.floor(Math.random() * 11);
   let taps = 0;
-  let paid = false;
+  // once per calendar day, persisted — refreshing the page won't re-arm it
+  let paid = state.fernDay === todayStr();
   fern.addEventListener('click', () => {
     sfx.rustle();
     // wiggles get more excited the closer you are
@@ -165,6 +181,7 @@ function initFern() {
     if (paid) return;
     if (++taps < goal) return;
     paid = true;
+    state.fernDay = todayStr();
     const found = 8 + Math.floor(Math.random() * 18);   // 8–25 coins
     state.coins += found;
     saveGame();
@@ -392,21 +409,27 @@ function vend() {
   focusState.stage = 'vend';
   pulling = true;
   setHint('');
-  const item = rollItem(m);
-  const isNew = ownedCount(item.id) === 0;
-  addItem(item.id);
+  // golden ticket capsule? (seeded per rotation, never the last slot)
+  const ticket = nextPullIsTicket(m.tierId);
+  useStock(m.tierId);
+  // the machine's last capsule is the pity capsule — see rollPityItem
+  const pity = !ticket && stockLeft(m.tierId) === 0;
+  const item = ticket ? null : (pity ? rollPityItem(m) : rollItem(m));
+  const isNew = item ? ownedCount(item.id) === 0 : false;
+  if (item) addItem(item.id);
   state.totalPulls++;
   saveGame();
   updateFooter();
   sfx.rattle();
   card.classList.add('dispensing');
-  const capColor = machineSims[m.tierId].shakeAndDispense();
+  const capColor = machineSims[m.tierId].shakeAndDispense(ticket);
   setTimeout(() => {
     card.classList.remove('dispensing');
     sfx.thunk();
     showChuteCapsule(card, capColor, () => {
       focusState.stage = 'capsule';
-      showReveal(item, isNew, m, card, capColor, { fromChute: true });
+      if (ticket) showTicketReveal(m);
+      else showReveal(item, isNew, m, card, capColor, { fromChute: true, pity });
     });
   }, 950);
 }
@@ -443,6 +466,12 @@ function showChuteCapsule(card, color, onOpen) {
 function shopAutoPull() {
   const { m, card } = focusState;
   if (!m) return;
+  if (stockLeft(m.tierId) <= 0) {
+    toast('That was the last capsule — machine\'s empty until restock!', 'warn');
+    shopSyncProgress();
+    shopUnfocus();
+    return;
+  }
   if (state.coins < m.tier.cost) {
     toast(`Not enough coins for ${m.tier.name}! Sell some dupes?`, 'warn');
     shopSyncProgress();

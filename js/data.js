@@ -24,6 +24,9 @@ const ECON = {
   dailyStreakStep: 5,   // +5 per consecutive day...
   dailyStreakCap: 20,   // ...up to +20
   setBonus: 150,        // claim once per completed collection
+  machineStock: 10,     // real capsules per machine per rotation — the dome
+                        // empties as you pull, and a drained machine sells
+                        // out until the next restock
 };
 
 // Arcade: capped plays per half-day rotation so minigames stay a snack,

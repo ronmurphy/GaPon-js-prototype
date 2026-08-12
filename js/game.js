@@ -14,9 +14,72 @@ function defaultState() {
     totalPulls: 0,
     days: [],           // distinct days played
     arcade: { date: null, used: 0 },  // daily minigame plays
+    stock: null,        // per-rotation capsule stock: { period, left: {low,mid,high} }
+    fernDay: null,      // 'YYYY-MM-DD' the fern last paid out (once a day)
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
     wallBg: 'plum',     // sticker wall wallpaper id
   };
+}
+
+// ---- capsule stock (lazily refilled each half-day rotation) ----
+
+function machineStock() {
+  const period = currentPeriod();
+  if (!state.stock || state.stock.period !== period) {
+    // each machine hides 1–2 golden FREE PLAY ticket capsules in its stock —
+    // never in the final slot, which is reserved for the pity sticker
+    const seedTickets = () => {
+      const n = Math.random() < 0.35 ? 2 : 1;
+      const pos = new Set();
+      while (pos.size < n) pos.add(Math.floor(Math.random() * (ECON.machineStock - 1)));
+      return [...pos];
+    };
+    state.stock = {
+      period,
+      left: { low: ECON.machineStock, mid: ECON.machineStock, high: ECON.machineStock },
+      tickets: { low: seedTickets(), mid: seedTickets(), high: seedTickets() },
+    };
+    saveGame();
+  }
+  if (!state.stock.tickets) {
+    // saves from before tickets existed: seed into this rotation's remaining
+    // capsules (skipping already-pulled slots and the final pity slot)
+    state.stock.tickets = {};
+    for (const t of ['low', 'mid', 'high']) {
+      const done = ECON.machineStock - state.stock.left[t];
+      const open = [];
+      for (let i = done; i < ECON.machineStock - 1; i++) open.push(i);
+      const n = Math.min(open.length, Math.random() < 0.35 ? 2 : 1);
+      const picks = new Set();
+      while (picks.size < n) picks.add(open[Math.floor(Math.random() * open.length)]);
+      state.stock.tickets[t] = [...picks];
+    }
+    saveGame();
+  }
+  return state.stock;
+}
+
+function stockLeft(tierId) { return machineStock().left[tierId]; }
+
+// 0-based index of the NEXT pull from this machine this rotation.
+function pullsDone(tierId) { return ECON.machineStock - machineStock().left[tierId]; }
+
+function nextPullIsTicket(tierId) {
+  return machineStock().tickets[tierId].includes(pullsDone(tierId));
+}
+
+// How many golden capsules are still in the dome (drives the visible pile).
+function goldCapsulesLeft(tierId) {
+  const done = pullsDone(tierId);
+  return machineStock().tickets[tierId].filter(i => i >= done).length;
+}
+
+function useStock(tierId) {
+  const s = machineStock();
+  if (s.left[tierId] <= 0) return false;
+  s.left[tierId]--;
+  saveGame();
+  return true;
 }
 
 // Lazily resets the play counter when the half-day period rolls over.
@@ -158,6 +221,22 @@ function rollItem(machine) {
   const rarity = rollRarity(machine.tier.odds);
   const candidates = machine.collection.items.filter(it => it.rarity === rarity);
   return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+// Pity roll for a machine's LAST capsule: guaranteed to be a sticker you
+// don't own from its collection (weighted by the tier's odds so commons
+// stay likelier). Falls back to a normal roll if the set is complete.
+function rollPityItem(machine) {
+  const unowned = machine.collection.items.filter(it => !ownedCount(it.id));
+  if (!unowned.length) return rollItem(machine);
+  const odds = machine.tier.odds;
+  const total = unowned.reduce((s, it) => s + odds[it.rarity], 0);
+  let r = Math.random() * total;
+  for (const it of unowned) {
+    r -= odds[it.rarity];
+    if (r < 0) return it;
+  }
+  return unowned[unowned.length - 1];
 }
 
 // ---- inventory helpers ----
