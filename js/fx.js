@@ -15,7 +15,8 @@ function fxCountTo(el, to, ms = 500) {
   }
   const t0 = performance.now();
   const step = now => {
-    const p = Math.min(1, (now - t0) / ms);
+    // rAF timestamps can land a hair before t0 — clamp both ends
+    const p = Math.min(1, Math.max(0, (now - t0) / ms));
     const eased = 1 - Math.pow(1 - p, 3);
     el.textContent = Math.round(from + (to - from) * eased).toLocaleString();
     if (p < 1) requestAnimationFrame(step);

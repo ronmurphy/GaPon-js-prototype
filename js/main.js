@@ -1,9 +1,7 @@
-// GaPon — UI wiring: tabs, machines, pull/reveal flow, album, market.
+// GaPon — UI wiring: tabs, reveal flow, album, market. The shop scene and
+// pull ritual live in shop.js.
 
 const $ = sel => document.querySelector(sel);
-
-let machineSims = {};   // tierId -> MachineSim
-let pulling = false;
 
 // ---------- helpers ----------
 
@@ -73,76 +71,9 @@ function showTab(name) {
   if (name === 'wall') renderWall();
 }
 
-// ---------- machines ----------
-
-function oddsRow(odds) {
-  return RARITY_ORDER.map(r =>
-    `<span class="odd"><i class="dot" style="background:${RARITIES[r].color}"></i>${(odds[r] * 100).toFixed(0)}%</span>`
-  ).join('');
-}
-
-function renderMachines() {
-  clearSims();
-  machineSims = {};
-  const host = $('#machines');
-  host.innerHTML = '';
-  for (const m of getTodaysMachines()) {
-    const col = m.collection;
-    const card = document.createElement('div');
-    card.className = 'machine';
-    card.style.setProperty('--accent', m.tier.accent);
-    card.innerHTML = `
-      <div class="m-head">
-        <span class="m-name">${m.tier.name}</span>
-        <span class="m-col" style="color:${col.color}">${col.name}</span>
-      </div>
-      <div class="m-glass"><canvas width="260" height="150"></canvas></div>
-      <div class="m-odds">${oddsRow(m.tier.odds)}</div>
-      <div class="m-foot">
-        <span class="m-progress">${collectionProgress(col)}/${col.items.length} collected</span>
-        <button class="pull-btn">${coinIcon()} Pull · ${m.tier.cost}</button>
-      </div>`;
-    host.appendChild(card);
-    machineSims[m.tierId] = new MachineSim(card.querySelector('canvas'));
-    card.querySelector('.pull-btn').addEventListener('click', () => doPull(m, card));
-  }
-  updateRotateTimer();
-}
-
-function updateRotateTimer() {
-  const ms = msUntilRotate();
-  const h = Math.floor(ms / 3600000), min = Math.floor((ms % 3600000) / 60000);
-  $('#rotate-timer').textContent = `new machines in ${h}h ${min}m`;
-}
-setInterval(updateRotateTimer, 60000);
-
-function doPull(machine, card) {
-  if (pulling) return;
-  const btn = card.querySelector('.pull-btn');
-  if (state.coins < machine.tier.cost) {
-    toast(`Not enough coins for ${machine.tier.name}! Sell some dupes?`, 'warn');
-    btn.animate([
-      { transform: 'translateX(0)' }, { transform: 'translateX(-5px)' },
-      { transform: 'translateX(5px)' }, { transform: 'translateX(0)' },
-    ], { duration: 250 });
-    return;
-  }
-  pulling = true;
-  state.coins -= machine.tier.cost;
-  state.totalPulls++;
-  const item = rollItem(machine);
-  const isNew = ownedCount(item.id) === 0;
-  addItem(item.id);
-  saveGame();
-  updateHeader();
-  updateFooter();
-  const capColor = machineSims[machine.tierId].shakeAndDispense();
-  setTimeout(() => showReveal(item, isNew, machine, card, capColor), 900);
-}
-
 // ---------- reveal overlay ----------
 
-function showReveal(item, isNew, machine, card, capColor) {
+function showReveal(item, isNew, machine, card, capColor, opts = {}) {
   const rar = RARITIES[item.rarity];
   capColor ??= CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
   const ov = $('#overlay');
@@ -174,17 +105,27 @@ function showReveal(item, isNew, machine, card, capColor) {
   const hint = ov.querySelector('.ov-hint');
   const result = ov.querySelector('.result');
 
-  // drop in with a bounce, then wobble + glow
-  cap.animate([
-    { transform: 'translateY(-70vh)' },
-    { transform: 'translateY(0)', offset: 0.55, easing: 'ease-in' },
-    { transform: 'translateY(-9vh)', offset: 0.75, easing: 'ease-out' },
-    { transform: 'translateY(0)', easing: 'ease-in' },
-  ], { duration: 900 });
+  // arrive: from the shop's chute it pops up into your hand; otherwise it
+  // drops in from the top with a bounce
+  const arriveMs = opts.fromChute ? 350 : 900;
+  if (opts.fromChute) {
+    cap.animate([
+      { transform: 'scale(0.3) translateY(30vh)', opacity: 0.3 },
+      { transform: 'scale(1.1) translateY(-2vh)', offset: 0.75, easing: 'ease-out' },
+      { transform: 'scale(1) translateY(0)' },
+    ], { duration: arriveMs, easing: 'ease-out' });
+  } else {
+    cap.animate([
+      { transform: 'translateY(-70vh)' },
+      { transform: 'translateY(0)', offset: 0.55, easing: 'ease-in' },
+      { transform: 'translateY(-9vh)', offset: 0.75, easing: 'ease-out' },
+      { transform: 'translateY(0)', easing: 'ease-in' },
+    ], { duration: arriveMs });
+  }
   setTimeout(() => {
     cap.classList.add('wobble', item.rarity === 'chase' ? 'glow-big' : 'glow');
     hint.classList.add('show');
-  }, 900);
+  }, arriveMs);
 
   let opened = false;
   const open = () => {
@@ -193,6 +134,7 @@ function showReveal(item, isNew, machine, card, capColor) {
     hint.remove();
     cap.classList.remove('wobble');
     cap.classList.add('open');
+    sfx.pop();
     setTimeout(() => {
       cap.remove();
       result.hidden = false;
@@ -202,35 +144,38 @@ function showReveal(item, isNew, machine, card, capColor) {
       ], { duration: 350, easing: 'cubic-bezier(.2,1.6,.4,1)' });
       const ring = ov.querySelector('.r-ring');
       if (item.rarity === 'chase') {
+        sfx.fanfare();
         confetti(40);
         fxSparkleBurst(ring, { count: 26, color: rar.color, spread: 140 });
         setTimeout(() => fxSparkleBurst(ring, { count: 14, color: '#ffffff', spread: 110 }), 450);
       } else if (item.rarity === 'rare') {
+        if (isNew) sfx.chime();
         confetti(18);
         fxSparkleBurst(ring, { count: 13, color: rar.color, spread: 110 });
       } else if (item.rarity === 'uncommon') {
+        if (isNew) sfx.chime();
         fxSparkleBurst(ring, { count: 7, color: rar.color, spread: 80 });
+      } else if (isNew) {
+        sfx.chime();
       }
-      ov.querySelector('#r-close').addEventListener('click', closeReveal);
+      ov.querySelector('#r-close').addEventListener('click', () => closeReveal());
       ov.querySelector('#r-again').addEventListener('click', () => {
-        closeReveal();
-        setTimeout(() => doPull(machine, card), 150);
+        closeReveal(true);
+        setTimeout(shopAutoPull, 120);
       });
     }, 450);
   };
   cap.addEventListener('click', open);
   setTimeout(() => { if (!opened) open(); }, 6000); // auto-open if they wait
 
-  function closeReveal() {
+  function closeReveal(keepFocus = false) {
     ov.hidden = true;
     ov.innerHTML = '';
-    pulling = false;
-    // refresh the progress line on machine cards
-    document.querySelectorAll('.machine').forEach((mc, i) => {
-      const m = getTodaysMachines()[i];
-      mc.querySelector('.m-progress').textContent =
-        `${collectionProgress(m.collection)}/${m.collection.items.length} collected`;
-    });
+    if (!keepFocus) {
+      // step back from the machine and refresh its collection count
+      shopSyncProgress();
+      shopUnfocus();
+    }
   }
 }
 
@@ -270,6 +215,7 @@ function renderAlbum() {
       const got = claimSetBonus(col);
       if (got) {
         toast(`${col.name} complete! +${got} coins`, 'good');
+        sfx.fanfare();
         confetti(30);
         updateHeader();
         renderAlbum();
@@ -316,14 +262,14 @@ function renderMarket() {
 
   $('#sell-dupes').addEventListener('click', () => {
     const got = sellAllDupes();
-    if (got) toast(`Sold dupes for +${got} coins`, 'good');
+    if (got) { toast(`Sold dupes for +${got} coins`, 'good'); sfx.coin(); }
     updateHeader();
     renderMarket();
   });
   host.querySelectorAll('[data-sell]').forEach(btn =>
     btn.addEventListener('click', () => {
       const got = sellItem(btn.dataset.sell, 1);
-      if (got) toast(`Sold for +${got} coins`, 'good');
+      if (got) { toast(`Sold for +${got} coins`, 'good'); sfx.coin(); }
       updateHeader();
       renderMarket();
     }));
@@ -346,6 +292,11 @@ function applyRestoreCode(code) {
 
 function updateArtToggle() {
   $('#toggle-art').textContent = ART.enabled ? 'stickers: art' : 'stickers: glyphs';
+}
+
+function updateSoundToggle() {
+  $('#toggle-sound .msr').textContent = SFX.muted ? 'volume_off' : 'volume_up';
+  $('#toggle-sound').classList.toggle('muted', SFX.muted);
 }
 
 function saveSummary(data) {
@@ -379,6 +330,13 @@ function boot() {
     b.addEventListener('click', () => showTab(b.dataset.tab)));
   $('#reset-save').addEventListener('click', () => {
     if (confirm('Wipe your GaPon save and start over?')) resetGame();
+  });
+
+  updateSoundToggle();
+  $('#toggle-sound').addEventListener('click', () => {
+    sfxSetMuted(!SFX.muted);
+    updateSoundToggle();
+    if (!SFX.muted) sfx.coin();   // a little "sound is back" confirmation
   });
 
   updateArtToggle();

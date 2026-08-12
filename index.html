@@ -16,10 +16,11 @@
     <span class="tagline">daily capsule machines</span>
     <span class="hchip coin-chip"><span class="msr">toll</span><span id="coin-count">0</span></span>
     <span class="hchip streak-chip"><span class="msr">local_fire_department</span><span id="streak-count">0</span></span>
+    <button class="hchip icon-chip" id="toggle-sound" title="sound on/off"><span class="msr">volume_up</span></button>
   </header>
 
   <nav class="tabs">
-    <button data-tab="machines" class="active"><span class="msr">featured_seasonal_and_gifts</span>Machines</button>
+    <button data-tab="machines" class="active"><span class="msr">featured_seasonal_and_gifts</span>Shop</button>
     <button data-tab="album"><span class="msr">auto_stories</span>Album</button>
     <button data-tab="market"><span class="msr">storefront</span>Market</button>
     <button data-tab="arcade"><span class="msr">sports_esports</span>Arcade</button>
@@ -28,11 +29,19 @@
 
   <main>
     <section id="tab-machines">
-      <div class="machines-head">
-        <h2>Today's Machines</h2>
-        <span id="rotate-timer"></span>
+      <div class="shop" id="shop">
+        <div class="shop-sign"><span class="msr">history_toggle_off</span><span id="rotate-timer"></span></div>
+        <div class="shop-scroll">
+          <div class="shop-scene">
+            <div class="dec dec-window"><i class="sky"></i><i class="bars"></i></div>
+            <div id="machines" class="mach-row"></div>
+            <div class="dec dec-poster">GaPon!<small>collect ’em all</small></div>
+            <div class="dec dec-plant">🪴</div>
+          </div>
+        </div>
+        <div class="shop-tint"></div>
       </div>
-      <div id="machines"></div>
+      <p class="shop-tip">tap a machine to step up to it</p>
     </section>
     <section id="tab-album" hidden></section>
     <section id="tab-market" hidden></section>
@@ -40,6 +49,10 @@
     <section id="tab-wall" hidden></section>
   </main>
 
+  <div id="focus-layer" hidden>
+    <div class="focus-backdrop"></div>
+    <div id="focus-hint" class="focus-hint"></div>
+  </div>
   <div id="overlay" hidden></div>
   <div id="toasts"></div>
 
@@ -57,9 +70,11 @@
   <script src="js/art.js"></script>
   <script src="js/game.js"></script>
   <script src="js/canvas.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/sfx.js"></script>
+  <script src="js/shop.js"></script>
   <script src="js/arcade.js"></script>
   <script src="js/wall.js"></script>
-  <script src="js/fx.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
