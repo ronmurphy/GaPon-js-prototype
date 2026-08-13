@@ -16,6 +16,9 @@ function defaultState() {
     arcade: { date: null, used: 0 },  // daily minigame plays
     stock: null,        // per-rotation capsule stock: { period, left: {low,mid,high} }
     fernDay: null,      // 'YYYY-MM-DD' the fern last paid out (once a day)
+    trades: [],         // outgoing trade capsules: { code, itemId, at }
+    redeemed: [],       // trade codes already opened on this device
+    playerName: '',     // name printed on trade cards
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
     wallBg: 'plum',     // sticker wall wallpaper id
   };

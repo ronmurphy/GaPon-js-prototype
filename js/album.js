@@ -51,7 +51,8 @@ function pocketHTML(it) {
   const rar = RARITIES[it.rarity];
   return `
     <div class="pocket ${n ? 'owned' : 'locked'}${it.rarity === 'chase' ? ' holo' : ''}"
-         style="--rar:${rar.color}" title="${n ? it.name : '???'}">
+         style="--rar:${rar.color}" data-item="${it.id}"
+         title="${n ? it.name + ' — tap to give away' : '???'}">
       <div class="pkt-card">${stickerFace(it, { owned: n > 0 })}</div>
       <div class="pkt-name">${n ? it.name : '???'}</div>
       ${n > 1 ? `<span class="pkt-count">×${n}</span>` : ''}
@@ -74,6 +75,12 @@ function renderBinderPage() {
     </div>
     <div class="pockets">${col.items.map(pocketHTML).join('')}</div>
     ${claimed ? '<div class="page-stamp">COMPLETE ✓</div>' : ''}`;
+  // tapping a sticker you own offers to give it away (see trade.js)
+  page.querySelectorAll('.pocket.owned').forEach(pk =>
+    pk.addEventListener('click', () => {
+      const it = ITEMS_BY_ID[pk.dataset.item];
+      if (it) openShareDialog(it);
+    }));
   const claimBtn = page.querySelector('#page-claim');
   if (claimBtn) claimBtn.addEventListener('click', () => {
     const got = claimSetBonus(col);

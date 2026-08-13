@@ -295,8 +295,10 @@ function renderMarket() {
           </button>
         </div>`;
       }).join('')}
-    </div>`;
+    </div>
+    ${tradePostHTML()}`;
 
+  wireTradePost(host);
   $('#sell-dupes').addEventListener('click', () => {
     const got = sellAllDupes();
     if (got) { toast(`Sold dupes for +${got} coins`, 'good'); sfx.coin(); }
