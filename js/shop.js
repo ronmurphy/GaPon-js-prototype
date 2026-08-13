@@ -18,7 +18,7 @@ const focusState = { card: null, m: null, ghost: null, stage: 'idle', autoSpin: 
 // ---------- rendering ----------
 
 function oddsRow(odds) {
-  return RARITY_ORDER.map(r =>
+  return RARITY_ORDER.filter(r => odds[r] > 0).map(r =>
     `<span class="odd"><i class="dot" style="background:${RARITIES[r].color}"></i>${(odds[r] * 100).toFixed(0)}%</span>`
   ).join('');
 }
@@ -37,6 +37,7 @@ function applyShopTime() {
   if (!shop) return;
   shop.classList.remove('shop-morning', 'shop-day', 'shop-dusk', 'shop-night');
   shop.classList.add(shopTimeClass());
+  shop.classList.toggle('special-day', isSpecialDay());
 }
 
 function machineMarkup(m, col) {
@@ -80,6 +81,7 @@ function renderMachines() {
     const col = m.collection;
     const card = document.createElement('div');
     card.className = 'mach';
+    if (m.tierId === 'special') card.classList.add('deluxe');
     card.style.setProperty('--accent', m.tier.accent);
     card.innerHTML = machineMarkup(m, col);
     host.appendChild(card);

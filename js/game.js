@@ -23,39 +23,43 @@ function defaultState() {
 
 // ---- capsule stock (lazily refilled each half-day rotation) ----
 
+const STOCK_TIERS = ['low', 'mid', 'high', 'special'];
+
+// 1–2 golden FREE PLAY ticket positions among the capsules still in the
+// machine — never the final slot, which is reserved for the pity sticker.
+function seedTicketPositions(done = 0) {
+  const open = [];
+  for (let i = done; i < ECON.machineStock - 1; i++) open.push(i);
+  const n = Math.min(open.length, Math.random() < 0.35 ? 2 : 1);
+  const picks = new Set();
+  while (picks.size < n) picks.add(open[Math.floor(Math.random() * open.length)]);
+  return [...picks];
+}
+
 function machineStock() {
   const period = currentPeriod();
   if (!state.stock || state.stock.period !== period) {
-    // each machine hides 1–2 golden FREE PLAY ticket capsules in its stock —
-    // never in the final slot, which is reserved for the pity sticker
-    const seedTickets = () => {
-      const n = Math.random() < 0.35 ? 2 : 1;
-      const pos = new Set();
-      while (pos.size < n) pos.add(Math.floor(Math.random() * (ECON.machineStock - 1)));
-      return [...pos];
-    };
-    state.stock = {
-      period,
-      left: { low: ECON.machineStock, mid: ECON.machineStock, high: ECON.machineStock },
-      tickets: { low: seedTickets(), mid: seedTickets(), high: seedTickets() },
-    };
-    saveGame();
-  }
-  if (!state.stock.tickets) {
-    // saves from before tickets existed: seed into this rotation's remaining
-    // capsules (skipping already-pulled slots and the final pity slot)
-    state.stock.tickets = {};
-    for (const t of ['low', 'mid', 'high']) {
-      const done = ECON.machineStock - state.stock.left[t];
-      const open = [];
-      for (let i = done; i < ECON.machineStock - 1; i++) open.push(i);
-      const n = Math.min(open.length, Math.random() < 0.35 ? 2 : 1);
-      const picks = new Set();
-      while (picks.size < n) picks.add(open[Math.floor(Math.random() * open.length)]);
-      state.stock.tickets[t] = [...picks];
+    state.stock = { period, left: {}, tickets: {} };
+    for (const t of STOCK_TIERS) {
+      state.stock.left[t] = ECON.machineStock;
+      state.stock.tickets[t] = seedTicketPositions();
     }
     saveGame();
   }
+  // older saves mid-rotation (pre-ticket or pre-special builds): fill gaps
+  if (!state.stock.tickets) state.stock.tickets = {};
+  let patched = false;
+  for (const t of STOCK_TIERS) {
+    if (state.stock.left[t] == null) {
+      state.stock.left[t] = ECON.machineStock;
+      patched = true;
+    }
+    if (!state.stock.tickets[t]) {
+      state.stock.tickets[t] = seedTicketPositions(ECON.machineStock - state.stock.left[t]);
+      patched = true;
+    }
+  }
+  if (patched) saveGame();
   return state.stock;
 }
 
@@ -191,7 +195,11 @@ function mulberry32(seed) {
   };
 }
 
-// 3 of the collections are available each half-day, one per cost tier.
+// The Special Pon rolls into the shop every Saturday, all day.
+function isSpecialDay(d = new Date()) { return d.getDay() === 6; }
+
+// 3 of the collections are available each half-day, one per cost tier —
+// plus the Special Pon on Saturdays.
 function getTodaysMachines() {
   const rng = mulberry32(hashString('gapon:' + currentPeriod()));
   const pool = COLLECTIONS.slice();
@@ -199,22 +207,29 @@ function getTodaysMachines() {
     const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return ['low', 'mid', 'high'].map((tierId, i) => ({
+  const machines = ['low', 'mid', 'high'].map((tierId, i) => ({
     tierId,
     tier: TIERS[tierId],
     collection: pool[i],
   }));
+  if (isSpecialDay()) {
+    machines.push({ tierId: 'special', tier: TIERS.special, collection: SPECIAL_COLLECTION });
+  }
+  return machines;
 }
 
 // ---- pulls ----
 
 function rollRarity(odds) {
   let r = Math.random();
+  let last = 'common';
   for (const rar of RARITY_ORDER) {
+    if (!odds[rar]) continue;   // zero-odds rarities (Special Pon commons) never roll
+    last = rar;
     r -= odds[rar];
     if (r < 0) return rar;
   }
-  return 'common';
+  return last;                  // float-dust fallback: highest nonzero rarity
 }
 
 function rollItem(machine) {

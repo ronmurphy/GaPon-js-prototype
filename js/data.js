@@ -16,6 +16,10 @@ const TIERS = {
           odds: { common: 0.55, uncommon: 0.30, rare: 0.12, chase: 0.03 } },
   high: { name: 'Lucky Pon',  cost: 50, accent: '#ffb300',
           odds: { common: 0.40, uncommon: 0.32, rare: 0.20, chase: 0.08 } },
+  // Saturday-only deluxe machine: pulls from EVERY collection, no commons.
+  // Pricier per pull, but the best chase rate in the shop.
+  special: { name: 'Special Pon', cost: 100, accent: '#ffc107',
+             odds: { common: 0, uncommon: 0.55, rare: 0.33, chase: 0.12 } },
 };
 
 const ECON = {
@@ -226,3 +230,10 @@ for (const col of COLLECTIONS) {
     ITEMS_BY_ID[it.id] = it;
   }
 }
+
+// Virtual "collection" for the Special Pon — every sticker in the game.
+// Items keep their real `collection`, so art and album placement still work.
+const SPECIAL_COLLECTION = {
+  id: 'special', name: 'Every Set!', color: '#ffc107',
+  items: COLLECTIONS.flatMap(c => c.items),
+};

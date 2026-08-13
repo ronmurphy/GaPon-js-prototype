@@ -619,6 +619,47 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .mach.dispensing { animation: cshake 0.7s linear; }
 
+/* --- the Saturday-only Special Pon: black cabinet, gold trim --- */
+
+.mach.deluxe .mach-topper {
+  background: linear-gradient(180deg, #ffe082, #d4a017);
+  color: #2a1c05;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.mach.deluxe .mach-topper::before { content: '★ '; }
+.mach.deluxe .mach-topper::after { content: ' ★'; }
+
+.mach.deluxe .mach-cab {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10), transparent 20%, rgba(0, 0, 0, 0.35) 90%),
+    linear-gradient(180deg, #322648, #150f21);
+  border-color: rgba(255, 193, 7, 0.45);
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.22);
+}
+
+.mach.deluxe .mach-band { border-color: rgba(255, 193, 7, 0.35); }
+
+.special-banner {
+  display: none;
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1deg);
+  z-index: 5;
+  background: linear-gradient(180deg, #ffe082, #ffb300);
+  color: #3a2405;
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 2px;
+  padding: 4px 16px;
+  border-radius: 6px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.shop.special-day .special-banner { display: block; }
+
 /* drained machine: dimmed, with a paper sign taped to the glass */
 .mach.soldout { filter: saturate(0.55) brightness(0.82); }
 .mach.soldout:hover { transform: none; }

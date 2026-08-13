@@ -1,7 +1,9 @@
 // GaPon — canvas capsule pile inside each machine's glass dome.
 
+// NB: no yellow in the normal palette — gold is reserved for ticket capsules,
+// so a glint of gold in the dome always means a FREE PLAY inside.
 const CAPSULE_COLORS = ['#ef5350', '#ec407a', '#ab47bc', '#5c6bc0',
-  '#29b6f6', '#26a69a', '#9ccc65', '#ffca28', '#ff7043'];
+  '#29b6f6', '#26a69a', '#9ccc65', '#ff7043'];
 
 const activeSims = [];
 
