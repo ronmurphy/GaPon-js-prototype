@@ -938,7 +938,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   -webkit-user-select: all;
 }
 
-.tp-head { margin-top: 26px; }
+.market-head { margin-top: 26px; }
 
 .trade-post {
   background: var(--card);

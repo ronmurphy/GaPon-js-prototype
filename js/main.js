@@ -272,7 +272,8 @@ function renderMarket() {
     s + RARITIES[it.rarity].sell * (ownedCount(it.id) - 1), 0);
 
   host.innerHTML = `
-    <h2>Market</h2>
+    ${tradePostHTML()}
+    <h2 class="market-head">Market</h2>
     <div class="market-top">
       <span>Dupes are worth <b>${dupeValue}</b> coins total.</span>
       <button class="btn small" id="sell-dupes" ${dupes.length ? '' : 'disabled'}>
@@ -295,8 +296,7 @@ function renderMarket() {
           </button>
         </div>`;
       }).join('')}
-    </div>
-    ${tradePostHTML()}`;
+    </div>`;
 
   wireTradePost(host);
   $('#sell-dupes').addEventListener('click', () => {
