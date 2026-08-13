@@ -205,7 +205,7 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'weather', name: 'Sky Diary', color: '#26c6da',
+    id: 'weather', name: 'Sky Diary', color: '#26c6da', artDir: 'SkyDiaryPngs',
     items: [
       { id: 'wx_cloud',   name: 'Puffy',          icon: 'cloud',        rarity: 'common' },
       { id: 'wx_rain',    name: 'Drizzle Day',    icon: 'rainy',        rarity: 'common' },
