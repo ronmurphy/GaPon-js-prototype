@@ -154,7 +154,7 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'retro', name: 'Pixel Party', color: '#9ccc65',
+    id: 'retro', name: 'Pixel Party', color: '#9ccc65', artDir: 'PixelPartyPngs',
     items: [
       { id: 'px_cart',    name: 'Dusty Cart',     icon: 'videogame_asset',  rarity: 'common' },
       { id: 'px_stick',   name: 'Joy Stick',      icon: 'joystick',         rarity: 'common' },
