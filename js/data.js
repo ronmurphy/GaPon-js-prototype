@@ -65,7 +65,7 @@ const ARCADE = {
 // icon = Material Symbols ligature name.
 const COLLECTIONS = [
   {
-    id: 'space', name: 'Cosmo Club', color: '#7e57c2',
+    id: 'space', name: 'Cosmo Club', color: '#7e57c2', artDir: 'CosmoClubPngs',
     items: [
       { id: 'sp_star',    name: 'Twinkle',        icon: 'star',          rarity: 'common' },
       { id: 'sp_sun',     name: 'Sunny Boi',      icon: 'sunny',         rarity: 'common' },
