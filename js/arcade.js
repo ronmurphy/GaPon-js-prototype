@@ -22,6 +22,7 @@ function arcadeAward(payout, headline) {
     <div class="arcade-result">
       <div class="ar-head">${headline}</div>
       <div class="ar-pay">${coinIcon()} +${payout} coins</div>
+      ${stampMiniHTML()}
       <button class="btn" id="ar-back">Back to arcade</button>
     </div>`;
   $('#ar-back').addEventListener('click', renderArcade);

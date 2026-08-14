@@ -1054,6 +1054,16 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .stamp-no { color: #c5b294; font-weight: 800; font-size: 0.9rem; }
 
+.stamp-mini {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-dim);
+  text-align: center;
+  line-height: 1.4;
+  max-width: 260px;
+}
+
 .stamp-goal {
   font-size: 0.72rem;
   font-weight: 700;

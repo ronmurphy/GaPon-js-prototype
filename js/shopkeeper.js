@@ -228,13 +228,55 @@ function openStampCard() {
 }
 
 // Called by the game whenever something might earn a stamp.
+// What's still missing before this stamp lands, in plain words.
+function stampNeeds() {
+  const s = stampState();
+  const need = [];
+  const n = (x, one, many) => `${x} more ${x === 1 ? one : many}`;
+  if (s.pulls < STAMP.perPulls) need.push(n(STAMP.perPulls - s.pulls, 'pull', 'pulls'));
+  if (s.plays < STAMP.perPlays) need.push(n(STAMP.perPlays - s.plays, 'arcade game', 'arcade games'));
+  if (!s.binderDone) {
+    need.push(s.binderDay === todayStr()
+      ? 'an album visit (tomorrow — one a day!)'
+      : 'a look at your album');
+  }
+  return need;
+}
+
+// Compact card status for screens outside the shop (e.g. the arcade).
+function stampMiniHTML() {
+  const s = stampState();
+  return `<span class="stamp-mini">${SHOPKEEPER.emoji} stamp card —
+    pulls ${s.pulls}/${STAMP.perPulls} · games ${s.plays}/${STAMP.perPlays} ·
+    album ${s.binderDone ? '✓' : '–'}</span>`;
+}
+
 function noteStamp(kind) {
-  if (!stampProgress(kind)) return;
+  const s = stampState();
+  const was = { pulls: s.pulls, plays: s.plays, binder: s.binderDone };
+  const earned = stampProgress(kind);
   updateKeeperBadge();
-  sfx.chime();
-  if (stampCardFull()) keeperReact('cardFull');
-  else if (stampState().earned === 1) {
-    keeperSay(`Your first stamp! Fill ${STAMP.cardSize} and I'll swap the card for ` +
-      `${STAMP.reward} coins — tap me any time to see it.`, 6400);
-  } else keeperReact('stamp');
+
+  if (earned) {
+    sfx.chime();
+    if (stampCardFull()) keeperReact('cardFull');
+    else if (stampState().earned === 1) {
+      keeperSay(`Your first stamp! Fill ${STAMP.cardSize} and I'll swap the card for ` +
+        `${STAMP.reward} coins — tap me any time to see it.`, 6400);
+    } else keeperReact('stamp');
+    return;
+  }
+
+  // No stamp yet — but if a whole track just filled, say so. Silence here is
+  // what makes progress feel broken: you finish three arcade games and the
+  // game says nothing at all.
+  const now = stampState();
+  const filled =
+    (kind === 'pull' && was.pulls < STAMP.perPulls && now.pulls >= STAMP.perPulls) ||
+    (kind === 'play' && was.plays < STAMP.perPlays && now.plays >= STAMP.perPlays) ||
+    (kind === 'binder' && !was.binder && now.binderDone);
+  if (!filled) return;
+  const label = kind === 'pull' ? 'Capsule pulls' : kind === 'play' ? 'Arcade games' : 'Album visit';
+  sfx.tick();
+  keeperSay(`${label} done on your stamp card! Still need ${stampNeeds().join(' and ')}.`, 5600);
 }
