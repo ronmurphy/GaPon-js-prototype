@@ -176,10 +176,11 @@ function stampSlotsHTML() {
 }
 
 function stampBar(done, total, label) {
-  return `<div class="stamp-task">
+  const complete = done >= total;
+  return `<div class="stamp-task${complete ? ' done' : ''}">
     <span class="st-label">${label}</span>
     <span class="st-bar"><i style="width:${(done / total * 100).toFixed(0)}%"></i></span>
-    <span class="st-n">${done}/${total}</span>
+    <span class="st-n">${complete ? '✓' : `${done}/${total}`}</span>
   </div>`;
 }
 
@@ -244,16 +245,20 @@ function stampNeeds() {
 }
 
 // Compact card status for screens outside the shop (e.g. the arcade).
+// Finished tracks read as ✓ rather than "3/3", which looks stuck.
 function stampMiniHTML() {
   const s = stampState();
+  const t = (n, of) => n >= of ? '✓' : `${n}/${of}`;
   return `<span class="stamp-mini">${SHOPKEEPER.emoji} stamp card —
-    pulls ${s.pulls}/${STAMP.perPulls} · games ${s.plays}/${STAMP.perPlays} ·
+    pulls ${t(s.pulls, STAMP.perPulls)} · games ${t(s.plays, STAMP.perPlays)} ·
     album ${s.binderDone ? '✓' : '–'}</span>`;
 }
 
 function noteStamp(kind) {
   const s = stampState();
   const was = { pulls: s.pulls, plays: s.plays, binder: s.binderDone };
+  const wasFull = (kind === 'pull' && was.pulls >= STAMP.perPulls) ||
+                  (kind === 'play' && was.plays >= STAMP.perPlays);
   const earned = stampProgress(kind);
   updateKeeperBadge();
 
@@ -275,8 +280,17 @@ function noteStamp(kind) {
     (kind === 'pull' && was.pulls < STAMP.perPulls && now.pulls >= STAMP.perPulls) ||
     (kind === 'play' && was.plays < STAMP.perPlays && now.plays >= STAMP.perPlays) ||
     (kind === 'binder' && !was.binder && now.binderDone);
-  if (!filled) return;
-  const label = kind === 'pull' ? 'Capsule pulls' : kind === 'play' ? 'Arcade games' : 'Album visit';
-  sfx.tick();
-  keeperSay(`${label} done on your stamp card! Still need ${stampNeeds().join(' and ')}.`, 5600);
+  if (filled) {
+    const label = kind === 'pull' ? 'Capsule pulls' : kind === 'play' ? 'Arcade games' : 'Album visit';
+    sfx.tick();
+    keeperSay(`${label} done on your stamp card! Still need ${stampNeeds().join(' and ')}.`, 5600);
+    return;
+  }
+  // That track was already finished, so this play couldn't move the card at
+  // all. Saying nothing here reads as "it didn't register" — two playtesters
+  // hit exactly that.
+  if (wasFull) {
+    keeperSay(`That one's already stamped! For the next stamp you still need ` +
+      `${stampNeeds().join(' and ')}.`, 5200);
+  }
 }
