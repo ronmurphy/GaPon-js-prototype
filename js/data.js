@@ -59,6 +59,12 @@ const ARCADE = {
   shell:  { swaps: 6, win: 12, wrong: 3 },
   echo:   { rounds: [5, 10, 15], flub: 2 },  // payout per round survived
   pong:   { winScore: 3, win: 12, sweep: 15, lose: 3 },
+  // Claw: bigger prizes pay more but the grip is weaker — the authentic
+  // UFO-catcher tradeoff. Expected value of going for the big plush is
+  // roughly the same as the safe small one, so it's a nerve game, not a
+  // math one.
+  claw:   { big: 15, med: 10, small: 5, miss: 2,
+            grip: { big: 0.45, med: 0.65, small: 0.85 } },
 };
 
 // Each collection: 6 common, 3 uncommon, 2 rare, 1 chase.

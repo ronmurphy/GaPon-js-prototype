@@ -43,6 +43,8 @@ const ARCADE_GAMES = [
     desc: 'Repeat the growing beat pattern.' },
   { id: 'pong', name: 'Capsule Pong', icon: 'sports_tennis', pay: '3–15', color: '#29b6f6',
     desc: 'Beat the robo-paddle!' },
+  { id: 'claw', name: 'Claw Catcher', icon: 'precision_manufacturing', pay: '2–15', color: '#ffa726',
+    desc: 'Line up the claw and grab a prize!' },
 ];
 
 function openCrt(game) {
@@ -120,6 +122,7 @@ function renderArcade() {
         shell: startShellGame,
         echo: startEchoGame,
         pong: startPongGame,
+        claw: startClawGame,
       })[game.id]();
     }));
 }
@@ -483,6 +486,250 @@ function startPongGame() {
     arcadeRaf = requestAnimationFrame(step);
   };
   arcadeRaf = requestAnimationFrame(step);
+}
+
+// ---------- Claw Catcher (UFO catcher) ----------
+
+const CLAW_PRIZES = [
+  { emoji: '🧸', size: 'big',   r: 25 },
+  { emoji: '🐰', size: 'med',   r: 20 },
+  { emoji: '🐱', size: 'med',   r: 20 },
+  { emoji: '👾', size: 'small', r: 15 },
+  { emoji: '⭐', size: 'small', r: 15 },
+  { emoji: '🍭', size: 'small', r: 15 },
+];
+
+function startClawGame() {
+  const c = ARCADE.claw;
+  const stage = $('#arcade-stage');
+  stage.innerHTML = `
+    <div class="clawgame">
+      <canvas id="claw" width="440" height="300"></canvas>
+      <button class="btn" id="claw-drop">DROP!</button>
+      <p class="claw-hint">drop when the ring lights up — big prizes pay more,
+        but the claw grips them worst!</p>
+    </div>`;
+  const cv = $('#claw'), ctx = cv.getContext('2d');
+  const W = 440, H = 300;
+  const FLOOR = H - 26;         // where prizes sit
+  const CHUTE_X = 42;           // prize drops out here
+  const RAIL_Y = 30;
+
+  // scatter a pile of prizes across the floor (never over the chute)
+  const prizes = [];
+  const pool = [...CLAW_PRIZES, ...CLAW_PRIZES].sort(() => Math.random() - 0.5).slice(0, 7);
+  let x = CHUTE_X + 68;
+  for (const p of pool) {
+    if (x > W - 30) break;
+    prizes.push({ ...p, x: x + (Math.random() - 0.5) * 14, y: FLOOR - p.r,
+                  tilt: (Math.random() - 0.5) * 0.4, held: false, gone: false });
+    x += 52 + Math.random() * 12;
+  }
+
+  const claw = { x: W / 2, y: RAIL_Y, dir: 1, speed: 2.4, open: 1, holding: null };
+  let phase = 'slide';          // slide → drop → grip → lift → carry → release → done
+  let timer = 0;
+  let result = null;
+  let ended = false;
+  let missReason = 'empty';     // empty | slip | dropped — losing should never
+                                // be ambiguous, so each one says its own thing
+
+  const dropBtn = $('#claw-drop');
+  const doDrop = () => {
+    if (phase !== 'slide') return;
+    phase = 'drop';
+    sfx.tick();
+    dropBtn.disabled = true;
+  };
+  dropBtn.addEventListener('click', doDrop);
+  cv.addEventListener('pointerdown', doDrop);   // tapping the glass works too
+
+  function finish() {
+    if (ended) return;
+    ended = true;
+    const payout = result ? c[result.size] : c.miss;
+    const missText = {
+      empty: 'Nothing under the claw! Line it up next time.',
+      slip: 'So close — the claw lost its grip!',
+      dropped: 'NOOO! It slipped on the way up!',
+    }[missReason];
+    const headline = !result ? missText
+      : result.size === 'big' ? `🏆 THE BIG ONE! ${result.emoji} is yours!`
+      : `Got it! ${result.emoji} secured.`;
+    addArcadeTimer(setTimeout(() => arcadeAward(payout, headline), 700));
+  }
+
+  // Nearest prize under the claw, if any is close enough to catch.
+  function prizeUnderClaw() {
+    let best = null, bestD = 26;
+    for (const p of prizes) {
+      if (p.gone) continue;
+      const d = Math.abs(p.x - claw.x);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+
+  function step() {
+    if (!document.body.contains(cv)) { arcadeRaf = null; return; }
+    if (phase === 'slide') {
+      claw.x += claw.dir * claw.speed;
+      if (claw.x < CHUTE_X + 30) { claw.x = CHUTE_X + 30; claw.dir = 1; }
+      if (claw.x > W - 26) { claw.x = W - 26; claw.dir = -1; }
+    } else if (phase === 'drop') {
+      claw.y += 4.2;
+      claw.open = 1;
+      const target = prizeUnderClaw();
+      const stopY = (target ? target.y : FLOOR - 8) - 6;
+      if (claw.y >= stopY) { claw.y = stopY; phase = 'grip'; timer = 0; }
+    } else if (phase === 'grip') {
+      timer++;
+      claw.open = Math.max(0, 1 - timer / 18);       // claw closes
+      if (timer > 22) {
+        const target = prizeUnderClaw();
+        if (!target) {
+          missReason = 'empty';
+          sfx.thunk();                 // the clank of closing on nothing
+        } else if (Math.random() < c.grip[target.size]) {
+          // weak grip: bigger prizes slip more often
+          target.held = true;
+          claw.holding = target;
+          sfx.chime();
+        } else {
+          missReason = 'slip';
+          sfx.buzz();
+        }
+        phase = 'lift';
+        timer = 0;
+      }
+    } else if (phase === 'lift') {
+      claw.y -= 3.4;
+      if (claw.holding) {
+        claw.holding.x = claw.x;
+        claw.holding.y = claw.y + 22;
+        // a held prize can still slip on the way up — the classic heartbreak
+        timer++;
+        if (timer === 26 && claw.holding.size === 'big' && Math.random() < 0.28) {
+          claw.holding.held = false;
+          claw.holding.y = FLOOR - claw.holding.r;
+          claw.holding = null;
+          claw.open = 1;
+          missReason = 'dropped';
+          sfx.thunk();
+        }
+      }
+      if (claw.y <= RAIL_Y) { claw.y = RAIL_Y; phase = 'carry'; }
+    } else if (phase === 'carry') {
+      claw.x -= 3.6;
+      if (claw.holding) { claw.holding.x = claw.x; claw.holding.y = claw.y + 22; }
+      if (claw.x <= CHUTE_X) {
+        claw.x = CHUTE_X;
+        phase = 'release';
+        timer = 0;
+      }
+    } else if (phase === 'release') {
+      timer++;
+      claw.open = Math.min(1, timer / 12);
+      if (claw.holding) {
+        claw.holding.y += 3 + timer * 0.4;
+        if (claw.holding.y > H + 30) {
+          result = claw.holding;
+          claw.holding.gone = true;
+          claw.holding = null;
+          sfx.coin();
+          finish();
+        }
+      } else if (timer > 20) {
+        finish();
+      }
+    }
+    draw();
+    arcadeRaf = requestAnimationFrame(step);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // cabinet interior
+    ctx.fillStyle = '#141026';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(0, FLOOR, W, H - FLOOR);
+    // chute
+    ctx.fillStyle = '#05030c';
+    ctx.beginPath();
+    ctx.roundRect(4, FLOOR - 54, 72, 54 + 26, [10, 10, 0, 0]);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = '600 11px Fredoka, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PRIZE', 40, FLOOR - 30);
+    // rail
+    ctx.fillStyle = '#546e7a';
+    ctx.fillRect(0, RAIL_Y - 12, W, 6);
+    // aiming aids — you can judge depth at a real cabinet, so the flat view
+    // needs a guide line and a marked target or misses feel arbitrary
+    const aim = (phase === 'slide' || phase === 'drop') ? prizeUnderClaw() : null;
+    if (phase === 'slide' || phase === 'drop') {
+      ctx.save();
+      ctx.strokeStyle = aim ? 'rgba(255,193,7,0.45)' : 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 7]);
+      ctx.beginPath();
+      ctx.moveTo(claw.x, claw.y + 26);
+      ctx.lineTo(claw.x, FLOOR + 6);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (aim) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,193,7,0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(aim.x, FLOOR + 3, aim.r + 5, 7, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    // prizes
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const p of prizes) {
+      if (p.gone) continue;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.held ? 0 : p.tilt);
+      ctx.font = `${p.r * 2}px serif`;
+      ctx.fillText(p.emoji, 0, 0);
+      ctx.restore();
+    }
+    ctx.textBaseline = 'alphabetic';
+    // cable + claw
+    ctx.strokeStyle = '#90a4ae';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(claw.x, RAIL_Y - 9);
+    ctx.lineTo(claw.x, claw.y);
+    ctx.stroke();
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(claw.x - 12, claw.y - 6, 24, 12);
+    const spread = 6 + claw.open * 12;
+    ctx.strokeStyle = '#cfd8dc';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(claw.x + s * 4, claw.y + 6);
+      ctx.lineTo(claw.x + s * spread, claw.y + 18);
+      ctx.lineTo(claw.x + s * (spread - 3), claw.y + 26);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+
+  arcadeRaf = requestAnimationFrame(step);
+  // The token is already spent, so the round must always pay out. If the
+  // claw ever gets stuck mid-phase, close it out on pity coins rather than
+  // leaving the player staring at a frozen cabinet.
+  addArcadeTimer(setTimeout(finish, 20000));
 }
 
 // ---------- Echo Pads (repeat the pattern) ----------
