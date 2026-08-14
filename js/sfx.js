@@ -116,6 +116,10 @@ const sfx = {
     sfxHiss({ dur: 0.09, vol: 0.16, freq: 1300, q: 0.7 });
     sfxHiss({ t: 0.05, dur: 0.06, vol: 0.10, freq: 2600, q: 0.8 });
   },
+  hello() {         // Poko's little greeting chirp (also: panel opening)
+    sfxTone({ type: 'triangle', freq: 523, dur: 0.10, vol: 0.13 });
+    sfxTone({ type: 'triangle', freq: 784, t: 0.06, dur: 0.14, vol: 0.11 });
+  },
   rustle() {        // leaves
     sfxHiss({ dur: 0.05, vol: 0.09, freq: 4200, q: 0.6 });
     sfxHiss({ t: 0.03, dur: 0.04, vol: 0.06, freq: 5600, q: 0.7 });

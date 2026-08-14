@@ -125,7 +125,7 @@ function initShopkeeper() {
   // tapping the bubble skips ahead; tapping Poko opens the stamp card
   bubble.addEventListener('click', () => { clearTimeout(kbTimer); keeperNext(); });
   keeper.addEventListener('click', () => {
-    sfx.tick();
+    sfx.hello();
     openStampCard();
   });
   updateKeeperBadge();
