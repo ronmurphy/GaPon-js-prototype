@@ -16,6 +16,7 @@ function arcadeAward(payout, headline) {
   saveGame();
   updateHeader();
   if (headline.includes('🏆')) sfx.fanfare(); else sfx.chime();
+  noteStamp('play');
   const stage = $('#arcade-stage');
   stage.innerHTML = `
     <div class="arcade-result">

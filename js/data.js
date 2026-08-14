@@ -33,6 +33,19 @@ const ECON = {
                         // out until the next restock
 };
 
+// Stamp rally card. A stamp needs ALL THREE tracks filled, not any one of
+// them — otherwise stamps-per-pull don't scale with pull cost and the card
+// quietly pays 5× better for spamming the cheap machine. The counters never
+// reset daily (so a Lucky Pon player loses nothing by pulling once a day),
+// but the album visit credits only once per calendar day, which paces the
+// card to about a stamp a day — a five-day "school week" rally.
+const STAMP = {
+  perPulls: 3,      // capsule pulls needed, any machine
+  perPlays: 3,      // arcade games needed
+  cardSize: 5,      // stamps to fill a card
+  reward: 75,       // coins on redeem
+};
+
 // Arcade: capped plays per half-day rotation so minigames stay a snack,
 // not the meal. Every game tops out at 15 coins, so max arcade income
 // (3 × 15 = 45 per rotation) stays in the same league as the login bonus

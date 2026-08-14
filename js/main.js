@@ -65,7 +65,10 @@ function showTab(name) {
     $('#tab-' + t).hidden = (t !== name);
   }
   fxTabIn($('#tab-' + name));
-  if (name === 'album') renderAlbum();
+  if (name === 'album') {
+    noteStamp('binder');       // a stamp once a day just for stopping by
+    renderAlbum();
+  }
   if (name === 'market') renderMarket();
   if (name === 'arcade') renderArcade();
   if (name === 'wall') renderWall();
@@ -145,6 +148,7 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
       ], { duration: 350, easing: 'cubic-bezier(.2,1.6,.4,1)' });
       const ring = ov.querySelector('.r-ring');
       if (item.rarity === 'chase') {
+        keeperReact('chase');
         sfx.fanfare();
         confetti(40);
         fxSparkleBurst(ring, { count: 26, color: rar.color, spread: 140 });
@@ -172,6 +176,7 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
   function closeReveal(keepFocus = false) {
     ov.hidden = true;
     ov.innerHTML = '';
+    noteStamp('pull');          // stamped once the capsule is done being fun
     if (!keepFocus) {
       // step back from the machine and refresh its collection count
       shopSyncProgress();
@@ -238,6 +243,7 @@ function showTicketReveal(machine) {
       state.coins += value;
       saveGame();
       updateHeader();
+      keeperReact('ticket');
       sfx.fanfare();
       confetti(24);
       fxSparkleBurst(ov.querySelector('.r-ring'), { count: 18, color: '#ffc107', spread: 120 });
@@ -254,6 +260,7 @@ function showTicketReveal(machine) {
   function closeReveal(keepFocus = false) {
     ov.hidden = true;
     ov.innerHTML = '';
+    noteStamp('pull');          // a ticket capsule still used up a pull
     if (!keepFocus) {
       shopSyncProgress();
       shopUnfocus();
@@ -454,6 +461,8 @@ function boot() {
   } else if (daily) {
     toast(`Daily bonus +${daily.bonus} coins! (day ${daily.streak} streak)`, 'good');
   }
+  // let the toast land first, then Poko says hello from the counter
+  setTimeout(() => keeperGreet(firstRun, daily), firstRun ? 900 : 1400);
 }
 
 document.addEventListener('DOMContentLoaded', boot);

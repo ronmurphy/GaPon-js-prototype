@@ -16,6 +16,10 @@ function defaultState() {
     arcade: { date: null, used: 0 },  // daily minigame plays
     stock: null,        // per-rotation capsule stock: { period, left: {low,mid,high} }
     fernDay: null,      // 'YYYY-MM-DD' the fern last paid out (once a day)
+    // stamp rally: `earned` is every stamp ever, `cards` is cards redeemed —
+    // so overflow past a full card is never lost, it lands on the next one
+    stamps: { earned: 0, cards: 0, pulls: 0, plays: 0, binderDay: null, binderDone: false },
+    tutorialSeen: false,
     trades: [],         // outgoing trade capsules: { code, itemId, at }
     redeemed: [],       // trade codes already opened on this device
     playerName: '',     // name printed on trade cards
@@ -283,6 +287,58 @@ function sellAllDupes() {
     if (state.inv[id] > 1) total += sellItem(id, state.inv[id] - 1);
   }
   return total;
+}
+
+// ---- stamp rally card ----
+
+function stampState() {
+  if (!state.stamps) {
+    state.stamps = { earned: 0, cards: 0, pulls: 0, plays: 0, binderDay: null, binderDone: false };
+  }
+  if (state.stamps.binderDone == null) state.stamps.binderDone = false;   // older saves
+  return state.stamps;
+}
+
+// Stamps on the card in hand (can exceed cardSize — extras roll onto the next).
+function cardStamps() {
+  const s = stampState();
+  return Math.max(0, s.earned - s.cards * STAMP.cardSize);
+}
+
+function stampCardFull() { return cardStamps() >= STAMP.cardSize; }
+
+// Record progress on one track. A stamp lands only when all three are full.
+// Counters stop at their target so nothing is silently wasted on the display.
+function stampProgress(kind) {
+  const s = stampState();
+  if (kind === 'pull') {
+    s.pulls = Math.min(STAMP.perPulls, s.pulls + 1);
+  } else if (kind === 'play') {
+    s.plays = Math.min(STAMP.perPlays, s.plays + 1);
+  } else if (kind === 'binder') {
+    // one credit per calendar day — this is what paces the card
+    if (!s.binderDone && s.binderDay !== todayStr()) {
+      s.binderDone = true;
+      s.binderDay = todayStr();
+    }
+  }
+  const earned = s.pulls >= STAMP.perPulls && s.plays >= STAMP.perPlays && s.binderDone;
+  if (earned) {
+    s.pulls = 0;
+    s.plays = 0;
+    s.binderDone = false;   // binderDay stays set, so the next credit is tomorrow
+    s.earned++;
+  }
+  saveGame();
+  return earned;
+}
+
+function redeemStampCard() {
+  if (!stampCardFull()) return 0;
+  stampState().cards++;
+  state.coins += STAMP.reward;
+  saveGame();
+  return STAMP.reward;
 }
 
 function collectionProgress(col) {

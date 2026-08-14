@@ -97,7 +97,7 @@ function renderMachines() {
           { transform: 'translateX(5px)' }, { transform: 'translateX(0)' },
         ], { duration: 250 });
         const ms = msUntilRotate();
-        toast(`All out of capsules — restock in ${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m!`, 'warn');
+        keeperSay(`${keeperPick('soldOut')} (${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m)`);
         return;
       }
       focusMachine(m, card);
@@ -158,6 +158,7 @@ function initShopOnce() {
         (focusState.stage === 'zoom' || focusState.stage === 'coin')) shopUnfocus();
   });
   initFern();
+  initShopkeeper();
 }
 
 // Secret: each visit, the shop fern hides a few coins. Tap it enough times

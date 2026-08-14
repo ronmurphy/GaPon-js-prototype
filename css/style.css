@@ -284,6 +284,134 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   -webkit-user-select: none;
 }
 
+/* --- the shopkeeper at their counter --- */
+
+.dec-keeper {
+  position: relative;
+  width: 132px;
+  height: 210px;
+  pointer-events: auto;
+  cursor: pointer;
+  align-self: flex-end;
+  /* the counter is by the door, so scroll position 0 is a real resting spot —
+     without this, scroll-snap pulls straight past Poko to the first machine */
+  scroll-snap-align: start;
+}
+
+.keeper-char {
+  position: absolute;
+  left: 50%;
+  bottom: 78px;          /* perched on the counter top, not hidden behind it */
+  transform: translateX(-50%);
+  z-index: 3;
+  animation: keeperbob 3.6s ease-in-out infinite;
+}
+
+.keeper-emoji { font-size: 62px; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45)); }
+.keeper-img { width: 88px; height: auto; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45)); }
+.keeper-emoji.mini, .keeper-img.mini { font-size: 26px; width: 30px; }
+
+@keyframes keeperbob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+.dec-keeper:hover .keeper-char { animation-duration: 1.2s; }
+
+.keeper-counter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 86px;
+  z-index: 2;
+  border-radius: 6px 6px 0 0;
+  background:
+    linear-gradient(180deg, #8d6e63 0 12px, #6d4c41 12px, #5d4037 100%);
+  box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keeper-counter span {
+  color: #f6e7c8;
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  opacity: 0.75;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.keeper-badge {
+  position: absolute;
+  top: 46px;
+  right: 6px;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ef5350;
+  color: #fff;
+  font-weight: 800;
+  font-style: normal;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* speech bubble — pinned to the shop panel, so it stays readable no matter
+   how far the player has scrolled down the row of machines */
+.keeper-bubble {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #f6e7c8;
+  color: #4e342e;
+  font-weight: 600;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  /* deliberately visible by default — the entrance is a Web Animations
+     enhancement, so the bubble can never get stuck invisible */
+}
+
+.keeper-bubble::after {
+  content: '';
+  position: absolute;
+  left: 26px;
+  bottom: -8px;
+  border: 8px solid transparent;
+  border-top-color: #f6e7c8;
+  border-bottom: 0;
+}
+
+.keeper-bubble.more::before {
+  content: '▸';
+  position: absolute;
+  right: 10px;
+  bottom: 4px;
+  color: #a1887f;
+  font-size: 0.8rem;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.kb-face { flex-shrink: 0; line-height: 1; }
+.kb-text { flex: 1; }
+
 /* --- hanging restock sign --- */
 
 .shop-sign {
@@ -880,6 +1008,87 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .chip.new { background: #fff; animation: pulse 1s ease-in-out infinite; }
 .chip.dupe { background: var(--card2); color: var(--ink-dim); }
 .chip.lucky { background: var(--gold); color: #1c1a26; }
+
+/* ---------- stamp rally card ---------- */
+
+.keeper-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.stamp-card {
+  background: linear-gradient(180deg, #f8f1e0, #efe5cd);
+  color: #5d4037;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  max-width: 340px;
+}
+
+.stamp-slots {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stamp-slot {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px dashed #c5b294;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.stamp-slot.stamped {
+  border: 2px solid #ef5350;
+  background: rgba(239, 83, 80, 0.10);
+  transform: rotate(-7deg);
+}
+
+.stamp-no { color: #c5b294; font-weight: 800; font-size: 0.9rem; }
+
+.stamp-goal {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #8d6e63;
+  letter-spacing: 0.3px;
+}
+
+.stamp-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin: 5px 0;
+}
+
+.st-label { flex: 1; }
+
+.st-bar {
+  width: 92px;
+  height: 8px;
+  border-radius: 99px;
+  background: #ddd2ba;
+  overflow: hidden;
+}
+
+.st-bar i { display: block; height: 100%; background: #66bb6a; border-radius: 99px; transition: width 0.3s; }
+.st-n { width: 26px; text-align: right; color: #8d6e63; font-variant-numeric: tabular-nums; }
+
+.stamp-note {
+  margin-top: 10px;
+  font-size: 0.76rem;
+  color: #8d6e63;
+  text-align: center;
+}
 
 /* ---------- trading ---------- */
 

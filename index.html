@@ -32,10 +32,18 @@
       <div class="shop" id="shop">
         <div class="shop-sign"><span class="msr">history_toggle_off</span><span id="rotate-timer"></span></div>
         <div class="special-banner">★ SPECIAL PON DAY ★</div>
+        <div class="keeper-bubble" id="keeper-bubble" hidden>
+          <span class="kb-face"></span><span class="kb-text"></span>
+        </div>
         <div class="shop-scroll">
           <div class="shop-scene">
-            <div class="dec dec-window"><i class="sky"></i><i class="bars"></i></div>
+            <div class="dec dec-keeper" id="shopkeeper" title="chat with the shopkeeper">
+              <div class="keeper-char"></div>
+              <div class="keeper-counter"><span>GaPon</span></div>
+              <i class="keeper-badge" id="keeper-badge" hidden>!</i>
+            </div>
             <div id="machines" class="mach-row"></div>
+            <div class="dec dec-window"><i class="sky"></i><i class="bars"></i></div>
             <div class="dec dec-poster">GaPon!<small>collect ’em all</small></div>
             <div class="dec dec-plant">🪴</div>
           </div>
@@ -85,6 +93,7 @@
   <script src="js/shop.js"></script>
   <script src="js/album.js"></script>
   <script src="js/trade.js"></script>
+  <script src="js/shopkeeper.js"></script>
   <script src="js/arcade.js"></script>
   <script src="js/wall.js"></script>
   <script src="js/main.js"></script>

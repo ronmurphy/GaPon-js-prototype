@@ -86,6 +86,7 @@ function renderBinderPage() {
     const got = claimSetBonus(col);
     if (got) {
       toast(`${col.name} complete! +${got} coins`, 'good');
+      keeperReact('setDone');
       sfx.fanfare();
       confetti(30);
       updateHeader();
