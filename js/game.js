@@ -14,7 +14,8 @@ function defaultState() {
     totalPulls: 0,
     days: [],           // distinct days played
     arcade: { date: null, used: 0 },  // daily minigame plays
-    stock: null,        // per-rotation capsule stock: { period, left: {low,mid,high} }
+    stock: null,        // per-rotation capsule stock, keyed by floor slot:
+                        // { period, left: {m0..m4,special}, tickets: {…} }
     fernDay: null,      // 'YYYY-MM-DD' the fern last paid out (once a day)
     // stamp rally: `earned` is every stamp ever, `cards` is cards redeemed —
     // so overflow past a full card is never lost, it lands on the next one
@@ -30,7 +31,11 @@ function defaultState() {
 
 // ---- capsule stock (lazily refilled each half-day rotation) ----
 
-const STOCK_TIERS = ['low', 'mid', 'high', 'special'];
+// Stock is keyed by FLOOR SLOT, not by price tier — two machines on the
+// floor can share a tier (there are five slots and three tiers), and if they
+// shared a stock key they'd drain each other and their capsule sims would
+// collide. `special` is the Saturday machine's own slot.
+const STOCK_SLOTS = ['m0', 'm1', 'm2', 'm3', 'm4', 'special'];
 
 // 1–2 golden FREE PLAY ticket positions among the capsules still in the
 // machine — never the final slot, which is reserved for the pity sticker.
@@ -47,7 +52,7 @@ function machineStock() {
   const period = currentPeriod();
   if (!state.stock || state.stock.period !== period) {
     state.stock = { period, left: {}, tickets: {} };
-    for (const t of STOCK_TIERS) {
+    for (const t of STOCK_SLOTS) {
       state.stock.left[t] = ECON.machineStock;
       state.stock.tickets[t] = seedTicketPositions();
     }
@@ -56,7 +61,7 @@ function machineStock() {
   // older saves mid-rotation (pre-ticket or pre-special builds): fill gaps
   if (!state.stock.tickets) state.stock.tickets = {};
   let patched = false;
-  for (const t of STOCK_TIERS) {
+  for (const t of STOCK_SLOTS) {
     if (state.stock.left[t] == null) {
       state.stock.left[t] = ECON.machineStock;
       patched = true;
@@ -70,39 +75,39 @@ function machineStock() {
   return state.stock;
 }
 
-function stockLeft(tierId) { return machineStock().left[tierId]; }
+function stockLeft(slot) { return machineStock().left[slot]; }
 
 // 0-based index of the NEXT pull from this machine this rotation.
-function pullsDone(tierId) { return ECON.machineStock - machineStock().left[tierId]; }
+function pullsDone(slot) { return ECON.machineStock - machineStock().left[slot]; }
 
-function nextPullIsTicket(tierId) {
-  return machineStock().tickets[tierId].includes(pullsDone(tierId));
+function nextPullIsTicket(slot) {
+  return machineStock().tickets[slot].includes(pullsDone(slot));
 }
 
 // How many golden capsules are still in the dome (drives the visible pile).
 // Pon machines store ticket *positions* (which pull number is golden); claw
 // machines can't work that way because the player picks the capsule, so
 // there the array is just a tally that shrinks when a gold one is grabbed.
-function goldCapsulesLeft(tierId, kind = 'pon') {
-  const t = machineStock().tickets[tierId];
+function goldCapsulesLeft(slot, kind = 'pon') {
+  const t = machineStock().tickets[slot];
   if (kind === 'claw') return t.length;
-  const done = pullsDone(tierId);
+  const done = pullsDone(slot);
   return t.filter(i => i >= done).length;
 }
 
 // Player grabbed a golden capsule out of a claw machine.
-function takeClawGold(tierId) {
-  const t = machineStock().tickets[tierId];
+function takeClawGold(slot) {
+  const t = machineStock().tickets[slot];
   if (!t.length) return false;
   t.pop();
   saveGame();
   return true;
 }
 
-function useStock(tierId) {
+function useStock(slot) {
   const s = machineStock();
-  if (s.left[tierId] <= 0) return false;
-  s.left[tierId]--;
+  if (s.left[slot] <= 0) return false;
+  s.left[slot]--;
   saveGame();
   return true;
 }
@@ -219,7 +224,13 @@ function mulberry32(seed) {
 // The Special Pon rolls into the shop every Saturday, all day.
 function isSpecialDay(d = new Date()) { return d.getDay() === 6; }
 
-// 3 of the collections are available each half-day, one per cost tier —
+// Five machines stand on the floor each rotation. The price spread is fixed
+// at two cheap / two middling / one expensive so there is always something
+// affordable, while the collections, the running order, and whether each is
+// a Pon or a claw machine are all randomised.
+const FLOOR_TIERS = ['low', 'low', 'mid', 'mid', 'high'];
+
+// 5 of the collections are available each half-day —
 // plus the Special Pon on Saturdays.
 function getTodaysMachines() {
   const rng = mulberry32(hashString('gapon:' + currentPeriod()));
@@ -228,19 +239,32 @@ function getTodaysMachines() {
     const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  // Some machines on the floor are claw machines instead of Pon machines —
-  // seeded off the period, so the mix is the same for everyone all rotation
-  // and changes at restock. At least one Pon machine always stays.
-  const kinds = ['low', 'mid', 'high'].map(() => rng() < 0.35 ? 'claw' : 'pon');
-  if (!kinds.includes('pon')) kinds[Math.floor(rng() * 3)] = 'pon';
-  const machines = ['low', 'mid', 'high'].map((tierId, i) => ({
+  // shuffle the price spread so the expensive machine isn't always last
+  const tiers = FLOOR_TIERS.slice();
+  for (let i = tiers.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [tiers[i], tiers[j]] = [tiers[j], tiers[i]];
+  }
+  // Some machines are claw machines instead of Pon machines — seeded off the
+  // period, so the mix is the same for everyone all rotation and changes at
+  // restock. At least one Pon machine always stays.
+  const kinds = tiers.map(() => rng() < 0.35 ? 'claw' : 'pon');
+  // keep at least two Pon machines: claws can eat a coin and give nothing,
+  // so a floor that's nearly all claws leaves no dependable way to pull
+  let claws = kinds.filter(k => k === 'claw').length;
+  while (claws > tiers.length - 2) {
+    const i = Math.floor(rng() * tiers.length);
+    if (kinds[i] === 'claw') { kinds[i] = 'pon'; claws--; }
+  }
+  const machines = tiers.map((tierId, i) => ({
+    id: 'm' + i,                 // floor slot — the key for stock and sims
     tierId,
     tier: TIERS[tierId],
     collection: pool[i],
     kind: kinds[i],
   }));
   if (isSpecialDay()) {
-    machines.push({ tierId: 'special', tier: TIERS.special,
+    machines.push({ id: 'special', tierId: 'special', tier: TIERS.special,
                     collection: SPECIAL_COLLECTION, kind: 'pon' });
   }
   return machines;

@@ -3,7 +3,7 @@
 // insert a coin → turn the crank (drag OR press-and-hold) → capsule drops.
 // All input is Pointer Events so mouse and touch behave identically.
 
-let machineSims = {};       // tierId -> MachineSim
+let machineSims = {};       // floor slot id -> MachineSim
 let shopMachines = [];      // [{ m, card }] as currently rendered
 let renderedPeriod = null;
 let pulling = false;
@@ -89,12 +89,12 @@ function renderMachines() {
     card.style.setProperty('--accent', m.tier.accent);
     card.innerHTML = machineMarkup(m, col);
     host.appendChild(card);
-    machineSims[m.tierId] = new MachineSim(card.querySelector('canvas'),
-      stockLeft(m.tierId), goldCapsulesLeft(m.tierId, m.kind), m.kind === 'claw');
-    card.classList.toggle('soldout', stockLeft(m.tierId) <= 0);
+    machineSims[m.id] = new MachineSim(card.querySelector('canvas'),
+      stockLeft(m.id), goldCapsulesLeft(m.id, m.kind), m.kind === 'claw');
+    card.classList.toggle('soldout', stockLeft(m.id) <= 0);
     card.addEventListener('click', () => {
       if (focusState.stage !== 'idle' || pulling) return;
-      if (stockLeft(m.tierId) <= 0) {
+      if (stockLeft(m.id) <= 0) {
         sfx.buzz();
         card.animate([
           { transform: 'translateX(0)' }, { transform: 'translateX(-5px)' },
@@ -121,7 +121,7 @@ function shopSyncProgress() {
   for (const { m, card } of shopMachines) {
     card.querySelector('.m-prog').textContent =
       `${collectionProgress(m.collection)}/${m.collection.items.length}`;
-    card.classList.toggle('soldout', stockLeft(m.tierId) <= 0);
+    card.classList.toggle('soldout', stockLeft(m.id) <= 0);
   }
 }
 
@@ -319,7 +319,7 @@ function tryInsertCoin() {
 // ritual, this one can fail: a missed grab keeps your coins spent but
 // leaves the capsule in the machine, exactly like the real cabinet.
 function armClaw(card, m) {
-  const sim = machineSims[m.tierId];
+  const sim = machineSims[m.id];
   const btn = card.querySelector('.claw-drop-btn');
   // the rig is put away after each attempt, so rebuild it for a retry
   if (!sim.claw) sim.claw = { x: sim.w / 2, y: 16, open: 1, holding: null };
@@ -426,14 +426,14 @@ function clawResult(m, card, grabbed) {
     return;
   }
   pulling = true;
-  useStock(m.tierId);
+  useStock(m.id);
   const gold = grabbed.gold;
-  machineSims[m.tierId].removeCapsule(grabbed);
+  machineSims[m.id].removeCapsule(grabbed);
   const capColor = grabbed.color;
-  if (gold) takeClawGold(m.tierId);
+  if (gold) takeClawGold(m.id);
   let item = null, isNew = false;
   if (!gold) {
-    const pity = stockLeft(m.tierId) === 0;
+    const pity = stockLeft(m.id) === 0;
     item = pity ? rollPityItem(m) : rollItem(m);
     isNew = ownedCount(item.id) === 0;
     addItem(item.id);
@@ -445,7 +445,7 @@ function clawResult(m, card, grabbed) {
   showChuteCapsule(card, capColor, () => {
     focusState.stage = 'capsule';
     if (gold) showTicketReveal(m);
-    else showReveal(item, isNew, m, card, capColor, { fromChute: true, pity: stockLeft(m.tierId) === 0 });
+    else showReveal(item, isNew, m, card, capColor, { fromChute: true, pity: stockLeft(m.id) === 0 });
   });
 }
 
@@ -564,10 +564,10 @@ function vend() {
   pulling = true;
   setHint('');
   // golden ticket capsule? (seeded per rotation, never the last slot)
-  const ticket = nextPullIsTicket(m.tierId);
-  useStock(m.tierId);
+  const ticket = nextPullIsTicket(m.id);
+  useStock(m.id);
   // the machine's last capsule is the pity capsule — see rollPityItem
-  const pity = !ticket && stockLeft(m.tierId) === 0;
+  const pity = !ticket && stockLeft(m.id) === 0;
   const item = ticket ? null : (pity ? rollPityItem(m) : rollItem(m));
   const isNew = item ? ownedCount(item.id) === 0 : false;
   if (item) addItem(item.id);
@@ -576,7 +576,7 @@ function vend() {
   updateFooter();
   sfx.rattle();
   card.classList.add('dispensing');
-  const capColor = machineSims[m.tierId].shakeAndDispense(ticket);
+  const capColor = machineSims[m.id].shakeAndDispense(ticket);
   setTimeout(() => {
     card.classList.remove('dispensing');
     sfx.thunk();
@@ -620,7 +620,7 @@ function showChuteCapsule(card, color, onOpen) {
 function shopAutoPull() {
   const { m, card } = focusState;
   if (!m) return;
-  if (stockLeft(m.tierId) <= 0) {
+  if (stockLeft(m.id) <= 0) {
     toast('That was the last capsule — machine\'s empty until restock!', 'warn');
     shopSyncProgress();
     shopUnfocus();
