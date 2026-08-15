@@ -785,6 +785,82 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .claw-drop-btn:not(:disabled) { animation: crankpulse 1.1s ease-in-out infinite; }
 
+/* --- fukubiki drum: wood and paper, no glass --- */
+
+.mach.fukumach .mach-topper {
+  background: linear-gradient(180deg, #ef5350, #b71c1c);
+}
+
+.mach.fukumach .mach-dome {
+  background: linear-gradient(180deg, #5d4037 0%, #4e342e 70%, #3e2723 100%);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.55);
+}
+
+.fuku-drum {
+  height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.drum-body {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  background: conic-gradient(#a1887f, #6d4c41, #a1887f, #6d4c41, #a1887f, #6d4c41, #a1887f);
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.6);
+}
+
+.drum-body i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 76px;
+  height: 4px;
+  background: rgba(255, 235, 190, 0.22);
+  transform-origin: center;
+}
+
+.drum-body i:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg); }
+.drum-body i:nth-child(2) { transform: translate(-50%, -50%) rotate(60deg); }
+.drum-body i:nth-child(3) { transform: translate(-50%, -50%) rotate(120deg); }
+
+.drum-body.spinning { animation: drumspin 1.4s cubic-bezier(.25, .8, .3, 1); }
+
+@keyframes drumspin { to { transform: rotate(1080deg); } }
+
+.drum-tray {
+  width: 96px;
+  height: 22px;
+  border-radius: 0 0 10px 10px;
+  background: linear-gradient(180deg, #3e2723, #2b1a15);
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marble, .big-marble {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.85), transparent 45%),
+    var(--mb);
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.marble { width: 20px; height: 20px; cursor: pointer; }
+
+.big-marble {
+  width: 108px;
+  height: 108px;
+  box-shadow: inset 0 -6px 14px rgba(0, 0, 0, 0.35),
+              0 0 34px color-mix(in srgb, var(--mb) 65%, transparent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
 /* --- the Saturday-only Special Pon: black cabinet, gold trim --- */
 
 .mach.deluxe .mach-topper {

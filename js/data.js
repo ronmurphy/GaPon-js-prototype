@@ -22,6 +22,21 @@ const TIERS = {
              odds: { common: 0, uncommon: 0.55, rare: 0.33, chase: 0.12 } },
 };
 
+// Fukubiki (福引き) — the hand-cranked lottery drum from Japanese shopping
+// streets. A coloured marble drops out and its colour decides the RARITY;
+// you then choose which collection to fill from, and always get something
+// you're missing. Guaranteed-new makes it the machine for finishing sets,
+// so it's priced well above a normal pull and the good colours are rare.
+const FUKU = {
+  name: 'Fukubiki', cost: 60, accent: '#c62828',
+  marbles: [
+    { color: 'white', rarity: 'common',   hex: '#f5f2ea', p: 0.55, label: 'a common!' },
+    { color: 'blue',  rarity: 'uncommon', hex: '#42a5f5', p: 0.28, label: 'an uncommon!' },
+    { color: 'red',   rarity: 'rare',     hex: '#e53935', p: 0.14, label: 'a RARE!' },
+    { color: 'gold',  rarity: 'chase',    hex: '#ffc107', p: 0.03, label: 'GOLD — a CHASE!' },
+  ],
+};
+
 const ECON = {
   startCoins: 100,
   dailyBase: 30,

@@ -249,20 +249,26 @@ function getTodaysMachines() {
   // period, so the mix is the same for everyone all rotation and changes at
   // restock. At least one Pon machine always stays.
   const kinds = tiers.map(() => rng() < 0.35 ? 'claw' : 'pon');
-  // keep at least two Pon machines: claws can eat a coin and give nothing,
-  // so a floor that's nearly all claws leaves no dependable way to pull
-  let claws = kinds.filter(k => k === 'claw').length;
-  while (claws > tiers.length - 2) {
+  // the fukubiki drum turns up on roughly half of rotations, in one slot
+  if (rng() < 0.5) kinds[Math.floor(rng() * tiers.length)] = 'fuku';
+  // Keep at least two plain Pon machines. A claw can eat a coin and give
+  // nothing and the drum is expensive, so a floor without them leaves no
+  // dependable way to just buy a capsule. Counts Pon directly so any future
+  // machine kind is covered automatically.
+  while (kinds.filter(k => k === 'pon').length < 2) {
     const i = Math.floor(rng() * tiers.length);
-    if (kinds[i] === 'claw') { kinds[i] = 'pon'; claws--; }
+    if (kinds[i] !== 'pon') kinds[i] = 'pon';
   }
-  const machines = tiers.map((tierId, i) => ({
-    id: 'm' + i,                 // floor slot — the key for stock and sims
-    tierId,
-    tier: TIERS[tierId],
-    collection: pool[i],
-    kind: kinds[i],
-  }));
+  const machines = tiers.map((tierId, i) => {
+    const isFuku = kinds[i] === 'fuku';
+    return {
+      id: 'm' + i,               // floor slot — the key for stock and sims
+      tierId: isFuku ? 'fuku' : tierId,
+      tier: isFuku ? FUKU : TIERS[tierId],
+      collection: pool[i],
+      kind: kinds[i],
+    };
+  });
   if (isSpecialDay()) {
     machines.push({ id: 'special', tierId: 'special', tier: TIERS.special,
                     collection: SPECIAL_COLLECTION, kind: 'pon' });
@@ -423,6 +429,32 @@ function swapDupes(rarity, colId) {
   addItem(got.id);
   saveGame();
   return { got, spent };
+}
+
+// ---- fukubiki ----
+
+// Draw a marble. If you already own everything of that rarity, the drum is
+// kind about it and bumps you to a rarity you can still use.
+function drawMarble() {
+  let r = Math.random();
+  let picked = FUKU.marbles[0];
+  for (const mb of FUKU.marbles) {
+    r -= mb.p;
+    if (r < 0) { picked = mb; break; }
+  }
+  if (swapTargets(picked.rarity).length) return picked;
+  const fallback = FUKU.marbles.find(mb => swapTargets(mb.rarity).length);
+  return fallback ? Object.assign({}, fallback, { bumped: true }) : null;
+}
+
+// Hand over a missing sticker of that rarity from the chosen collection.
+function claimFuku(rarity, colId) {
+  const target = swapTargets(rarity).find(x => x.col.id === colId);
+  if (!target) return null;
+  const got = target.missing[Math.floor(Math.random() * target.missing.length)];
+  addItem(got.id);
+  saveGame();
+  return got;
 }
 
 function collectionProgress(col) {

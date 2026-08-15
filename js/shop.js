@@ -42,19 +42,27 @@ function applyShopTime() {
 
 function machineMarkup(m, col) {
   const isClaw = m.kind === 'claw';
+  const isFuku = m.kind === 'fuku';
+  const glass = isFuku
+    // the drum is wood and paper, not a glass dome — no capsule sim here
+    ? `<div class="fuku-drum">
+         <div class="drum-body"><i></i><i></i><i></i></div>
+         <div class="drum-tray"></div>
+       </div>`
+    : `<canvas width="220" height="${isClaw ? 180 : 130}"></canvas>
+       <i class="dome-shine"></i>`;
+  const band = isFuku
+    ? `<span class="m-col" style="color:#ffd54f">any set — you choose!</span>
+       <span class="m-prog">${stockLeft(m.id)} left</span>`
+    : `<span class="m-col" style="color:${col.color}">${col.name}</span>
+       <span class="m-prog">${collectionProgress(col)}/${col.items.length}</span>`;
   return `
     <div class="mach-topper">${isClaw ? 'Claw ' + m.tier.name.split(' ')[0] : m.tier.name}</div>
-    <div class="mach-dome">
-      <canvas width="220" height="${isClaw ? 180 : 130}"></canvas>
-      <i class="dome-shine"></i>
-    </div>
-    <div class="mach-band">
-      <span class="m-col" style="color:${col.color}">${col.name}</span>
-      <span class="m-prog">${collectionProgress(col)}/${col.items.length}</span>
-    </div>
+    <div class="mach-dome">${glass}</div>
+    <div class="mach-band">${band}</div>
     <div class="soldout-sign">SOLD OUT!<small>back after restock</small></div>
     <div class="mach-cab">
-      <div class="m-odds">${oddsRow(m.tier.odds)}</div>
+      <div class="m-odds">${isFuku ? fukuOddsRow() : oddsRow(m.tier.odds)}</div>
       <div class="mach-panel">
         <div class="coin-col">
           <div class="coin-slot"><i></i></div>
@@ -71,6 +79,13 @@ function machineMarkup(m, col) {
     <div class="mach-feet"><i></i><i></i></div>`;
 }
 
+// The drum shows marble colours where a Pon machine lists rarity odds.
+function fukuOddsRow() {
+  return FUKU.marbles.map(mb =>
+    `<span class="odd"><i class="dot" style="background:${mb.hex}"></i>${(mb.p * 100).toFixed(0)}%</span>`
+  ).join('');
+}
+
 function renderMachines() {
   initShopOnce();
   clearSims();
@@ -85,12 +100,15 @@ function renderMachines() {
     const card = document.createElement('div');
     card.className = 'mach';
     if (m.kind === 'claw') card.classList.add('clawmach');
+    if (m.kind === 'fuku') card.classList.add('fukumach');
     if (m.tierId === 'special') card.classList.add('deluxe');
     card.style.setProperty('--accent', m.tier.accent);
     card.innerHTML = machineMarkup(m, col);
     host.appendChild(card);
-    machineSims[m.id] = new MachineSim(card.querySelector('canvas'),
-      stockLeft(m.id), goldCapsulesLeft(m.id, m.kind), m.kind === 'claw');
+    if (m.kind !== 'fuku') {          // the drum has no capsule pile to sim
+      machineSims[m.id] = new MachineSim(card.querySelector('canvas'),
+        stockLeft(m.id), goldCapsulesLeft(m.id, m.kind), m.kind === 'claw');
+    }
     card.classList.toggle('soldout', stockLeft(m.id) <= 0);
     card.addEventListener('click', () => {
       if (focusState.stage !== 'idle' || pulling) return;
@@ -119,8 +137,10 @@ function renderMachines() {
 
 function shopSyncProgress() {
   for (const { m, card } of shopMachines) {
-    card.querySelector('.m-prog').textContent =
-      `${collectionProgress(m.collection)}/${m.collection.items.length}`;
+    // the drum isn't tied to one collection, so it counts marbles instead
+    card.querySelector('.m-prog').textContent = m.kind === 'fuku'
+      ? `${stockLeft(m.id)} left`
+      : `${collectionProgress(m.collection)}/${m.collection.items.length}`;
     card.classList.toggle('soldout', stockLeft(m.id) <= 0);
   }
 }
@@ -305,12 +325,111 @@ function tryInsertCoin() {
       focusState.stage = 'claw';
       setHint('drop when the ring lights up!');
       armClaw(card, m);
+    } else if (m.kind === 'fuku') {
+      focusState.stage = 'crank';
+      setHint('turn the drum!');
+      armCrank(card, () => vendFuku(m, card));
     } else {
       focusState.stage = 'crank';
       setHint('turn the crank!');
       armCrank(card, vend);
     }
   });
+}
+
+// ---------- fukubiki drum ----------
+
+function vendFuku(m, card) {
+  focusState.stage = 'vend';
+  pulling = true;
+  setHint('');
+  useStock(m.id);
+  const marble = drawMarble();
+  state.totalPulls++;
+  saveGame();
+  updateFooter();
+  shopSyncProgress();
+  card.querySelector('.drum-body').classList.add('spinning');
+  sfx.rattle();
+  setTimeout(() => {
+    card.querySelector('.drum-body').classList.remove('spinning');
+    if (!marble) {
+      // nothing left in the whole album to give — pay out instead
+      const consolation = Math.round(m.tier.cost * 1.5);
+      state.coins += consolation;
+      saveGame();
+      updateHeader();
+      sfx.fanfare();
+      toast(`You own every sticker! The shop hands back ${consolation} coins.`, 'good');
+      pulling = false;
+      shopUnfocus();
+      return;
+    }
+    dropMarble(card, marble, () => showMarbleResult(m, marble));
+  }, 1400);
+}
+
+function dropMarble(card, marble, done) {
+  const tray = card.querySelector('.drum-tray');
+  const ball = document.createElement('div');
+  ball.className = 'marble';
+  ball.style.setProperty('--mb', marble.hex);
+  tray.appendChild(ball);
+  sfx.thunk();
+  if (!FX_REDUCED) {
+    ball.animate([
+      { transform: 'translate(-26px, -34px) scale(0.7)' },
+      { transform: 'translate(0, 0) scale(1)' },
+    ], { duration: 420, easing: 'cubic-bezier(.3,1.4,.5,1)' });
+  }
+  setHint('tap the marble!');
+  let opened = false;
+  const open = () => {
+    if (opened) return;
+    opened = true;
+    setHint('');
+    ball.remove();
+    done();
+  };
+  ball.addEventListener('click', e => { e.stopPropagation(); open(); });
+  setTimeout(open, 2600);
+}
+
+// Marble colour decided the rarity; now the player picks the collection.
+function showMarbleResult(m, marble) {
+  const rar = RARITIES[marble.rarity];
+  const targets = swapTargets(marble.rarity);
+  const ov = $('#overlay');
+  ov.hidden = false;
+  ov.innerHTML = `
+    <div class="ov-stage share-stage">
+      <div class="big-marble" style="--mb:${marble.hex}"></div>
+      <div class="r-name">${marble.label}</div>
+      <div class="r-chips">
+        <span class="chip" style="background:${rar.color}">${rar.label}</span>
+        ${marble.bumped ? '<span class="chip dupe">bumped — your set was full</span>' : ''}
+      </div>
+      <p class="r-note">pick a set — you'll get one you're missing</p>
+      <div class="swap-picks">
+        ${targets.map(t => `
+          <button class="swap-pick" data-col="${t.col.id}" style="--c:${t.col.color}">
+            <span class="sp-name">${t.col.name}</span>
+            <span class="sp-miss">${t.missing.length} missing</span>
+          </button>`).join('')}
+      </div>
+    </div>`;
+  sfx.chime();
+  ov.querySelectorAll('[data-col]').forEach(b =>
+    b.addEventListener('click', () => {
+      const got = claimFuku(marble.rarity, b.dataset.col);
+      if (!got) return;
+      updateFooter();
+      showGiftReveal(got, true, null, { chip: `🎊 ${marble.color} marble` });
+      pulling = false;
+      focusState.stage = 'idle';
+      shopSyncProgress();
+      shopUnfocus();
+    }));
 }
 
 // ---------- claw machines ----------
