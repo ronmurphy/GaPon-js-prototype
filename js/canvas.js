@@ -13,15 +13,33 @@ class MachineSim {
   // `count` mirrors the machine's real remaining stock — the pile IS the
   // stock display, so it never refills on its own. `goldCount` of them are
   // golden FREE PLAY ticket capsules, visible in the dome.
-  constructor(canvas, count = 11, goldCount = 0) {
+  constructor(canvas, count = 11, goldCount = 0, withClaw = false) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.w = canvas.width;
     this.h = canvas.height;
     this.shakeFrames = 0;
     this.capsules = [];
+    // claw machines hang a grabber in the same glass box; shop.js drives it
+    this.claw = withClaw ? { x: this.w / 2, y: 16, open: 1, holding: null } : null;
     for (let i = 0; i < count; i++) this.spawnCapsule(true, i < goldCount);
     activeSims.push(this);
+  }
+
+  // Nearest catchable capsule to a given x, or null. Used by the claw.
+  capsuleNear(x, maxDist) {
+    let best = null, bestD = maxDist;
+    for (const c of this.capsules) {
+      if (c.dispensing || c.heldByClaw) continue;
+      const d = Math.abs(c.x - x);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    return best;
+  }
+
+  removeCapsule(c) {
+    const i = this.capsules.indexOf(c);
+    if (i >= 0) this.capsules.splice(i, 1);
   }
 
   spawnCapsule(settled, gold = false) {
@@ -72,6 +90,7 @@ class MachineSim {
       }
     }
     for (const c of this.capsules) {
+      if (c.heldByClaw) continue;          // the claw owns its position
       if (this.shakeFrames > 0 && !c.dispensing) {
         c.vx += (Math.random() - 0.5) * 2.2;
         c.vy -= Math.random() * 1.4;
@@ -98,7 +117,7 @@ class MachineSim {
     for (let i = 0; i < this.capsules.length; i++) {
       for (let j = i + 1; j < this.capsules.length; j++) {
         const a = this.capsules[i], b = this.capsules[j];
-        if (a.dispensing || b.dispensing) continue;
+        if (a.dispensing || b.dispensing || a.heldByClaw || b.heldByClaw) continue;
         const dx = b.x - a.x, dy = b.y - a.y;
         const dist = Math.hypot(dx, dy) || 0.01;
         const overlap = a.r + b.r - dist;
@@ -115,9 +134,58 @@ class MachineSim {
     if (this.shakeFrames > 0) this.shakeFrames--;
   }
 
+  drawClaw() {
+    const ctx = this.ctx, cl = this.claw;
+    ctx.save();
+    // rail + cable
+    ctx.fillStyle = '#546e7a';
+    ctx.fillRect(0, 4, this.w, 5);
+    ctx.strokeStyle = '#90a4ae';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cl.x, 9);
+    ctx.lineTo(cl.x, cl.y);
+    ctx.stroke();
+    // aiming guide (only while lining up) — same fairness fix as the arcade
+    if (cl.aiming) {
+      const target = this.capsuleNear(cl.x, 22);
+      ctx.strokeStyle = target ? 'rgba(255,193,7,0.5)' : 'rgba(255,255,255,0.14)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.moveTo(cl.x, cl.y + 20);
+      ctx.lineTo(cl.x, this.h - 4);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (target) {
+        ctx.strokeStyle = 'rgba(255,193,7,0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(target.x, target.y + target.r + 3, target.r + 4, 5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    // body + prongs
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(cl.x - 10, cl.y - 5, 20, 10);
+    const spread = 5 + cl.open * 10;
+    ctx.strokeStyle = '#cfd8dc';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cl.x + s * 3, cl.y + 5);
+      ctx.lineTo(cl.x + s * spread, cl.y + 15);
+      ctx.lineTo(cl.x + s * (spread - 2), cl.y + 22);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   draw() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.w, this.h);
+    if (this.claw) this.drawClaw();
     for (const c of this.capsules) {
       ctx.save();
       ctx.translate(c.x, c.y);

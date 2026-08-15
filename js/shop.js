@@ -41,10 +41,11 @@ function applyShopTime() {
 }
 
 function machineMarkup(m, col) {
+  const isClaw = m.kind === 'claw';
   return `
-    <div class="mach-topper">${m.tier.name}</div>
+    <div class="mach-topper">${isClaw ? 'Claw ' + m.tier.name.split(' ')[0] : m.tier.name}</div>
     <div class="mach-dome">
-      <canvas width="220" height="130"></canvas>
+      <canvas width="220" height="${isClaw ? 180 : 130}"></canvas>
       <i class="dome-shine"></i>
     </div>
     <div class="mach-band">
@@ -59,9 +60,11 @@ function machineMarkup(m, col) {
           <div class="coin-slot"><i></i></div>
           <div class="mach-price">${coinIcon()} ${m.tier.cost}</div>
         </div>
-        <div class="crank">
-          <div class="crank-disc"><i class="crank-arm"></i><i class="crank-knob"></i></div>
-        </div>
+        ${isClaw
+          ? '<button class="claw-drop-btn" disabled>DROP</button>'
+          : `<div class="crank">
+               <div class="crank-disc"><i class="crank-arm"></i><i class="crank-knob"></i></div>
+             </div>`}
       </div>
       <div class="mach-chute"><div class="chute-hole"></div></div>
     </div>
@@ -81,12 +84,13 @@ function renderMachines() {
     const col = m.collection;
     const card = document.createElement('div');
     card.className = 'mach';
+    if (m.kind === 'claw') card.classList.add('clawmach');
     if (m.tierId === 'special') card.classList.add('deluxe');
     card.style.setProperty('--accent', m.tier.accent);
     card.innerHTML = machineMarkup(m, col);
     host.appendChild(card);
     machineSims[m.tierId] = new MachineSim(card.querySelector('canvas'),
-      stockLeft(m.tierId), goldCapsulesLeft(m.tierId));
+      stockLeft(m.tierId), goldCapsulesLeft(m.tierId, m.kind), m.kind === 'claw');
     card.classList.toggle('soldout', stockLeft(m.tierId) <= 0);
     card.addEventListener('click', () => {
       if (focusState.stage !== 'idle' || pulling) return;
@@ -146,6 +150,7 @@ function initShopOnce() {
     if (e.target.closest('.mach')) return;
     if (focusState.stage === 'zoom' || focusState.stage === 'coin') shopUnfocus();
     else if (focusState.stage === 'crank') setHint('turn the crank!');
+    else if (focusState.stage === 'claw') setHint('drop when the ring lights up!');
   });
   addEventListener('resize', () => {
     const card = focusState.card;
@@ -238,6 +243,10 @@ function focusMachine(m, card) {
 function shopUnfocus(instant = false) {
   const { card, ghost } = focusState;
   if (!card) return;
+  clearInterval(focusState.clawLoop);
+  for (const sim of Object.values(machineSims)) {
+    if (sim.claw) sim.claw.aiming = false;
+  }
   const layer = document.querySelector('#focus-layer');
   layer.classList.remove('lit');
   setHint('');
@@ -292,9 +301,151 @@ function tryInsertCoin() {
   flyCoin(document.querySelector('.coin-chip'), card.querySelector('.coin-slot'), () => {
     sfx.coin();
     card.classList.add('coin-in');
-    focusState.stage = 'crank';
-    setHint('turn the crank!');
-    armCrank(card, vend);
+    if (m.kind === 'claw') {
+      focusState.stage = 'claw';
+      setHint('drop when the ring lights up!');
+      armClaw(card, m);
+    } else {
+      focusState.stage = 'crank';
+      setHint('turn the crank!');
+      armCrank(card, vend);
+    }
+  });
+}
+
+// ---------- claw machines ----------
+
+// Drives the claw inside the machine's own glass box. Unlike the Pon
+// ritual, this one can fail: a missed grab keeps your coins spent but
+// leaves the capsule in the machine, exactly like the real cabinet.
+function armClaw(card, m) {
+  const sim = machineSims[m.tierId];
+  const btn = card.querySelector('.claw-drop-btn');
+  // the rig is put away after each attempt, so rebuild it for a retry
+  if (!sim.claw) sim.claw = { x: sim.w / 2, y: 16, open: 1, holding: null };
+  const cl = sim.claw;
+  const W = sim.w;
+  let phase = 'slide', dir = 1, timer = 0, grabbed = null, done = false;
+  cl.x = W / 2;
+  cl.y = 16;
+  cl.open = 1;
+  cl.aiming = true;
+  cl.holding = null;
+  btn.disabled = false;
+
+  const drop = () => {
+    if (phase !== 'slide') return;
+    phase = 'down';
+    cl.aiming = false;
+    btn.disabled = true;
+    sfx.tick();
+  };
+  btn.addEventListener('click', e => { e.stopPropagation(); drop(); });
+  card.querySelector('.mach-dome').addEventListener('click', e => { e.stopPropagation(); drop(); });
+
+  const finishClaw = () => {
+    if (done) return;
+    done = true;
+    cl.aiming = false;
+    sim.claw = null;                 // put the rig away until the next coin
+    clearInterval(loopId);
+    clawResult(m, card, grabbed);
+  };
+
+  const tick = () => {
+    if (done) return;
+    if (!card.isConnected) { clearInterval(loopId); return; }
+    if (phase === 'slide') {
+      cl.x += dir * 2.2;
+      if (cl.x < 24) { cl.x = 24; dir = 1; }
+      if (cl.x > W - 24) { cl.x = W - 24; dir = -1; }
+    } else if (phase === 'down') {
+      cl.y += 3.4;
+      const t = sim.capsuleNear(cl.x, 22);
+      const floor = t ? t.y - t.r - 4 : sim.h - 26;
+      if (cl.y >= floor) { cl.y = floor; phase = 'grip'; timer = 0; }
+    } else if (phase === 'grip') {
+      timer++;
+      cl.open = Math.max(0, 1 - timer / 14);
+      if (timer > 18) {
+        const t = sim.capsuleNear(cl.x, 22);
+        if (!t) {
+          sfx.thunk();                                  // closed on nothing
+        } else {
+          // centred grabs hold; edge grabs usually slip off the round shell
+          const centred = Math.abs(t.x - cl.x) < 11;
+          if (Math.random() < (centred ? 0.9 : 0.5)) {
+            t.heldByClaw = true;
+            cl.holding = t;
+            grabbed = t;
+            sfx.chime();
+          } else {
+            sfx.buzz();
+          }
+        }
+        phase = 'up';
+        timer = 0;
+      }
+    } else if (phase === 'up') {
+      cl.y -= 2.8;
+      if (cl.holding) { cl.holding.x = cl.x; cl.holding.y = cl.y + 20; }
+      if (cl.y <= 16) { cl.y = 16; phase = 'carry'; }
+    } else if (phase === 'carry') {
+      cl.x -= 3;
+      if (cl.holding) { cl.holding.x = cl.x; cl.holding.y = cl.y + 20; }
+      if (cl.x <= 24) { phase = 'let-go'; timer = 0; }
+    } else if (phase === 'let-go') {
+      timer++;
+      cl.open = Math.min(1, timer / 10);
+      if (cl.holding) {
+        cl.holding.heldByClaw = false;
+        cl.holding.dispensing = true;     // falls out of the machine
+        cl.holding = null;
+      }
+      if (timer > 14) finishClaw();
+    }
+  };
+  // setInterval rather than rAF: the sim already owns the animation frame,
+  // and this only needs to nudge the claw's position each tick
+  const loopId = setInterval(tick, 16);
+  focusState.clawLoop = loopId;
+}
+
+function clawResult(m, card, grabbed) {
+  setHint('');
+  if (!grabbed) {
+    // stock is untouched — you paid for the attempt, not the capsule
+    pulling = false;
+    focusState.stage = 'idle';
+    sfx.buzz();
+    toast('The claw came up empty! Your capsule is still in there.', 'warn');
+    keeperSay('Ooh, so close! The claw never grips on the first try.');
+    setTimeout(() => {
+      if (focusState.card === card) beginCoinStage();   // straight into a retry
+    }, 900);
+    return;
+  }
+  pulling = true;
+  useStock(m.tierId);
+  const gold = grabbed.gold;
+  machineSims[m.tierId].removeCapsule(grabbed);
+  const capColor = grabbed.color;
+  if (gold) takeClawGold(m.tierId);
+  let item = null, isNew = false;
+  if (!gold) {
+    const pity = stockLeft(m.tierId) === 0;
+    item = pity ? rollPityItem(m) : rollItem(m);
+    isNew = ownedCount(item.id) === 0;
+    addItem(item.id);
+  }
+  state.totalPulls++;
+  saveGame();
+  updateFooter();
+  sfx.thunk();
+  showChuteCapsule(card, capColor, () => {
+    focusState.stage = 'capsule';
+    if (gold) showTicketReveal(m);
+    else showReveal(item, isNew, m, card, capColor, { fromChute: true, pity: stockLeft(m.tierId) === 0 });
   });
 }
 
@@ -487,6 +638,12 @@ function shopAutoPull() {
   updateHeader();
   flyCoin(document.querySelector('.coin-chip'), card.querySelector('.coin-slot'), () => {
     sfx.coin();
+    if (m.kind === 'claw') {
+      focusState.stage = 'claw';
+      setHint('drop when the ring lights up!');
+      armClaw(card, m);
+      return;
+    }
     focusState.stage = 'crank';
     armCrank(card, vend);
     focusState.autoSpin();

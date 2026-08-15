@@ -80,9 +80,23 @@ function nextPullIsTicket(tierId) {
 }
 
 // How many golden capsules are still in the dome (drives the visible pile).
-function goldCapsulesLeft(tierId) {
+// Pon machines store ticket *positions* (which pull number is golden); claw
+// machines can't work that way because the player picks the capsule, so
+// there the array is just a tally that shrinks when a gold one is grabbed.
+function goldCapsulesLeft(tierId, kind = 'pon') {
+  const t = machineStock().tickets[tierId];
+  if (kind === 'claw') return t.length;
   const done = pullsDone(tierId);
-  return machineStock().tickets[tierId].filter(i => i >= done).length;
+  return t.filter(i => i >= done).length;
+}
+
+// Player grabbed a golden capsule out of a claw machine.
+function takeClawGold(tierId) {
+  const t = machineStock().tickets[tierId];
+  if (!t.length) return false;
+  t.pop();
+  saveGame();
+  return true;
 }
 
 function useStock(tierId) {
@@ -214,13 +228,20 @@ function getTodaysMachines() {
     const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
+  // Some machines on the floor are claw machines instead of Pon machines —
+  // seeded off the period, so the mix is the same for everyone all rotation
+  // and changes at restock. At least one Pon machine always stays.
+  const kinds = ['low', 'mid', 'high'].map(() => rng() < 0.35 ? 'claw' : 'pon');
+  if (!kinds.includes('pon')) kinds[Math.floor(rng() * 3)] = 'pon';
   const machines = ['low', 'mid', 'high'].map((tierId, i) => ({
     tierId,
     tier: TIERS[tierId],
     collection: pool[i],
+    kind: kinds[i],
   }));
   if (isSpecialDay()) {
-    machines.push({ tierId: 'special', tier: TIERS.special, collection: SPECIAL_COLLECTION });
+    machines.push({ tierId: 'special', tier: TIERS.special,
+                    collection: SPECIAL_COLLECTION, kind: 'pon' });
   }
   return machines;
 }
