@@ -28,6 +28,7 @@ const ECON = {
   dailyStreakStep: 5,   // +5 per consecutive day...
   dailyStreakCap: 20,   // ...up to +20
   setBonus: 150,        // claim once per completed collection
+  swapCost: 3,          // spare copies traded for one sticker of the same tier
   machineStock: 10,     // real capsules per machine per rotation — the dome
                         // empties as you pull, and a drained machine sells
                         // out until the next restock
@@ -105,7 +106,7 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'snacks', name: 'Snack Attack', color: '#ff8a65',
+    id: 'snacks', name: 'Snack Attack', color: '#ff8a65', artDir: 'SnackAttackPngs',
     items: [
       { id: 'sn_cookie',  name: 'Choco Chip',     icon: 'cookie',              rarity: 'common' },
       { id: 'sn_ice',     name: 'Drippy Cone',    icon: 'icecream',            rarity: 'common' },

@@ -278,8 +278,11 @@ function renderMarket() {
   const dupeValue = dupes.reduce((s, it) =>
     s + RARITIES[it.rarity].sell * (ownedCount(it.id) - 1), 0);
 
+  // the two "do something with your stickers" counters sit above the long
+  // sell list — buried at the bottom, nobody finds them
   host.innerHTML = `
     ${tradePostHTML()}
+    ${swapShopHTML()}
     <h2 class="market-head">Market</h2>
     <div class="market-top">
       <span>Dupes are worth <b>${dupeValue}</b> coins total.</span>
@@ -306,6 +309,7 @@ function renderMarket() {
     </div>`;
 
   wireTradePost(host);
+  wireSwapShop(host);
   $('#sell-dupes').addEventListener('click', () => {
     const got = sellAllDupes();
     if (got) { toast(`Sold dupes for +${got} coins`, 'good'); sfx.coin(); }

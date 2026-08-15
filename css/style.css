@@ -1140,6 +1140,56 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   text-align: center;
 }
 
+/* ---------- swap shop ---------- */
+
+.swap-shop {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.swap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--card2);
+}
+
+.swap-row:first-of-type { border-top: none; }
+.swap-n { font-weight: 600; }
+.swap-why { flex: 1; color: var(--ink-dim); font-size: 0.8rem; text-align: right; }
+
+.swap-picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.swap-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-family: inherit;
+  text-align: left;
+  background: var(--card2);
+  border: 2px solid var(--c);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: transform 0.1s, filter 0.15s;
+}
+
+.swap-pick:hover { filter: brightness(1.15); transform: translateY(-2px); }
+.swap-pick:active { transform: scale(0.97); }
+.sp-name { font-weight: 700; color: var(--c); font-size: 0.9rem; }
+.sp-miss { font-size: 0.75rem; color: var(--ink-dim); }
+
 /* ---------- trading ---------- */
 
 .pocket.owned { cursor: pointer; }

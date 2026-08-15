@@ -386,6 +386,45 @@ function redeemStampCard() {
   return STAMP.reward;
 }
 
+// ---- dupe swap ----
+// Same tier only, deliberately: chaining tiers (3 commons → 1 uncommon → …)
+// would mean ~27 commons buys any chase in the game, which would gut the
+// chase fantasy. You choose the collection, not the sticker, so the album
+// keeps its mystery and you still get to aim at the set you're chasing.
+
+// Spare copies of a rarity — the first of each sticker is never spendable.
+function dupeCount(rarity) {
+  return Object.keys(state.inv).reduce((n, id) =>
+    ITEMS_BY_ID[id].rarity === rarity ? n + (state.inv[id] - 1) : n, 0);
+}
+
+// Collections still missing at least one sticker of this rarity.
+function swapTargets(rarity) {
+  return COLLECTIONS
+    .map(col => ({ col, missing: col.items.filter(it => it.rarity === rarity && !ownedCount(it.id)) }))
+    .filter(x => x.missing.length);
+}
+
+function swapDupes(rarity, colId) {
+  if (dupeCount(rarity) < ECON.swapCost) return null;
+  const target = swapTargets(rarity).find(x => x.col.id === colId);
+  if (!target) return null;
+  // spend from the deepest stacks first, so collections keep their variety
+  const stacks = Object.keys(state.inv)
+    .filter(id => ITEMS_BY_ID[id].rarity === rarity && state.inv[id] > 1)
+    .sort((a, b) => state.inv[b] - state.inv[a]);
+  const spent = [];
+  let need = ECON.swapCost;
+  for (const id of stacks) {
+    while (need > 0 && state.inv[id] > 1) { state.inv[id]--; need--; spent.push(id); }
+    if (!need) break;
+  }
+  const got = target.missing[Math.floor(Math.random() * target.missing.length)];
+  addItem(got.id);
+  saveGame();
+  return { got, spent };
+}
+
 function collectionProgress(col) {
   return col.items.filter(it => ownedCount(it.id) > 0).length;
 }

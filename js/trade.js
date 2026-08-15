@@ -409,7 +409,7 @@ function wireTradePost(host) {
 }
 
 // A friend's capsule opening in your hands.
-function showGiftReveal(item, isNew, sender) {
+function showGiftReveal(item, isNew, sender, opts = {}) {
   const rar = RARITIES[item.rarity];
   const col = COLLECTIONS.find(c => c.id === item.collection);
   const ov = $('#overlay');
@@ -427,7 +427,7 @@ function showGiftReveal(item, isNew, sender) {
           <span class="chip" style="background:${rar.color}">${rar.label}</span>
           ${isNew ? '<span class="chip new">NEW!</span>'
                   : `<span class="chip dupe">×${ownedCount(item.id)} owned</span>`}
-          <span class="chip lucky">🎁 from ${sender || 'a friend'}</span>
+          <span class="chip lucky">${opts.chip || `🎁 from ${sender || 'a friend'}`}</span>
         </div>
         <div class="r-btns"><button class="btn" id="gift-close">Sweet!</button></div>
       </div>

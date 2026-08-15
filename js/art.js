@@ -40,9 +40,23 @@ function artImage(src) {
 // mystery intact (you don't get to see the art before you pull it).
 function stickerFace(item, { owned = true, cls = '' } = {}) {
   const src = owned ? itemArtSrc(item) : null;
-  if (src) {
-    return `<img class="sticker-img ${cls}" src="${src}" alt="" draggable="false">`;
-  }
   const col = COLLECTIONS.find(c => c.id === item.collection);
+  if (src) {
+    // A half-finished art set is normal while art is being drawn, so a
+    // missing PNG falls back to the glyph instead of a broken image.
+    return `<img class="sticker-img ${cls}" src="${src}" alt="" draggable="false"
+      data-cls="${cls}" data-glyph="${item.icon}" data-color="${col.color}"
+      onerror="artFallback(this)">`;
+  }
   return `<span class="msr ${cls}" style="${owned ? `color:${col.color}` : ''}">${item.icon}</span>`;
+}
+
+// Swap a failed <img> for the glyph span it would have been. (Canvas drawing
+// already guards on naturalWidth, so the wall needs no equivalent.)
+function artFallback(img) {
+  const span = document.createElement('span');
+  span.className = 'msr ' + (img.dataset.cls || '');
+  if (img.dataset.color) span.style.color = img.dataset.color;
+  span.textContent = img.dataset.glyph || '';
+  img.replaceWith(span);
 }
