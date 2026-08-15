@@ -139,10 +139,16 @@ function startTimingGame() {
   const marker = stage.querySelector('.tmarker');
   const start = performance.now();
   let pos = 0;
+  let lastTick = 0;
   const loop = now => {
     if (!document.body.contains(marker)) { arcadeRaf = null; return; }
     pos = (Math.sin((now - start) * 0.0045) + 1) / 2;
     marker.style.left = `calc(${(pos * 100).toFixed(2)}% - 2px)`;
+    // a Geiger-counter sweep: ticks climb in pitch as the marker nears gold
+    if (now - lastTick > 110) {
+      lastTick = now;
+      sfx.sweepTick(1 - Math.min(1, Math.abs(pos - 0.5) * 2));
+    }
     arcadeRaf = requestAnimationFrame(loop);
   };
   arcadeRaf = requestAnimationFrame(loop);
@@ -150,6 +156,7 @@ function startTimingGame() {
   $('#t-stop').addEventListener('click', () => {
     cancelAnimationFrame(arcadeRaf);
     arcadeRaf = null;
+    sfx.blip(520);
     const dist = Math.abs(pos - 0.5);
     const p = ARCADE.timing;
     let payout, headline;
@@ -206,11 +213,13 @@ function startMatchGame() {
   stage.querySelectorAll('.mem-card').forEach(card =>
     card.addEventListener('click', () => {
       if (locked || card.classList.contains('flipped')) return;
+      sfx.cardFlip();
       card.classList.add('flipped');
       open.push(card);
       if (open.length < 2) return;
       const [a, b] = open;
       if (a.dataset.item === b.dataset.item) {
+        sfx.match();
         a.classList.add('matched');
         b.classList.add('matched');
         open = [];
@@ -225,6 +234,7 @@ function startMatchGame() {
       } else {
         locked = true;
         misses++;
+        sfx.nomatch();
         setTimeout(() => {
           a.classList.remove('flipped');
           b.classList.remove('flipped');
@@ -263,6 +273,7 @@ function startChaseGame() {
       hole.querySelector('.w-cap').style.background =
         `linear-gradient(180deg, ${CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)]} 50%, #f2f0eb 50%)`;
       hole.classList.add('up');
+      sfx.popUp();
       addArcadeTimer(setTimeout(() => hole.classList.remove('up'), 850 + Math.random() * 300));
     }
     addArcadeTimer(setTimeout(popOne, 520 + Math.random() * 380));
@@ -271,6 +282,7 @@ function startChaseGame() {
 
   holes.forEach(h => h.addEventListener('pointerdown', () => {
     if (over || !h.classList.contains('up')) return;
+    sfx.whack();
     h.classList.remove('up');
     score++;
     $('#w-score').textContent = `${score} caught`;
@@ -331,6 +343,7 @@ function startShellGame() {
       let b = Math.floor(Math.random() * 2);
       if (b >= a) b++;
       [slots[a], slots[b]] = [slots[b], slots[a]];
+      sfx.slide();
       place();
     }, t));
     t += 450;
@@ -346,6 +359,7 @@ function startShellGame() {
       cups.forEach(x => x.classList.remove('pickable'));
       cup.classList.add('lifted');
       const right = i === ballCup;
+      if (right) sfx.match(); else sfx.nomatch();
       if (!right) addArcadeTimer(setTimeout(() => cups[ballCup].classList.add('lifted'), 400));
       addArcadeTimer(setTimeout(() => arcadeAward(
         right ? c.win : c.wrong,
@@ -397,6 +411,7 @@ function startPongGame() {
   cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); track(e); });
 
   function bounce(paddle, dir) {
+    sfx.paddle();
     const rel = Math.max(-1, Math.min(1, (ball.y - paddle.y) / (PH / 2)));
     speed = Math.min(MAX_SPEED, speed * 1.06);
     const ang = rel * 0.85;   // edge hits fire off at up to ~49°
@@ -428,8 +443,8 @@ function startPongGame() {
     else if (!ended) {
       ball.x += ball.vx;
       ball.y += ball.vy;
-      if (ball.y < R) { ball.y = R; ball.vy = Math.abs(ball.vy); }
-      if (ball.y > H - R) { ball.y = H - R; ball.vy = -Math.abs(ball.vy); }
+      if (ball.y < R) { ball.y = R; ball.vy = Math.abs(ball.vy); sfx.wallHit(); }
+      if (ball.y > H - R) { ball.y = H - R; ball.vy = -Math.abs(ball.vy); sfx.wallHit(); }
       if (ball.vx < 0 && ball.x - R < you.x + PW && ball.x - R > you.x - 14 &&
           Math.abs(ball.y - you.y) < PH / 2 + R) {
         ball.x = you.x + PW + R;
@@ -442,6 +457,7 @@ function startPongGame() {
       }
       if (ball.x < -R * 2 || ball.x > W + R * 2) {
         const youScored = ball.x > W;
+        sfx.score(youScored);
         if (youScored) $('#p-you').textContent = ++yourScore;
         else $('#p-ai').textContent = ++aiScore;
         if (yourScore >= c.winScore || aiScore >= c.winScore) {
@@ -752,7 +768,10 @@ function startEchoGame() {
   let inputIdx = 0;
   let accepting = false;
 
+  // one call covers both the demo and the player's taps, so the melody you
+  // hear back is exactly the melody you played
   const flash = (i, ms = 320) => {
+    sfx.pad(i);
     pads[i].classList.add('lit');
     addArcadeTimer(setTimeout(() => pads[i].classList.remove('lit'), ms));
   };
@@ -776,6 +795,7 @@ function startEchoGame() {
     flash(i, 200);
     if (i !== seq[inputIdx]) {
       accepting = false;
+      sfx.padFail();
       const payout = round > 0 ? c.rounds[round - 1] : c.flub;
       const headline = round > 0
         ? `Slipped on round ${round + 1} — still earned round ${round} pay!`

@@ -120,6 +120,65 @@ const sfx = {
     sfxTone({ type: 'triangle', freq: 523, dur: 0.10, vol: 0.13 });
     sfxTone({ type: 'triangle', freq: 784, t: 0.06, dur: 0.14, vol: 0.11 });
   },
+  // --- arcade voice ---
+  // The shop sounds warm and mechanical (coins, cranks, capsules); the back
+  // room should sound like a CRT cabinet, so these lean on square waves and
+  // short blips. Same synthesis, different accent.
+
+  // Echo Pads. The four tones are an A-major shape (E3 A3 C#4 E4), the same
+  // trick the original Simon uses: any order you play them in still sounds
+  // musical, so players remember a melody instead of a colour sequence.
+  pad(i) {
+    const notes = [329.63, 277.18, 220.00, 164.81];
+    sfxTone({ type: 'square', freq: notes[i % 4], dur: 0.30, vol: 0.085 });
+  },
+  padFail() {       // wrong pad — the buzzer
+    sfxTone({ type: 'square', freq: 160, to: 70, dur: 0.42, vol: 0.11 });
+  },
+  blip(freq = 660) {  // generic short arcade blip
+    sfxTone({ type: 'square', freq, dur: 0.05, vol: 0.07 });
+  },
+  popUp() {         // a capsule pops out of its hole
+    sfxTone({ type: 'square', freq: 420, to: 760, dur: 0.09, vol: 0.075 });
+  },
+  whack() {         // caught one
+    sfxTone({ type: 'square', freq: 880, to: 1250, dur: 0.07, vol: 0.09 });
+    sfxHiss({ dur: 0.04, vol: 0.07, freq: 2600 });
+  },
+  cardFlip() {      // memory card turning over
+    sfxHiss({ dur: 0.05, vol: 0.10, freq: 1800, q: 0.9 });
+    sfxTone({ type: 'triangle', freq: 520, dur: 0.05, vol: 0.06 });
+  },
+  match() {         // pair found
+    sfxTone({ type: 'square', freq: 659, dur: 0.09, vol: 0.08 });
+    sfxTone({ type: 'square', freq: 988, t: 0.07, dur: 0.13, vol: 0.08 });
+  },
+  nomatch() {       // pair missed
+    sfxTone({ type: 'square', freq: 330, dur: 0.09, vol: 0.07 });
+    sfxTone({ type: 'square', freq: 247, t: 0.07, dur: 0.14, vol: 0.07 });
+  },
+  slide() {         // a shell sliding across the table
+    sfxHiss({ dur: 0.13, vol: 0.07, freq: 1100, q: 0.7 });
+  },
+  paddle() {        // pong: ball off a paddle
+    sfxTone({ type: 'square', freq: 740, dur: 0.045, vol: 0.08 });
+  },
+  wallHit() {       // pong: ball off the top/bottom wall
+    sfxTone({ type: 'square', freq: 400, dur: 0.04, vol: 0.06 });
+  },
+  score(good) {     // pong: point won or lost
+    if (good) {
+      [660, 880, 1100].forEach((f, i) =>
+        sfxTone({ type: 'square', freq: f, t: i * 0.06, dur: 0.10, vol: 0.08 }));
+    } else {
+      sfxTone({ type: 'square', freq: 300, to: 150, dur: 0.22, vol: 0.07 });
+    }
+  },
+  // Capsule Stop's sweep: pitch rises the closer the marker is to the gold
+  // zone, so the bar can very nearly be played by ear.
+  sweepTick(closeness) {
+    sfxTone({ type: 'square', freq: 240 + closeness * 520, dur: 0.022, vol: 0.035 });
+  },
   rustle() {        // leaves
     sfxHiss({ dur: 0.05, vol: 0.09, freq: 4200, q: 0.6 });
     sfxHiss({ t: 0.03, dur: 0.04, vol: 0.06, freq: 5600, q: 0.7 });
