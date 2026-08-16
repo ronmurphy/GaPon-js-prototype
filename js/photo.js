@@ -83,7 +83,8 @@ function openPhotoBooth(facing = 'user') {
   ov.innerHTML = `
     <div class="ov-stage booth-stage">
       <div class="booth-frame">
-        <video id="booth-video" playsinline autoplay muted></video>
+        <video id="booth-video" class="${facing === 'user' ? 'selfie' : 'rear'}"
+               playsinline autoplay muted></video>
         <i class="booth-guide"></i>
       </div>
       <p class="r-note" id="booth-msg">say cheese!</p>
