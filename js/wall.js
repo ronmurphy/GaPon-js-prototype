@@ -113,13 +113,31 @@ function wallHandlePos(st, which) {
 
 function dist(ax, ay, bx, by) { return Math.hypot(bx - ax, by - ay); }
 
+// The player's own photo, treated as one more wallpaper. Kept out of
+// WALL_BGS so it never shows as a swatch when no photo has been taken.
+const PHOTO_BG = {
+  id: 'photo', name: 'Your Photo', dark: true,
+  draw(ctx, S) {
+    if (photoImage && photoImage.complete && photoImage.naturalWidth) {
+      ctx.drawImage(photoImage, 0, 0, S, S);
+      return;
+    }
+    const g = ctx.createLinearGradient(0, 0, 0, S);
+    g.addColorStop(0, '#2b2740');
+    g.addColorStop(1, '#1a1726');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+  },
+};
+
 // ---------- drawing ----------
 
 function drawWall() {
   if (!wallCtx) return;
   const ctx = wallCtx, S = WALL.size;
 
-  const bg = WALL_BGS.find(b => b.id === state.wallBg) || WALL_BGS[0];
+  const bg = state.wallBg === 'photo'
+    ? PHOTO_BG : (WALL_BGS.find(b => b.id === state.wallBg) || WALL_BGS[0]);
   bg.draw(ctx, S);
 
   for (const st of wallItems()) {
@@ -381,10 +399,27 @@ function renderWall() {
   for (const it of owned) { const s = itemArtSrc(it); if (s) artImage(s); }
 
   host.innerHTML = `
-    <h2>Sticker Wall</h2>
-    <p class="wall-sub">Tap a sticker below to add it · drag to move ·
-      yellow handle spins &amp; sizes · then save a PNG and show off!</p>
+    <h2>Purikura Booth</h2>
+    <p class="wall-sub">Shoot a photo (or pick a backdrop), decorate it with
+      your stickers, then save a PNG and show it off!</p>
+    <div class="booth-bar">
+      ${cameraAvailable()
+        ? '<button class="btn small" id="booth-open"><span class="msr">photo_camera</span> Take photo</button>'
+        : ''}
+      <button class="btn small ghost" id="booth-load"><span class="msr">image</span> Load photo</button>
+      ${hasPhoto()
+        ? '<button class="btn small ghost" id="booth-drop"><span class="msr">delete</span> Remove</button>'
+        : ''}
+      ${!cameraAvailable()
+        ? '<span class="booth-note">no camera here — load a photo or use a backdrop</span>'
+        : ''}
+    </div>
     <div class="wall-bgs">
+      ${hasPhoto() ? `
+        <button class="bg-swatch photo-swatch ${state.wallBg === 'photo' ? 'active' : ''}"
+                data-bg="photo" title="Your photo">
+          <canvas width="48" height="48"></canvas>
+        </button>` : ''}
       ${WALL_BGS.map(b => `
         <button class="bg-swatch ${state.wallBg === b.id ? 'active' : ''}"
                 data-bg="${b.id}" title="${b.name}">
@@ -420,8 +455,19 @@ function renderWall() {
   wallCanvas = $('#wall-canvas');
   wallCtx = wallCanvas.getContext('2d');
 
+  const openBtn = $('#booth-open');
+  if (openBtn) openBtn.addEventListener('click', () => openPhotoBooth());
+  $('#booth-load').addEventListener('click', pickPhotoFile);
+  const dropBtn = $('#booth-drop');
+  if (dropBtn) dropBtn.addEventListener('click', () => {
+    clearPhoto();
+    renderWall();
+    toast('Photo removed.', 'good');
+  });
+
   host.querySelectorAll('.bg-swatch').forEach(btn => {
-    const b = WALL_BGS.find(x => x.id === btn.dataset.bg);
+    const b = btn.dataset.bg === 'photo'
+      ? PHOTO_BG : WALL_BGS.find(x => x.id === btn.dataset.bg);
     b.draw(btn.querySelector('canvas').getContext('2d'), 48);
     btn.addEventListener('click', () => {
       state.wallBg = b.id;

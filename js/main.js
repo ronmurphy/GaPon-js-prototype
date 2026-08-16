@@ -370,6 +370,8 @@ function showSaveModal(html) {
 
 function boot() {
   loadGame();
+  // decode the stored backdrop early; it redraws the wall once it's ready
+  loadStoredPhoto(() => { if (wallCtx) drawWall(); });
   const firstRun = state.totalPulls === 0 && state.days.length === 0;
   const daily = checkDaily();
   updateHeader();
