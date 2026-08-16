@@ -172,11 +172,20 @@ function initShopOnce() {
     else if (focusState.stage === 'crank') setHint('turn the crank!');
     else if (focusState.stage === 'claw') setHint('drop when the ring lights up!');
   });
+  // Phone browsers fire `resize` every time the URL bar slides away while
+  // scrolling — height changes, width doesn't. Recomputing the zoom on that
+  // makes a focused machine visibly swell and shrink mid-pull, so only a
+  // width change (a real rotation) is allowed to rescale. The position is
+  // still updated either way, so the machine stays centred.
+  let lastVW = innerWidth;
   addEventListener('resize', () => {
     const card = focusState.card;
+    const rotated = innerWidth !== lastVW;
+    lastVW = innerWidth;
     if (!card) return;
     positionFocused(parseFloat(card.style.width), card.offsetHeight,
-      { left: parseFloat(card.style.left), top: parseFloat(card.style.top) });
+      { left: parseFloat(card.style.left), top: parseFloat(card.style.top) },
+      rotated ? null : focusState.scale);
   });
   addEventListener('keydown', e => {
     if (e.key === 'Escape' &&
@@ -227,9 +236,14 @@ function setHint(text) {
   h.classList.toggle('show', !!text);
 }
 
-function positionFocused(w, h, from) {
+// `keepScale` reuses the zoom already in effect instead of recomputing it —
+// see the resize handler for why that matters.
+function positionFocused(w, h, from, keepScale) {
   const vw = innerWidth, vh = innerHeight;
-  const s = Math.max(1, Math.min((vw - 28) / w, (vh - 170) / h, 1.9));
+  const s = keepScale != null
+    ? keepScale
+    : Math.max(1, Math.min((vw - 28) / w, (vh - 170) / h, 1.9));
+  focusState.scale = s;
   const dx = vw / 2 - (from.left + w / 2);
   const dy = (vh - 90) / 2 - (from.top + h / 2);
   focusState.card.style.transform = `translate(${dx}px, ${dy}px) scale(${s})`;
@@ -285,7 +299,8 @@ function shopUnfocus(instant = false) {
       card.remove();
     }
     layer.hidden = true;
-    Object.assign(focusState, { card: null, m: null, ghost: null, stage: 'idle', autoSpin: null });
+    Object.assign(focusState, { card: null, m: null, ghost: null, stage: 'idle',
+                                autoSpin: null, scale: null });
     pulling = false;
   };
   if (instant || FX_REDUCED) { put(); return; }
