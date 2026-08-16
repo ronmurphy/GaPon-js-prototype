@@ -109,10 +109,20 @@ function openPhotoBooth(facing = 'user') {
     })
     .catch(err => {
       msg.textContent = err && err.name === 'NotAllowedError'
-        ? 'Camera permission was denied — you can load a photo instead.'
-        : 'No camera available — you can load a photo instead.';
-      $('#booth-shoot').disabled = true;
-      $('#booth-flip').disabled = true;
+        ? 'Camera permission was denied.'
+        : 'No camera available here.';
+      // don't leave them at a dead end — turn the shutter into the way out.
+      // Replacing the node (rather than disabling it) drops the shutter
+      // listener that was attached below.
+      const flip = $('#booth-flip');
+      if (flip) flip.remove();
+      const load = document.createElement('button');
+      load.className = 'btn';
+      load.id = 'booth-instead';
+      load.innerHTML = '<span class="msr">image</span> Load photo instead';
+      load.addEventListener('click', () => { closeBooth(); pickPhotoFile(); });
+      const shoot = $('#booth-shoot');
+      if (shoot) shoot.replaceWith(load);
     });
 
   $('#booth-shoot').addEventListener('click', () => {
