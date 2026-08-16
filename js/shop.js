@@ -274,8 +274,16 @@ function shopUnfocus(instant = false) {
   const put = () => {
     card.classList.remove('focused');
     card.style.transform = card.style.left = card.style.top = card.style.width = '';
-    ghost.parentNode.insertBefore(card, ghost);
-    ghost.remove();
+    // The row can be rebuilt while a machine is lifted out (a restock), which
+    // takes the ghost with it. Putting the card back then throws and strands
+    // it forever, so fall back to discarding this now-stale card — the fresh
+    // row already contains its replacement.
+    if (ghost && ghost.parentNode) {
+      ghost.parentNode.insertBefore(card, ghost);
+      ghost.remove();
+    } else {
+      card.remove();
+    }
     layer.hidden = true;
     Object.assign(focusState, { card: null, m: null, ghost: null, stage: 'idle', autoSpin: null });
     pulling = false;
@@ -535,7 +543,9 @@ function clawResult(m, card, grabbed) {
   if (!grabbed) {
     // stock is untouched — you paid for the attempt, not the capsule
     pulling = false;
-    focusState.stage = 'idle';
+    // deliberately NOT 'idle': the card is still lifted out of the row, and
+    // 'idle' would let the restock timer rebuild the row underneath it
+    focusState.stage = 'retry';
     sfx.buzz();
     toast('The claw came up empty! Your capsule is still in there.', 'warn');
     keeperSay('Ooh, so close! The claw never grips on the first try.');

@@ -59,6 +59,10 @@ function confetti(count = 26) {
 // ---------- tabs ----------
 
 function showTab(name) {
+  // A focused machine is physically lifted out of the shop row (a ghost holds
+  // its slot). Leaving the tab without putting it back strands it in the
+  // hidden focus layer — the machine simply vanishes from the shop.
+  if (typeof focusState !== 'undefined' && focusState.card) shopUnfocus(true);
   document.querySelectorAll('.tabs button').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === name));
   for (const t of ['machines', 'album', 'market', 'arcade', 'wall']) {
