@@ -388,6 +388,12 @@ function boot() {
     if (confirm('Wipe your GaPon save and start over?')) resetGame();
   });
 
+  applyTheme();
+  $('#toggle-theme').addEventListener('click', () => {
+    cycleTheme();
+    sfx.tick();
+  });
+
   updateSoundToggle();
   $('#toggle-sound').addEventListener('click', () => {
     sfxSetMuted(!SFX.muted);

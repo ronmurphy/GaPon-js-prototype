@@ -138,7 +138,8 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'music', name: 'Beat Box', color: '#42a5f5', artDir: 'BeatBoxPngs'    items: [
+    id: 'music', name: 'Beat Box', color: '#42a5f5', artDir: 'BeatBoxPngs',
+    items: [
       { id: 'mu_note',    name: 'One Note',       icon: 'music_note',    rarity: 'common' },
       { id: 'mu_phones',  name: 'Lo-Fi Phones',   icon: 'headphones',    rarity: 'common' },
       { id: 'mu_radio',   name: 'Retro Radio',    icon: 'radio',         rarity: 'common' },

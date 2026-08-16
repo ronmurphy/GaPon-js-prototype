@@ -74,7 +74,7 @@ function renderArcade() {
   const host = $('#tab-arcade');
   host.innerHTML = `
     <div class="aroom">
-      <div class="aroom-sign">ARCADE</div>
+      <div class="aroom-sign"></div>
       <div class="aroom-tokens" title="${left}/${max} tokens">
         ${Array.from({ length: max }, (_, i) =>
           `<i class="tok${i < left ? '' : ' spent'}"></i>`).join('')}

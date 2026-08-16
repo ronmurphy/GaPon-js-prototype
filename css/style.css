@@ -1266,6 +1266,81 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .sp-name { font-weight: 700; color: var(--c); font-size: 0.9rem; }
 .sp-miss { font-size: 0.75rem; color: var(--ink-dim); }
 
+/* ---------- room styling: American arcade vs Japanese game center ----------
+   Everything here is paint. The default (no class) is the 80s American
+   arcade; `.theme-jp` re-dresses the same rooms as a ゲームセンター, which is
+   brightly fluorescent rather than dark-and-neon. */
+
+.flag-chip { font-size: 1.05rem; line-height: 1; padding: 6px 11px; }
+
+/* the sign text is CSS so the toggle needs no re-render */
+.aroom-sign::before { content: 'ARCADE'; }
+.theme-jp .aroom-sign::before { content: 'ゲームセンター'; letter-spacing: 3px; }
+
+.theme-jp .aroom-sign {
+  color: #7ce0ff;
+  border-color: rgba(124, 224, 255, 0.6);
+  text-shadow: 0 0 6px rgba(124, 224, 255, 0.9), 0 0 20px rgba(64, 196, 255, 0.6);
+  box-shadow: 0 0 18px rgba(64, 196, 255, 0.35), inset 0 0 14px rgba(64, 196, 255, 0.18);
+  font-size: 0.9rem;
+  padding: 5px 16px;
+}
+
+/* bright hall: pale walls, strip lighting, light patterned carpet */
+.theme-jp .aroom-scene {
+  background:
+    /* recessed ceiling strips — soft, so they read as light not as a bar */
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.75) 0 76px, rgba(255, 255, 255, 0) 76px 210px) top/100% 5px no-repeat,
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.30) 0 76px, rgba(255, 255, 255, 0) 76px 210px) top/100% 26px no-repeat,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 26%) top/100% 100% no-repeat,
+    /* pale diamond carpet */
+    repeating-linear-gradient(45deg, rgba(63, 81, 181, 0.16) 0 8px, transparent 8px 30px)
+      bottom/100% 26% no-repeat,
+    repeating-linear-gradient(-45deg, rgba(233, 30, 99, 0.12) 0 8px, transparent 8px 30px)
+      bottom/100% 26% no-repeat,
+    /* wall + floor */
+    linear-gradient(180deg, #e8eef7 0%, #dbe4f2 74%, #b9c4d6 74%, #cdd6e6 100%);
+}
+
+/* cabinets read darker against a bright hall, and the CRTs stop glowing
+   like the only light source in the room */
+.theme-jp .cab-marquee { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
+.theme-jp .cab-screen { box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.85); }
+.theme-jp .cab::after { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.3), transparent 68%); }
+.theme-jp .aroom-tokens .tok { box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.35); }
+.theme-jp .shop-tip { color: var(--ink-dim); }
+
+/* --- the shop: shoji panelling and warmer wood --- */
+.theme-jp .shop-scene {
+  background:
+    linear-gradient(180deg, rgba(10, 5, 26, 0.42), transparent 13%) top/100% 100% no-repeat,
+    /* shoji lattice */
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 74px)
+      top/100% 66% no-repeat,
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 58px)
+      top/100% 66% no-repeat,
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 3px, transparent 3px 112px)
+      bottom/100% 30% no-repeat,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 30%) bottom/100% 30% no-repeat,
+    linear-gradient(180deg, #5c4a63 0%, #4d3d55 66%, #2f2438 66%, #2f2438 70%, #7a5c46 70%, #5d4636 100%);
+}
+
+.theme-jp .dec-poster {
+  background: #f3ece0;
+  transform: rotate(-2deg);
+}
+
+.theme-jp .dec-poster::after {
+  content: 'ガチャポン';
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  color: #8d6e63;
+  margin-top: 3px;
+}
+
 /* ---------- purikura booth ---------- */
 
 .booth-bar {
