@@ -447,7 +447,7 @@ function showMarbleResult(m, marble) {
       const got = claimFuku(marble.rarity, b.dataset.col);
       if (!got) return;
       updateFooter();
-      showGiftReveal(got, true, null, { chip: `🎊 ${marble.color} marble` });
+      showGiftReveal(got, true, null, { chip: `🎊 ${marble.color} marble`, pull: true });
       pulling = false;
       focusState.stage = 'idle';
       shopSyncProgress();

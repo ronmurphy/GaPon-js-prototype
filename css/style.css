@@ -1341,6 +1341,233 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   margin-top: 3px;
 }
 
+/* ---------- the door at the end of the hall ---------- */
+
+.dec-door {
+  position: relative;
+  width: 116px;
+  height: 220px;
+  pointer-events: auto;
+  cursor: pointer;
+  align-self: flex-end;
+  scroll-snap-align: center;
+}
+
+.door-frame {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 178px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, #6d4c41, #4e342e);
+  box-shadow: inset 0 0 0 4px #3e2723, 0 -3px 14px rgba(0, 0, 0, 0.45);
+}
+
+.door-glass {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 18px;
+  height: 74px;
+  border-radius: 4px;
+  background: linear-gradient(160deg, rgba(255, 214, 130, 0.85), rgba(255, 171, 64, 0.5));
+  box-shadow: 0 0 18px rgba(255, 193, 7, 0.45), inset 0 0 0 3px #3e2723;
+}
+
+.door-knob {
+  position: absolute;
+  right: 16px;
+  top: 108px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe082, #c9a227);
+}
+
+.door-sign {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  background: #f6e7c8;
+  color: #4e342e;
+  font-weight: 800;
+  font-size: 0.66rem;
+  letter-spacing: 0.5px;
+  padding: 5px 9px;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.4);
+}
+
+.door-sign span::before { content: 'LUCKY DROP →'; }
+.theme-jp .door-sign span::before { content: 'コリント →'; }
+
+.door-mat {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -6px;
+  height: 10px;
+  border-radius: 3px;
+  background: #5d4037;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+.dec-door:hover .door-glass { filter: brightness(1.2); }
+
+/* ---------- the Corinth room ---------- */
+
+.parlour {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.5);
+}
+
+.parlour-sign {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  font-weight: 800;
+  letter-spacing: 3px;
+  font-size: 0.92rem;
+  padding: 5px 18px;
+  border-radius: 10px;
+  color: #ffd54f;
+  border: 2px solid rgba(255, 213, 79, 0.5);
+  text-shadow: 0 0 8px rgba(255, 193, 7, 0.8);
+  box-shadow: 0 0 18px rgba(255, 193, 7, 0.28), inset 0 0 14px rgba(255, 193, 7, 0.15);
+  pointer-events: none;
+}
+
+.parlour-exit {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.parlour-exit .msr { font-size: 15px; }
+.parlour-exit:hover { background: rgba(0, 0, 0, 0.65); }
+
+.parlour-scroll { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; }
+.parlour-scroll::-webkit-scrollbar { height: 8px; }
+.parlour-scroll::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 4px; }
+
+.parlour-scene {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 26px;
+  width: max-content;
+  min-width: 100%;
+  padding: 56px 26px 24px;
+  /* US: a game-show stage — swagged curtain and a warm spotlight */
+  background:
+    radial-gradient(300px 200px at 50% 0%, rgba(255, 214, 130, 0.16), transparent 70%),
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.22) 0 14px, rgba(255, 255, 255, 0.05) 14px 30px) top/100% 62% no-repeat,
+    linear-gradient(180deg, #4a1230 0%, #370f25 62%, #1f0a17 62%, #2a1220 100%);
+}
+
+/* JP: a pachinko parlour — bright, chrome, red and gold */
+.theme-jp .parlour-scene {
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.7) 0 60px, transparent 60px 170px) top/100% 4px no-repeat,
+    radial-gradient(320px 220px at 50% 0%, rgba(255, 235, 190, 0.22), transparent 70%),
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.06) 0 40px, transparent 40px 80px) top/100% 64% no-repeat,
+    linear-gradient(180deg, #b3202b 0%, #8e1a23 64%, #2b2b30 64%, #3a3a42 100%);
+}
+
+.theme-jp .parlour-sign { color: #fff3c4; border-color: rgba(255, 243, 196, 0.65); }
+
+.corinth {
+  position: relative;
+  flex-shrink: 0;
+  width: 300px;
+  scroll-snap-align: center;
+}
+
+.cor-topper {
+  background: linear-gradient(180deg, #26a69a, #00695c);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  font-weight: 700;
+  text-align: center;
+  padding: 6px;
+  border-radius: 10px 10px 0 0;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  border-bottom: none;
+}
+
+.theme-jp .cor-topper { background: linear-gradient(180deg, #ffb300, #ef6c00); color: #2b1a02; }
+
+.cor-band {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(180deg, #241a45, #1b1334);
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  border-bottom: none;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+.cor-board { position: relative; line-height: 0; cursor: crosshair; }
+
+.cor-board canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-left: 2px solid rgba(0, 0, 0, 0.35);
+  border-right: 2px solid rgba(0, 0, 0, 0.35);
+}
+
+.cor-aim {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  height: 22px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(90deg,
+    rgba(255, 193, 7, 0.30) 0 8px, transparent 8px 16px);
+  animation: pulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.cor-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: linear-gradient(180deg, #2a2050, #170f2e);
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 9px 10px;
+}
+
+.cor-tally { font-size: 0.74rem; font-weight: 600; color: var(--ink-dim); }
+
 /* ---------- purikura booth ---------- */
 
 .booth-bar {
@@ -2565,3 +2792,51 @@ footer button {
 
   footer { font-size: 0.7rem; padding: 6px 12px; gap: 8px; }
 }
+
+/* ---------- medal pusher ---------- */
+
+.push-shelf { line-height: 0; }
+
+.push-shelf canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-left: 2px solid rgba(0, 0, 0, 0.35);
+  border-right: 2px solid rgba(0, 0, 0, 0.35);
+}
+
+.pushmach { width: 230px; }
+.pushmach .cor-topper { background: linear-gradient(180deg, #7986cb, #3949ab); }
+.theme-jp .pushmach .cor-topper { background: linear-gradient(180deg, #ffd54f, #f9a825); color: #2b1a02; }
+
+.haul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 300px;
+}
+
+.haul-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 68px;
+  padding: 7px 4px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--rar) 22%, #241a45);
+  box-shadow: inset 0 0 0 2px var(--rar);
+}
+
+.haul-ic { font-size: 26px; width: 34px; height: 34px; object-fit: contain; }
+
+.haul-name {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.push-info { display: flex; flex-direction: column; gap: 1px; }
+.push-left { font-size: 0.66rem; color: var(--ink-dim); opacity: 0.8; }

@@ -37,6 +37,53 @@ const FUKU = {
   ],
 };
 
+// コリントゲーム (Corinth game) — the peg-and-pocket bagatelle that was
+// popular in 1920s–30s Japan and became the ancestor of pachinko. Michelle's
+// design: three balls, you choose where each one drops, and the three slot
+// values are SUMMED to decide the rarity.
+//
+// The slot values are INVERTED on purpose — high at the edges, low in the
+// middle. A peg field scatters balls around the drop point, so with the big
+// numbers in the centre (the Plinko convention) "always drop centre" would be
+// strictly optimal and the choice would be fake. This way the good numbers
+// sit exactly where the physics doesn't want to take you.
+const CORINTH = {
+  name: 'Corinth', cost: 25, accent: '#00897b', balls: 3,
+  slots: [5, 4, 3, 2, 1, 2, 3, 4, 5],
+  // Sum of three balls (3–15) → rarity, tuned against 3000 simulated games
+  // per strategy. Safe centre play lands almost exactly on Prize Pon's odds
+  // (its price peer): ~54% common, 37% uncommon, 7% rare, 1% chase. Skilled
+  // edge play shifts that to ~30/51/17/2 — noticeably fewer junk pulls, but
+  // no better at chases, so the board never obsoletes the shop floor.
+  // A chase needs a perfect 15: all three balls in a 5-pocket.
+  tiers: [
+    { min: 15, rarity: 'chase' },
+    { min: 13, rarity: 'rare' },
+    { min: 10, rarity: 'uncommon' },
+    { min: 0,  rarity: 'common' },
+  ],
+};
+
+// メダルゲーム — the medal pusher, reworked to shove CAPSULES over the ledge
+// instead of paying coins. Keeping every sink pointed at stickers means it
+// can never become a coin faucet, and the loaded shelf doubles as the
+// machine's stock display the same way the claw machine's dome does.
+//
+// The shelf persists between plays and between visits, so a run of stingy
+// pushes leaves the next player (or the next you) a teetering pile.
+// Geometry swept against simulation: a wide shelf lets the capsules sit in a
+// single rank that crosses the lip all at once (85% of plays paid nothing,
+// then the whole shelf dumped). Narrow and deep makes them stack in ragged
+// ranks that shed a few at a time.
+const PUSHER = {
+  name: 'Medal Pusher', cost: 15, accent: '#5c6bc0',
+  shelfW: 120,          // simulation space
+  shelfD: 150,          // depth; the lip is at shelfD
+  shelfCount: 14,       // capsules on a freshly loaded shelf
+  ramStep: 8,           // how far one play shoves the pile forward
+};                      // → ~68% of plays pay nothing, but a payout averages ~3
+                        //   capsules at once; ~15 coins per capsule overall
+
 const ECON = {
   startCoins: 100,
   dailyBase: 30,
@@ -155,7 +202,7 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'ocean', name: 'Tide Pool', color: '#1e88e5',
+    id: 'ocean', name: 'Tide Pool', color: '#1e88e5', artDir: 'TidePoolPngs',
     items: [
       { id: 'oc_wave',    name: 'Lil Waves',      icon: 'waves',            rarity: 'common' },
       { id: 'oc_drip',    name: 'Bubbly',         icon: 'bubble_chart',     rarity: 'common' },
@@ -172,7 +219,7 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'garden', name: 'Bloom Crew', color: '#ec407a',
+    id: 'garden', name: 'Bloom Crew', color: '#ec407a', artDir: 'BloomCrewPngs',
     items: [
       { id: 'gd_bloom',   name: 'Lil Bloom',      icon: 'local_florist',    rarity: 'common' },
       { id: 'gd_grass',   name: 'Touch Grass',    icon: 'grass',            rarity: 'common' },

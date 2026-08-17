@@ -17,6 +17,7 @@ function defaultState() {
     stock: null,        // per-rotation capsule stock, keyed by floor slot:
                         // { period, left: {m0..m4,special}, tickets: {…} }
     fernDay: null,      // 'YYYY-MM-DD' the fern last paid out (once a day)
+    shelves: null,      // medal pusher piles: { period, by: { slot: [[x,y]…] } }
     // stamp rally: `earned` is every stamp ever, `cards` is cards redeemed —
     // so overflow past a full card is never lost, it lands on the next one
     stamps: { earned: 0, cards: 0, pulls: 0, plays: 0, binderDay: null, binderDone: false },
@@ -429,6 +430,28 @@ function swapDupes(rarity, colId) {
   addItem(got.id);
   saveGame();
   return { got, spent };
+}
+
+// ---- medal pusher shelves ----
+// The shelf persists: its capsule layout is saved so the pile you leave is
+// the pile you come back to. It reloads with the rotation, like every other
+// machine's stock.
+
+function pusherShelf(slot) {
+  const period = currentPeriod();
+  if (!state.shelves || state.shelves.period !== period) {
+    state.shelves = { period, by: {} };
+  }
+  if (!state.shelves.by[slot]) {
+    state.shelves.by[slot] = freshShelf(PUSHER.shelfCount).map(c => [c.x, c.y]);
+    saveGame();
+  }
+  return state.shelves.by[slot].map(([x, y]) => ({ x, y, gold: false }));
+}
+
+function saveShelf(slot, caps) {
+  state.shelves.by[slot] = caps.map(c => [Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10]);
+  saveGame();
 }
 
 // ---- fukubiki ----

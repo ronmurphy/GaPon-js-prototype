@@ -392,7 +392,11 @@ function boot() {
   $('#toggle-theme').addEventListener('click', () => {
     cycleTheme();
     sfx.tick();
+    if (!$('#parlour').hidden) renderParlour();   // its signage is themed
   });
+
+  $('#parlour-door').addEventListener('click', corinthOpen);
+  $('#parlour-exit').addEventListener('click', corinthClose);
 
   updateSoundToggle();
   $('#toggle-sound').addEventListener('click', () => {

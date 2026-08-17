@@ -460,9 +460,17 @@ function showGiftReveal(item, isNew, sender, opts = {}) {
       if (item.rarity === 'chase') { sfx.fanfare(); confetti(30); }
       else if (isNew) sfx.chime();
       fxSparkleBurst(ov.querySelector('.r-ring'), { count: 14, color: rar.color, spread: 100 });
-      ov.querySelector('#gift-close').addEventListener('click', () => {
+      const closeBtn = ov.querySelector('#gift-close');
+      if (!closeBtn) return;      // another reveal replaced us mid-animation
+      closeBtn.addEventListener('click', () => {
         closeTradeOverlay();
-        renderMarket();
+        // Machines that charge coins for a sticker (the drum, the Corinth
+        // board) credit the stamp card just like a capsule pull — otherwise
+        // playing them would actively cost you card progress. Trades and
+        // swaps deliberately don't: swaps are free, so counting them would
+        // make the pull track farmable from a pile of doubles.
+        if (opts.pull) noteStamp('pull');
+        else renderMarket();
       });
     }, 450);
   };

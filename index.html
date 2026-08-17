@@ -47,11 +47,28 @@
             <div class="dec dec-window"><i class="sky"></i><i class="bars"></i></div>
             <div class="dec dec-poster">GaPon!<small>collect ’em all</small></div>
             <div class="dec dec-plant">🪴</div>
+            <div class="dec dec-door" id="parlour-door" title="the room at the end of the hall">
+              <div class="door-sign"><span></span></div>
+              <div class="door-frame"><i class="door-glass"></i><i class="door-knob"></i></div>
+              <div class="door-mat"></div>
+            </div>
           </div>
         </div>
         <div class="shop-tint"></div>
       </div>
       <p class="shop-tip">tap a machine to step up to it</p>
+
+      <div class="parlour" id="parlour" hidden>
+        <div class="parlour-sign"><span id="parlour-name"></span></div>
+        <button class="parlour-exit" id="parlour-exit">
+          <span class="msr">door_back</span> back to the shop
+        </button>
+        <div class="parlour-scroll">
+          <div class="parlour-scene" id="corinth-row"></div>
+        </div>
+        <div class="shop-tint"></div>
+      </div>
+      <p class="shop-tip" id="parlour-tip" hidden>25 coins · aim three balls · the edges pay best</p>
     </section>
     <section id="tab-album" hidden></section>
     <section id="tab-market" hidden></section>
@@ -99,6 +116,8 @@
   <script src="js/theme.js"></script>
   <script src="js/shopkeeper.js"></script>
   <script src="js/arcade.js"></script>
+  <script src="js/pusher.js"></script>
+  <script src="js/corinth.js"></script>
   <script src="js/wall.js"></script>
   <script src="js/main.js"></script>
 </body>

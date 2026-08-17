@@ -254,9 +254,14 @@ function stampMiniHTML() {
     album ${s.binderDone ? '✓' : '–'}</span>`;
 }
 
-function noteStamp(kind) {
+// `count` lets one event credit several pulls — the medal pusher can tip four
+// capsules over the lip at once, and crediting that as a single pull would
+// look broken to anyone watching four stickers land.
+function noteStamp(kind, count = 1) {
   const s = stampState();
   const was = { pulls: s.pulls, plays: s.plays, binder: s.binderDone };
+  // advance the extra credits quietly; the last one below does the talking
+  for (let i = 1; i < count; i++) stampProgress(kind);
   const wasFull = (kind === 'pull' && was.pulls >= STAMP.perPulls) ||
                   (kind === 'play' && was.plays >= STAMP.perPlays);
   const earned = stampProgress(kind);
