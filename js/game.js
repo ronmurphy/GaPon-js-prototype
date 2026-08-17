@@ -20,6 +20,8 @@ function defaultState() {
     shelves: null,      // medal pusher piles: { period, by: { slot: [[x,y]…] } }
     omikujiDay: null,   // 'YYYY-MM-DD' of the last fortune drawn (one a day)
     fortune: null,      // held fortune id, spent on the next capsule pull
+    friends: [],        // [{ code, id, name }] — kept locally, not server-side
+    wants: [],          // sticker ids you're hunting, shared with friends
     // stamp rally: `earned` is every stamp ever, `cards` is cards redeemed —
     // so overflow past a full card is never lost, it lands on the next one
     stamps: { earned: 0, cards: 0, pulls: 0, plays: 0, binderDay: null, binderDone: false },
@@ -377,7 +379,29 @@ function rollPityItem(machine) {
 function ownedCount(itemId) { return state.inv[itemId] || 0; }
 
 function addItem(itemId) {
+  const wasWanted = !ownedCount(itemId) && (state.wants || []).includes(itemId);
   state.inv[itemId] = ownedCount(itemId) + 1;
+  // Getting something clears it off your wants list, freeing a slot. Doing it
+  // here rather than at each machine means every route — pulls, claw, Corinth,
+  // pusher, drum, swaps, trades — is covered without having to remember.
+  if (wasWanted) {
+    state.wants = state.wants.filter(id => id !== itemId);
+    if (typeof netSyncWants === 'function') netSyncWants();
+    if (typeof toast === 'function') {
+      toast(`★ ${ITEMS_BY_ID[itemId].name} was on your wants list!`, 'good');
+    }
+  }
+}
+
+// Wants can go stale if a sticker arrives by a route that predates the list,
+// or from another device. Cheap to re-check on load.
+function pruneWants() {
+  if (!state.wants || !state.wants.length) return false;
+  const before = state.wants.length;
+  state.wants = state.wants.filter(id => ITEMS_BY_ID[id] && !ownedCount(id));
+  if (state.wants.length === before) return false;
+  saveGame();
+  return true;
 }
 
 function sellItem(itemId, qty) {

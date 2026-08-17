@@ -1645,7 +1645,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   margin: 4px 0 2px;
 }
 
-.tr-from input, .tp-redeem input {
+.tr-from input, .tp-redeem input, .friend-add input {
   font-family: inherit;
   font-size: 0.95rem;
   color: var(--ink);
@@ -1687,7 +1687,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 }
 
 .tp-redeem { display: flex; gap: 8px; flex-wrap: wrap; }
-.tp-redeem input { flex: 1; text-transform: uppercase; }
+.tp-redeem input, .friend-add input { flex: 1; text-transform: uppercase; letter-spacing: 1px; }
 
 .tp-tip { color: var(--ink-dim); font-size: 0.8rem; margin-top: 8px; }
 
@@ -2976,3 +2976,86 @@ footer button {
 
 .omi-kanji { font-size: 3rem; font-weight: 800; line-height: 1; }
 .omi-name { font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: #8d6e63; }
+
+.market-filter { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; }
+.mf-count { color: var(--ink-dim); font-size: 0.76rem; margin-left: auto; }
+
+/* the arcade door — a second, scenic route to a room that also has a tab */
+.arcade-door .door-frame { background: linear-gradient(180deg, #37306b, #241d4a); }
+.arcade-door .door-glass {
+  background: linear-gradient(160deg, rgba(255, 92, 148, 0.9), rgba(124, 224, 255, 0.55));
+  box-shadow: 0 0 20px rgba(255, 64, 129, 0.5), inset 0 0 0 3px #1b1638;
+}
+.arcade-door .door-sign span::before { content: 'ARCADE →'; }
+.theme-jp .arcade-door .door-sign span::before { content: 'ゲームセンター →'; }
+.theme-jp .arcade-door .door-glass {
+  background: linear-gradient(160deg, rgba(124, 224, 255, 0.9), rgba(255, 255, 255, 0.6));
+}
+
+/* ---------- friends (inside the Trading Post) ---------- */
+
+.friends { margin-top: 10px; border-top: 1px solid var(--card2); padding-top: 10px; }
+.friends-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+
+.friend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--card2);
+  border-radius: 999px;
+  padding: 4px 6px 4px 11px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.friend-chip button {
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink-dim);
+  border-radius: 50%;
+  width: 17px;
+  height: 17px;
+  line-height: 1;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.friend-chip button:hover { background: #ef5350; color: #fff; }
+.friend-add { display: flex; gap: 8px; }
+
+/* ---------- wants ---------- */
+
+.pocket.wanted { box-shadow: inset 0 0 0 2px #ffc107, 0 2px 8px rgba(255, 193, 7, 0.35); }
+.pocket.locked { cursor: pointer; }
+
+.pkt-want {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  z-index: 2;
+  color: #ffc107;
+  font-size: 0.85rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.matches { margin-top: 10px; border-top: 1px solid var(--card2); padding-top: 10px; }
+.match-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+.match-who { font-weight: 700; font-size: 0.8rem; color: var(--ink); margin-right: 2px; }
+
+.match-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--rar) 22%, var(--card2));
+  border: 1px solid var(--rar);
+  border-radius: 999px;
+  padding: 3px 10px 3px 4px;
+  cursor: pointer;
+}
+
+.match-item:hover { filter: brightness(1.15); }
+.match-ic { font-size: 18px; width: 20px; height: 20px; object-fit: contain; }

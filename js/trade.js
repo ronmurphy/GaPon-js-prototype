@@ -56,9 +56,17 @@ function cancelTrade(code) {
   return true;
 }
 
-function redeemTrade(raw, sender) {
+// Server-verified when possible, honour system when not. `serverSaid` is the
+// answer from netClaimTrade: 'taken' means someone genuinely beat you to it,
+// null means the server never heard of this code (a capsule made offline), in
+// which case we fall back to the local behaviour rather than refusing a
+// perfectly good trade.
+function redeemTrade(raw, sender, serverSaid) {
   const parsed = parseTradeCode(raw);
   if (!parsed) return { err: "that code doesn't look right — check it and try again" };
+  if (serverSaid === 'taken') {
+    return { err: 'someone already opened that capsule!' };
+  }
   if (state.redeemed.includes(parsed.code)) {
     return { err: 'that capsule was already opened on this device' };
   }
@@ -67,7 +75,10 @@ function redeemTrade(raw, sender) {
   state.redeemed.push(parsed.code);
   // redeeming your own outstanding code = quietly taking it back
   const mine = state.trades.findIndex(t => t.code === parsed.code);
-  if (mine >= 0) state.trades.splice(mine, 1);
+  if (mine >= 0) {
+    state.trades.splice(mine, 1);
+    netCancelTrade(parsed.code);     // release the server copy too
+  }
   saveGame();
   return { item: parsed.item, isNew, sender };
 }
@@ -284,6 +295,7 @@ function openShareDialog(item) {
     state.playerName = $('#tr-name').value.trim().slice(0, 14);
     const code = createTrade(item);
     if (!code) return;
+    netPostTrade(code, item.id);      // registers it; harmless if offline
     sfx.pop();
     renderBinderPage();          // the hole appears behind the dialog
     updateBinderNav();
@@ -329,8 +341,11 @@ function tradePostHTML() {
     </div>`;
   }).join('');
   return `
-    <h2 class="tp-head">Trading Post</h2>
+    <h2 class="market-head">Trading Post</h2>
     <div class="trade-post">
+      ${netStatusHTML()}
+      ${NET.ready ? friendsHTML() : ''}
+      ${matchesHTML()}
       <div class="tp-redeem">
         <input id="tp-code" placeholder="GP-XX-XXXXXX" autocomplete="off" spellcheck="false">
         <button class="btn small" id="tp-redeem">Redeem</button>
@@ -343,8 +358,11 @@ function tradePostHTML() {
     </div>`;
 }
 
-function doRedeem(raw, sender) {
-  const res = redeemTrade(raw, sender);
+async function doRedeem(raw, sender) {
+  // ask the server first; it knows whether this capsule is still sealed
+  const claim = await netClaimTrade(String(raw || '').trim().toUpperCase());
+  const said = claim === 'taken' ? 'taken' : null;
+  const res = redeemTrade(raw, claim && claim !== 'taken' ? claim.sender || sender : sender, said);
   if (res.err) {
     sfx.buzz();
     toast(res.err, 'warn');
@@ -402,6 +420,7 @@ function wireTradePost(host) {
     const t = state.trades.find(x => x.code === b.dataset.tpcancel);
     if (!t) return;
     cancelTrade(t.code);
+    netCancelTrade(t.code);          // release it server-side too
     sfx.thunk();
     toast(`${ITEMS_BY_ID[t.itemId].name} is back in your binder`, 'good');
     renderMarket();

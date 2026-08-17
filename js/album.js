@@ -49,10 +49,12 @@ function renderAlbum() {
 function pocketHTML(it) {
   const n = ownedCount(it.id);
   const rar = RARITIES[it.rarity];
+  const wanted = !n && (state.wants || []).includes(it.id);
   return `
-    <div class="pocket ${n ? 'owned' : 'locked'}${it.rarity === 'chase' ? ' holo' : ''}"
+    <div class="pocket ${n ? 'owned' : 'locked'}${it.rarity === 'chase' ? ' holo' : ''}${wanted ? ' wanted' : ''}"
          style="--rar:${rar.color}" data-item="${it.id}"
-         title="${n ? it.name + ' — tap to give away' : '???'}">
+         title="${n ? it.name + ' — tap to give away' : (wanted ? 'on your wants list' : 'tap to add to your wants list')}">
+      ${wanted ? '<span class="pkt-want">★</span>' : ''}
       <div class="pkt-card">${stickerFace(it, { owned: n > 0 })}</div>
       <div class="pkt-name">${n ? it.name : '???'}</div>
       ${n > 1 ? `<span class="pkt-count">×${n}</span>` : ''}
@@ -65,6 +67,8 @@ function renderBinderPage() {
   const complete = isSetComplete(col);
   const claimed = state.claimedSets.includes(col.id);
   const page = $('#binder-page');
+  if (!page) return;      // wants can be toggled from elsewhere; the binder
+                          // isn't always on screen when this is called
   page.innerHTML = `
     <div class="page-head">
       <span class="page-title" style="color:${col.color}">${col.name}</span>
@@ -81,6 +85,10 @@ function renderBinderPage() {
       const it = ITEMS_BY_ID[pk.dataset.item];
       if (it) openShareDialog(it);
     }));
+  // tapping a sticker you DON'T own flags it as wanted, so friends holding a
+  // spare can be told — see net.js
+  page.querySelectorAll('.pocket.locked').forEach(pk =>
+    pk.addEventListener('click', () => toggleWant(pk.dataset.item)));
   const claimBtn = page.querySelector('#page-claim');
   if (claimBtn) claimBtn.addEventListener('click', () => {
     const got = claimSetBonus(col);

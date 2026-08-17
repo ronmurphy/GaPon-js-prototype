@@ -1,0 +1,309 @@
+// GaPon — the online layer. Trades get verified by a server so a capsule
+// can't be opened twice; friends' wants lists get shared.
+//
+// The single rule this file obeys: GaPon must work perfectly with none of it.
+// The library is fetched asynchronously after boot, every call is wrapped, and
+// every failure path falls back to the offline behaviour that already exists.
+// Being on a plane, having the CDN blocked, or Supabase being down should be
+// indistinguishable from before this file was written.
+//
+// The key below is the PUBLISHABLE key and is meant to be readable — the
+// database is protected by row-level security, not by hiding this.
+
+const SUPABASE_URL = 'https://cjgkxeknvzbscfoldnec.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_KpCiKRi_FuNmR-MsB-RKfw_Ox9p7IwU';
+const SUPABASE_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+
+const NET = {
+  ready: false,      // signed in and the player row exists
+  client: null,
+  playerId: null,
+  friendCode: null,
+};
+
+function loadSupabaseLib() {
+  return new Promise(resolve => {
+    if (window.supabase) return resolve(window.supabase);
+    const tag = document.createElement('script');
+    tag.src = SUPABASE_CDN;
+    tag.async = true;
+    tag.onload = () => resolve(window.supabase || null);
+    tag.onerror = () => resolve(null);     // offline / blocked — stay local
+    document.head.appendChild(tag);
+    setTimeout(() => resolve(window.supabase || null), 8000);   // never hang
+  });
+}
+
+// Called after boot. Nothing waits on it.
+async function netInit() {
+  try {
+    const lib = await loadSupabaseLib();
+    if (!lib) return;
+    NET.client = lib.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true },
+    });
+    let { data: { session } } = await NET.client.auth.getSession();
+    if (!session) {
+      const { data, error } = await NET.client.auth.signInAnonymously();
+      if (error) return;
+      session = data.session;
+    }
+    if (!session?.user) return;
+    NET.playerId = session.user.id;
+    await netEnsurePlayer();
+    NET.ready = true;
+    await netSyncWants();                      // push any wants set while offline
+    netCheckMatches({ announce: true });        // "you're holding 3 they need"
+    netRefreshUI();
+  } catch (e) {
+    NET.ready = false;      // any surprise at all: stay offline, stay working
+  }
+}
+
+// One row per player: a nickname and a friend code. Nothing else about them
+// is ever stored server-side.
+async function netEnsurePlayer() {
+  const { data } = await NET.client
+    .from('players').select('friend_code, display_name').eq('id', NET.playerId).maybeSingle();
+  if (data) {
+    NET.friendCode = data.friend_code;
+    if (state.playerName && state.playerName !== data.display_name) await netSetName(state.playerName);
+    else if (!state.playerName && data.display_name) { state.playerName = data.display_name; saveGame(); }
+    return;
+  }
+  const { data: made } = await NET.client
+    .from('players')
+    .insert({ id: NET.playerId, display_name: state.playerName || 'Collector' })
+    .select('friend_code').single();
+  if (made) NET.friendCode = made.friend_code;
+}
+
+async function netSetName(name) {
+  if (!NET.client || !NET.playerId) return;
+  try {
+    await NET.client.from('players')
+      .update({ display_name: name.slice(0, 14), updated_at: new Date().toISOString() })
+      .eq('id', NET.playerId);
+  } catch (e) {}
+}
+
+// ---------- trades ----------
+
+// Register a capsule so it can be verified. Failing here is not fatal: the
+// code still works by the honour system, exactly as it did before.
+async function netPostTrade(code, itemId) {
+  if (!NET.ready) return false;
+  try {
+    const { error } = await NET.client.from('trades').insert({
+      code, item_id: itemId, from_id: NET.playerId,
+      from_name: (state.playerName || 'a friend').slice(0, 14),
+    });
+    return !error;
+  } catch (e) { return false; }
+}
+
+// Returns { item, sender } on success, 'taken' if someone already opened it,
+// or null if the server doesn't know this code (so we fall back to local).
+async function netClaimTrade(code) {
+  if (!NET.ready) return null;
+  try {
+    const { data, error } = await NET.client.rpc('claim_trade', { p_code: code });
+    if (!error && data && data.length) {
+      return { item: ITEMS_BY_ID[data[0].item_id], sender: data[0].from_name };
+    }
+    // Nothing came back. Three reasons are possible and they are NOT the same:
+    //   • someone genuinely claimed it  → block
+    //   • it's your own capsule (the function refuses self-claims) → let the
+    //     local path take it back, as it always has
+    //   • the server never saw this code → let the local honour system run
+    // Only the first should ever stop a redemption.
+    const { data: found } = await NET.client
+      .from('trades').select('claimed_by').eq('code', code).maybeSingle();
+    if (found && found.claimed_by) return 'taken';
+    return null;
+  } catch (e) { return null; }
+}
+
+async function netCancelTrade(code) {
+  if (!NET.ready) return;
+  try { await NET.client.from('trades').delete().eq('code', code); } catch (e) {}
+}
+
+// ---------- ui ----------
+
+function netStatusHTML() {
+  if (NET.ready) {
+    return `<p class="tp-tip net-on">🟢 online — trades are verified.
+      Your friend code: <b class="friend-code">${NET.friendCode || '…'}</b></p>`;
+  }
+  return `<p class="tp-tip net-off">⚪ offline — trading still works by code,
+    just without server checks.</p>`;
+}
+
+function netRefreshUI() {
+  const host = document.querySelector('#tab-market');
+  if (host && !host.hidden) renderMarket();
+}
+
+// ---------- friends ----------
+// The friend list itself lives in the save, not on the server: it's just a
+// list of codes you were given. Nothing server-side needs to know who knows
+// whom, which keeps the schema small and means no friendship table to secure.
+
+function friendList() {
+  if (!state.friends) state.friends = [];
+  return state.friends;
+}
+
+// Look a code up and remember them. Returns { ok } or { err }.
+async function netAddFriend(rawCode) {
+  const code = String(rawCode || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{6}$/.test(code)) return { err: 'friend codes are 6 letters and numbers' };
+  if (code === NET.friendCode) return { err: "that's your own code!" };
+  if (friendList().some(f => f.code === code)) return { err: 'already on your list' };
+  if (!NET.ready) return { err: 'you need to be online to add a friend' };
+  try {
+    const { data } = await NET.client
+      .from('players').select('id, display_name').eq('friend_code', code).maybeSingle();
+    if (!data) return { err: "no one has that code — check the spelling" };
+    friendList().push({ code, id: data.id, name: data.display_name });
+    saveGame();
+    return { ok: true, name: data.display_name };
+  } catch (e) {
+    return { err: "couldn't reach the server just now" };
+  }
+}
+
+function netRemoveFriend(code) {
+  state.friends = friendList().filter(f => f.code !== code);
+  saveGame();
+}
+
+function friendsHTML() {
+  const fs = friendList();
+  return `
+    <div class="friends">
+      <div class="friends-row">
+        ${fs.length
+          ? fs.map(f => `<span class="friend-chip" title="${f.code}">${f.name}
+              <button data-unfriend="${f.code}" title="remove">×</button></span>`).join('')
+          : '<span class="tp-tip">no friends added yet — swap codes in your group chat</span>'}
+      </div>
+      <div class="friend-add">
+        <input id="friend-code-in" placeholder="friend code" maxlength="6"
+               autocomplete="off" spellcheck="false">
+        <button class="btn small ghost" id="friend-add-btn">Add friend</button>
+      </div>
+    </div>`;
+}
+
+function wireFriends(host) {
+  const input = host.querySelector('#friend-code-in');
+  const add = async () => {
+    const res = await netAddFriend(input.value);
+    if (res.err) { sfx.buzz(); toast(res.err, 'warn'); return; }
+    sfx.chime();
+    toast(`${res.name} added!`, 'good');
+    renderMarket();
+  };
+  host.querySelector('#friend-add-btn').addEventListener('click', add);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+  host.querySelectorAll('[data-unfriend]').forEach(b =>
+    b.addEventListener('click', () => {
+      netRemoveFriend(b.dataset.unfriend);
+      renderMarket();
+    }));
+}
+
+// ---------- wants ----------
+// Your wants list is the ONLY collection data that leaves the device. What
+// you own never does: matching happens locally, against your own inventory.
+
+function toggleWant(itemId) {
+  if (!state.wants) state.wants = [];
+  const i = state.wants.indexOf(itemId);
+  if (i >= 0) {
+    state.wants.splice(i, 1);
+  } else {
+    if (state.wants.length >= WANTS_MAX) {
+      sfx.buzz();
+      toast(`Your wants list is full (${WANTS_MAX}) — untick something first.`, 'warn');
+      return;
+    }
+    state.wants.push(itemId);
+    sfx.tick();
+  }
+  saveGame();
+  renderBinderPage();
+  netSyncWants();
+}
+
+async function netSyncWants() {
+  if (!NET.ready) return;
+  pruneWants();          // never publish a want you've already filled
+  try {
+    await NET.client.from('wants').delete().eq('player_id', NET.playerId);
+    const rows = (state.wants || []).map(id => ({ player_id: NET.playerId, item_id: id }));
+    if (rows.length) await NET.client.from('wants').insert(rows);
+  } catch (e) {}
+}
+
+// What are my friends hunting? Returns [{ friend, items:[item] }] where I
+// hold a SPARE — a lone copy is never offered up, so nobody gets asked for
+// the chase they just spent a week chasing.
+async function netFriendMatches() {
+  if (!NET.ready) return [];
+  const friends = friendList();
+  if (!friends.length) return [];
+  try {
+    const { data } = await NET.client
+      .from('wants').select('player_id, item_id').in('player_id', friends.map(f => f.id));
+    if (!data) return [];
+    const out = [];
+    for (const f of friends) {
+      const items = data
+        .filter(r => r.player_id === f.id && ownedCount(r.item_id) > 1)
+        .map(r => ITEMS_BY_ID[r.item_id])
+        .filter(Boolean);
+      if (items.length) out.push({ friend: f, items });
+    }
+    return out;
+  } catch (e) { return []; }
+}
+
+let netMatches = [];
+
+async function netCheckMatches({ announce = false } = {}) {
+  netMatches = await netFriendMatches();
+  const total = netMatches.reduce((n, m) => n + m.items.length, 0);
+  if (announce && total) {
+    keeperSay(`You're holding ${total} spare${total > 1 ? 's' : ''} your friends are after!`);
+  }
+  const host = document.querySelector('#tab-market');
+  if (host && !host.hidden) renderMarket();
+  return total;
+}
+
+function matchesHTML() {
+  if (!NET.ready || !netMatches.length) return '';
+  return `
+    <div class="matches">
+      <p class="tp-tip"><b>Your friends are hunting these — and you have spares:</b></p>
+      ${netMatches.map(m => `
+        <div class="match-row">
+          <span class="match-who">${m.friend.name}</span>
+          ${m.items.map(it => `
+            <button class="match-item" data-give="${it.id}" style="--rar:${RARITIES[it.rarity].color}">
+              ${stickerFace(it, { cls: 'match-ic' })}<span>${it.name}</span>
+            </button>`).join('')}
+        </div>`).join('')}
+    </div>`;
+}
+
+function wireMatches(host) {
+  host.querySelectorAll('[data-give]').forEach(b =>
+    b.addEventListener('click', () => {
+      const it = ITEMS_BY_ID[b.dataset.give];
+      if (it) openShareDialog(it);      // straight into the existing give flow
+    }));
+}

@@ -3,6 +3,8 @@
 
 const $ = sel => document.querySelector(sel);
 
+let marketShowAll = false;   // Market lists spares by default (see renderMarket)
+
 // ---------- helpers ----------
 
 function fmtCoins(n) { return n.toLocaleString(); }
@@ -281,6 +283,12 @@ function renderMarket() {
   const dupes = owned.filter(it => ownedCount(it.id) > 1);
   const dupeValue = dupes.reduce((s, it) =>
     s + RARITIES[it.rarity].sell * (ownedCount(it.id) - 1), 0);
+  // Listing every owned sticker turned this into a very long scroll on a
+  // phone. Spares are what people actually sell, so they're the default —
+  // but selling a last copy stays possible, one tap away, because
+  // occasionally someone really does want to.
+  const showAll = !!marketShowAll;
+  const listed = showAll ? owned : dupes;
 
   // the two "do something with your stickers" counters sit above the long
   // sell list — buried at the bottom, nobody finds them
@@ -294,9 +302,16 @@ function renderMarket() {
         Sell all dupes
       </button>
     </div>
+    <div class="market-filter">
+      <button class="btn small ${showAll ? 'ghost' : ''}" data-filter="dupes">Spares only</button>
+      <button class="btn small ${showAll ? '' : 'ghost'}" data-filter="all">Everything</button>
+      <span class="mf-count">${listed.length} listed</span>
+    </div>
     <div id="market-list">
-      ${owned.length ? '' : '<p class="empty">Nothing to sell yet — go pull something!</p>'}
-      ${owned.map(it => {
+      ${listed.length ? '' : (owned.length
+        ? '<p class="empty">No spares right now — nothing worth selling.</p>'
+        : '<p class="empty">Nothing to sell yet — go pull something!</p>')}
+      ${listed.map(it => {
         const n = ownedCount(it.id);
         const rar = RARITIES[it.rarity];
         const col = COLLECTIONS.find(c => c.id === it.collection);
@@ -313,7 +328,13 @@ function renderMarket() {
     </div>`;
 
   wireTradePost(host);
+  if (NET.ready) { wireFriends(host); wireMatches(host); }
   wireSwapShop(host);
+  host.querySelectorAll('[data-filter]').forEach(b =>
+    b.addEventListener('click', () => {
+      marketShowAll = b.dataset.filter === 'all';
+      renderMarket();
+    }));
   $('#sell-dupes').addEventListener('click', () => {
     const got = sellAllDupes();
     if (got) { toast(`Sold dupes for +${got} coins`, 'good'); sfx.coin(); }
@@ -395,6 +416,9 @@ function boot() {
     if (!$('#parlour').hidden) renderParlour();   // its signage is themed
   });
 
+  // The arcade keeps its tab (it's a daily stop, so it needs to stay one tap
+  // away) — this door is a second route that makes the building feel whole.
+  $('#arcade-door').addEventListener('click', () => showTab('arcade'));
   $('#parlour-door').addEventListener('click', corinthOpen);
   $('#parlour-exit').addEventListener('click', corinthClose);
 
@@ -481,6 +505,9 @@ function boot() {
   } else if (daily) {
     toast(`Daily bonus +${daily.bonus} coins! (day ${daily.streak} streak)`, 'good');
   }
+  pruneWants();   // drop anything acquired since this list was last touched
+  netInit();      // online layer boots in the background; nothing waits on it
+
   // let the toast land first, then Poko says hello from the counter
   setTimeout(() => keeperGreet(firstRun, daily), firstRun ? 900 : 1400);
 }

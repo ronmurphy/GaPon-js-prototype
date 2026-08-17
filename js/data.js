@@ -112,6 +112,11 @@ const OMIKUJI = [
 // realistic one for a good player.
 const OMIKUJI_BALL_BONUS = { daikichi: 2, kichi: 1, shokichi: 1, suekichi: 0, kyo: 0 };
 
+// How many stickers you can flag as wanted. Short on purpose: a list of
+// everything you're missing would be ~60 entries and a match would mean
+// nothing. Ten means "these are the ones I actually care about".
+const WANTS_MAX = 10;
+
 const ECON = {
   startCoins: 100,
   dailyBase: 30,
