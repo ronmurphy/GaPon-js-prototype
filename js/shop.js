@@ -221,14 +221,22 @@ function initFern() {
     if (++taps < goal) return;
     paid = true;
     state.fernDay = todayStr();
-    const found = 8 + Math.floor(Math.random() * 18);   // 8–25 coins
+    // A held fortune makes the fern generous — but is deliberately NOT spent
+    // here. Cashing a great blessing for pocket change would be strictly
+    // worse than saving it for a pull, so this stays a wink, never a trap.
+    const luck = heldFortune();
+    const base = 8 + Math.floor(Math.random() * 18);    // 8–25 coins
+    const found = Math.round(base * (luck ? luck.mult : 1));
     state.coins += found;
     saveGame();
     updateHeader();
     sfx.coin();
     sfx.chime();
-    fxSparkleBurst(fern, { count: 16, color: '#9ccc65', spread: 90 });
-    toast(`You found ${found} coins in the fern?! 🌿`, 'good');
+    fxSparkleBurst(fern, { count: luck ? 24 : 16, color: '#9ccc65', spread: luck ? 120 : 90 });
+    toast(luck
+      ? `You found ${found} coins in the fern?! ${luck.kanji} is treating you well 🌿`
+      : `You found ${found} coins in the fern?! 🌿`, 'good');
+    if (luck) keeperSay(`${luck.kanji} luck even in the pot plant! You've still got the fortune, mind.`);
   });
 }
 
