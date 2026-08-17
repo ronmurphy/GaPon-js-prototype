@@ -18,6 +18,8 @@ function defaultState() {
                         // { period, left: {m0..m4,special}, tickets: {…} }
     fernDay: null,      // 'YYYY-MM-DD' the fern last paid out (once a day)
     shelves: null,      // medal pusher piles: { period, by: { slot: [[x,y]…] } }
+    omikujiDay: null,   // 'YYYY-MM-DD' of the last fortune drawn (one a day)
+    fortune: null,      // held fortune id, spent on the next capsule pull
     // stamp rally: `earned` is every stamp ever, `cards` is cards redeemed —
     // so overflow past a full card is never lost, it lands on the next one
     stamps: { earned: 0, cards: 0, pulls: 0, plays: 0, binderDay: null, binderDone: false },
@@ -291,8 +293,65 @@ function rollRarity(odds) {
   return last;                  // float-dust fallback: highest nonzero rarity
 }
 
+// ---- omikuji ----
+
+function omikujiAvailable() { return state.omikujiDay !== todayStr(); }
+
+function heldFortune() {
+  return state.fortune ? OMIKUJI.find(f => f.id === state.fortune) : null;
+}
+
+function drawOmikuji() {
+  state.omikujiDay = todayStr();
+  let r = Math.random();
+  let drawn = OMIKUJI[OMIKUJI.length - 1];
+  for (const f of OMIKUJI) {
+    r -= f.p;
+    if (r < 0) { drawn = f; break; }
+  }
+  state.fortune = drawn.mult > 1 ? drawn.id : null;   // a curse holds nothing
+  saveGame();
+  return drawn;
+}
+
+function clearFortune() {
+  state.fortune = null;
+  saveGame();
+}
+
+// Bend a machine's odds by the held fortune. Multiplying the good rarities
+// (rather than converting common mass) keeps a fortune worth more on an
+// expensive machine, which is the whole decision the item exists to create.
+function luckyOdds(odds, mult) {
+  if (!mult || mult <= 1) return odds;
+  const out = {
+    common: odds.common,
+    uncommon: odds.uncommon,
+    rare: odds.rare * (1 + (mult - 1) * 0.55),
+    chase: odds.chase * mult,
+  };
+  // Pay for the boost out of common first, then uncommon. Without the second
+  // step the Special Pon — which has no commons at all — got its gain eaten
+  // by renormalising, ending up luckier on a Lucky Pon than on the best
+  // machine in the shop.
+  let extra = (out.rare - odds.rare) + (out.chase - odds.chase);
+  const fromCommon = Math.min(odds.common, extra);
+  out.common = odds.common - fromCommon;
+  extra -= fromCommon;
+  out.uncommon = Math.max(0, odds.uncommon - extra);
+  const total = RARITY_ORDER.reduce((s, k) => s + out[k], 0);
+  for (const k of RARITY_ORDER) out[k] /= total;   // keep it a distribution
+  return out;
+}
+
 function rollItem(machine) {
-  const rarity = rollRarity(machine.tier.odds);
+  // a held fortune bends this one roll, then it's spent
+  const f = heldFortune();
+  const rarity = rollRarity(f ? luckyOdds(machine.tier.odds, f.mult) : machine.tier.odds);
+  if (f) {
+    clearFortune();
+    if (typeof updateFortuneChip === 'function') updateFortuneChip();
+  }
   const candidates = machine.collection.items.filter(it => it.rarity === rarity);
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
@@ -459,11 +518,21 @@ function saveShelf(slot, caps) {
 // Draw a marble. If you already own everything of that rarity, the drum is
 // kind about it and bumps you to a rarity you can still use.
 function drawMarble() {
-  let r = Math.random();
+  // a held fortune weights the good marbles — an omikuji should be felt at
+  // every machine that decides a rarity, not just the ones rolling odds
+  const f = heldFortune();
+  const weights = FUKU.marbles.map(mb =>
+    f && (mb.rarity === 'chase' || mb.rarity === 'rare') ? mb.p * f.mult : mb.p);
+  const total = weights.reduce((s, w) => s + w, 0);
+  if (f) {
+    clearFortune();
+    if (typeof updateFortuneChip === 'function') updateFortuneChip();
+  }
+  let r = Math.random() * total;
   let picked = FUKU.marbles[0];
-  for (const mb of FUKU.marbles) {
-    r -= mb.p;
-    if (r < 0) { picked = mb; break; }
+  for (let i = 0; i < FUKU.marbles.length; i++) {
+    r -= weights[i];
+    if (r < 0) { picked = FUKU.marbles[i]; break; }
   }
   if (swapTargets(picked.rarity).length) return picked;
   const fallback = FUKU.marbles.find(mb => swapTargets(mb.rarity).length);

@@ -17,6 +17,7 @@
     <span class="hchip coin-chip"><span class="msr">toll</span><span id="coin-count">0</span></span>
     <span class="hchip streak-chip"><span class="msr">local_fire_department</span><span id="streak-count">0</span></span>
     <button class="hchip icon-chip" id="toggle-sound" title="sound on/off"><span class="msr">volume_up</span></button>
+    <span class="hchip fortune-chip" id="fortune-chip" hidden></span>
     <button class="hchip icon-chip flag-chip" id="toggle-theme" title="room style">🇺🇸</button>
   </header>
 
@@ -42,6 +43,11 @@
               <div class="keeper-char"></div>
               <div class="keeper-counter"><span>GaPon</span></div>
               <i class="keeper-badge" id="keeper-badge" hidden>!</i>
+            </div>
+            <div class="dec dec-omikuji" id="omikuji-stand" title="draw a fortune">
+              <div class="omi-roof"></div>
+              <div class="omi-jar"><span>み</span></div>
+              <div class="omi-post"></div>
             </div>
             <div id="machines" class="mach-row"></div>
             <div class="dec dec-window"><i class="sky"></i><i class="bars"></i></div>
@@ -116,6 +122,7 @@
   <script src="js/theme.js"></script>
   <script src="js/shopkeeper.js"></script>
   <script src="js/arcade.js"></script>
+  <script src="js/omikuji.js"></script>
   <script src="js/pusher.js"></script>
   <script src="js/corinth.js"></script>
   <script src="js/wall.js"></script>

@@ -278,7 +278,15 @@ function setCorinthTally(st, text) {
 }
 
 function corinthFinish(st) {
-  const rarity = corinthRarity(st.total);
+  // a held fortune adds to the score before it's graded
+  const f = heldFortune();
+  const bonus = f ? (OMIKUJI_BALL_BONUS[f.id] || 0) : 0;
+  if (f) {
+    clearFortune();
+    updateFortuneChip();
+  }
+  const scored = st.total + bonus;
+  const rarity = corinthRarity(scored);
   const pool = st.col.items.filter(it => it.rarity === rarity);
   const item = pool[Math.floor(Math.random() * pool.length)];
   const isNew = ownedCount(item.id) === 0;
@@ -291,6 +299,9 @@ function corinthFinish(st) {
   st.card.querySelector('.cor-aim').hidden = true;
   st.card.querySelector('.m-prog').textContent =
     `${collectionProgress(st.col)}/${st.col.items.length}`;
-  showGiftReveal(item, isNew, null, { chip: `🎱 scored ${st.total}`, pull: true });
+  showGiftReveal(item, isNew, null, {
+    chip: bonus ? `🎱 ${st.total} +${bonus} ${f.kanji} = ${scored}` : `🎱 scored ${st.total}`,
+    pull: true,
+  });
   setTimeout(() => { st.balls = []; drawCorinth(st); }, 400);
 }

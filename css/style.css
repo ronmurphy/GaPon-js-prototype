@@ -2840,3 +2840,139 @@ footer button {
 
 .push-info { display: flex; flex-direction: column; gap: 1px; }
 .push-left { font-size: 0.66rem; color: var(--ink-dim); opacity: 0.8; }
+
+/* ---------- omikuji stand ---------- */
+
+.dec-omikuji {
+  position: relative;
+  width: 84px;
+  height: 168px;
+  pointer-events: auto;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.omi-roof {
+  position: absolute;
+  top: 0;
+  left: -6px;
+  right: -6px;
+  height: 26px;
+  background: linear-gradient(180deg, #8d3b3b, #5d2323);
+  clip-path: polygon(12% 100%, 0 60%, 50% 0, 100% 60%, 88% 100%);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+}
+
+.omi-jar {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 52px;
+  height: 62px;
+  border-radius: 7px 7px 10px 10px;
+  background: linear-gradient(180deg, #d9c49a, #a8875a);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 3px 8px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5d4037;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.omi-jar::after {           /* the hole the stick slides out of */
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 4px;
+  border-radius: 2px;
+  background: #3e2723;
+}
+
+.omi-post {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 78px;
+  background: linear-gradient(90deg, #6d4c41, #4e342e);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+}
+
+.dec-omikuji.ready .omi-jar {
+  animation: omiready 2.2s ease-in-out infinite;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4),
+              0 0 16px rgba(255, 213, 79, 0.75), 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes omiready {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-4px); }
+}
+
+.fortune-chip {
+  font-weight: 800;
+  color: #ffd54f;
+  cursor: default;
+  box-shadow: 0 0 12px rgba(255, 213, 79, 0.3);
+}
+
+/* --- the draw --- */
+
+.omi-box {
+  position: relative;
+  width: 108px;
+  height: 148px;
+  cursor: pointer;
+  border-radius: 10px 10px 14px 14px;
+  background: linear-gradient(180deg, #d9c49a, #9c7c4f);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.4), 0 10px 26px rgba(0, 0, 0, 0.5);
+}
+
+.omi-box::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 6px;
+  border-radius: 3px;
+  background: #3e2723;
+}
+
+.omi-box i {
+  position: absolute;
+  bottom: 16px;
+  width: 6px;
+  height: 54px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #f3e6cc, #c9ad7f);
+}
+
+.omi-box i:nth-child(1) { left: 26px; transform: rotate(-6deg); }
+.omi-box i:nth-child(2) { left: 50px; }
+.omi-box i:nth-child(3) { left: 74px; transform: rotate(7deg); }
+
+.omi-slip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 30px;
+  border-radius: 6px;
+  background: #f8f2e4;
+  color: #4e342e;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.omi-slip.good { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 26px rgba(255, 193, 7, 0.5); }
+.omi-slip.bad { filter: grayscale(0.35); }
+
+.omi-kanji { font-size: 3rem; font-weight: 800; line-height: 1; }
+.omi-name { font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: #8d6e63; }

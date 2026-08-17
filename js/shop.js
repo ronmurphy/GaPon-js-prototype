@@ -193,6 +193,8 @@ function initShopOnce() {
   });
   initFern();
   initShopkeeper();
+  initOmikuji();
+  updateFortuneChip();
 }
 
 // Secret: each visit, the shop fern hides a few coins. Tap it enough times

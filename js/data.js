@@ -84,6 +84,34 @@ const PUSHER = {
 };                      // → ~68% of plays pay nothing, but a payout averages ~3
                         //   capsules at once; ~15 coins per capsule overall
 
+// おみくじ — the paper fortune. Free once a calendar day from the box beside
+// the counter; it holds until you spend it on your next capsule pull.
+//
+// The boost MULTIPLIES the rare and chase odds rather than converting common
+// mass into them. That matters: an additive boost is worth most on the
+// cheapest machine (it has the most common mass to convert), which would make
+// "burn it on a 10-coin pull" strictly optimal and kill the decision.
+// Multiplying instead makes a good fortune worth far more on a good machine —
+// 大吉 on the Special Pon takes its chase odds from 12% to 30%.
+const OMIKUJI = [
+  { id: 'daikichi', kanji: '大吉', name: 'Great Blessing', mult: 2.5,  p: 0.12,
+    line: 'Fortune smiles on you! Spend it somewhere worthy.' },
+  { id: 'kichi',    kanji: '吉',   name: 'Blessing',       mult: 1.8,  p: 0.28,
+    line: 'A good day for capsules.' },
+  { id: 'shokichi', kanji: '小吉', name: 'Small Blessing', mult: 1.4,  p: 0.25,
+    line: 'A little luck goes a little way.' },
+  { id: 'suekichi', kanji: '末吉', name: 'Future Blessing', mult: 1.15, p: 0.25,
+    line: 'Luck is on its way. Slowly.' },
+  { id: 'kyo',      kanji: '凶',   name: 'Curse',          mult: 1,    p: 0.10,
+    line: 'Ah… tie it to the rack and leave the bad luck behind.' },
+];
+
+// The Corinth board has no odds to multiply — its rarity comes from the ball
+// total — so a fortune adds to that total instead. Deliberately small: the
+// thresholds are only 3 apart, so +2 already turns a 15-only chase into a
+// realistic one for a good player.
+const OMIKUJI_BALL_BONUS = { daikichi: 2, kichi: 1, shokichi: 1, suekichi: 0, kyo: 0 };
+
 const ECON = {
   startCoins: 100,
   dailyBase: 30,
