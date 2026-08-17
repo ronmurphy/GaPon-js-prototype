@@ -1,0 +1,45 @@
+#!/bin/sh
+# Refuse to commit JavaScript that won't parse.
+#
+# GaPon is plain <script> tags with no build step, so one bad character takes
+# the whole site down: the broken file throws, and every script after it never
+# runs, leaving a blank page. A single missing comma in js/data.js did exactly
+# that twice in two days, once reaching live GitHub Pages.
+#
+# Checks the STAGED content (not the working tree), so it validates what you
+# are actually committing.
+#
+# Bypass deliberately with:  git commit --no-verify
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node not found, skipping the JavaScript syntax check."
+  exit 0
+fi
+
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep '\.js$')
+[ -z "$staged" ] && exit 0
+
+tmp=$(mktemp -d) || exit 0
+trap 'rm -rf "$tmp"' EXIT
+failed=0
+
+for file in $staged; do
+  git show ":$file" > "$tmp/staged.js" 2>/dev/null || continue
+  if ! node --check "$tmp/staged.js" 2>"$tmp/err"; then
+    [ "$failed" -eq 0 ] && echo ""
+    echo "  ✗ $file"
+    sed -e "s|$tmp/staged.js|$file|g" -e 's/^/      /' "$tmp/err" | head -4
+    failed=1
+  fi
+done
+
+if [ "$failed" -ne 0 ]; then
+  echo ""
+  echo "  Commit blocked — that JavaScript would break the live site."
+  echo "  Fix it, or bypass with: git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+echo "pre-commit: JavaScript parses cleanly ✓"
+exit 0
