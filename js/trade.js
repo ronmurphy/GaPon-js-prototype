@@ -5,7 +5,22 @@
 // place, and redeemed codes are remembered per-device. Beyond that it's
 // honor-system — this is a game for friends.
 
-const TRADE_ITEM_IDS = Object.keys(ITEMS_BY_ID).sort();
+// The order of this list is a permanent contract with every code ever issued —
+// see js/tradeids.js. Anything in the game but missing from the ledger gets
+// appended at runtime so it can still be traded today, but that ordering only
+// holds until the next set ships: fix the ledger, don't rely on this.
+// Entries are NEVER dropped, even if the sticker leaves the game — removing
+// one would shift every index after it, which is the whole bug this fixes. A
+// code for a sticker that no longer exists simply fails to parse.
+const TRADE_ITEM_IDS = (() => {
+  const ledger = TRADE_ID_LEDGER.slice();
+  const known = new Set(ledger);
+  const missing = Object.keys(ITEMS_BY_ID).filter(id => !known.has(id)).sort();
+  if (missing.length) {
+    console.warn('[GaPon] not in the trade ledger — add to js/tradeids.js:', missing.join(', '));
+  }
+  return ledger.concat(missing);
+})();
 const TRADE_MAGIC = 'GPT1';
 
 // ---------- codes (filename-safe: A–Z, 0–9, dashes) ----------
@@ -30,8 +45,9 @@ function parseTradeCode(raw) {
   const [, idx, nonce, chk] = m;
   if (tradeChk(idx + '-' + nonce) !== chk) return null;
   const itemId = TRADE_ITEM_IDS[parseInt(idx, 36)];
-  if (!itemId) return null;
-  return { code, item: ITEMS_BY_ID[itemId] };
+  const item = itemId && ITEMS_BY_ID[itemId];
+  if (!item) return null;      // ledger slot for a sticker that's left the game
+  return { code, item };
 }
 
 // ---------- trade state ----------

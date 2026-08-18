@@ -286,7 +286,7 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'roadtrip', name: 'Road Trip', color: '#ffa726',
+    id: 'roadtrip', name: 'Road Trip', color: '#ffa726', artDir: 'RoadTripPngs',
     items: [
       { id: 'rt_car',     name: 'Beep Beep',      icon: 'directions_car',     rarity: 'common' },
       { id: 'rt_gas',     name: "Fill 'Er Up",    icon: 'local_gas_station',  rarity: 'common' },
