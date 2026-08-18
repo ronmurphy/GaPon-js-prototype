@@ -53,6 +53,7 @@ async function netInit() {
     await netEnsurePlayer();
     NET.ready = true;
     await netSyncWants();                      // push any wants set while offline
+    await netCheckInbox({ announce: true });    // "a capsule is waiting for you"
     netCheckMatches({ announce: true });        // "you're holding 3 they need"
     netRefreshUI();
   } catch (e) {
@@ -87,18 +88,32 @@ async function netSetName(name) {
   } catch (e) {}
 }
 
+// Display names are typed by other players, so they never go into markup raw.
+function escHTML(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 // ---------- trades ----------
 
 // Register a capsule so it can be verified. Failing here is not fatal: the
 // code still works by the honour system, exactly as it did before.
-async function netPostTrade(code, itemId) {
+// `toId` addresses it to a friend so it appears in their Trading Post — see
+// sql/addressed-capsules.sql. Addressing is delivery, not permission: the
+// code still works for whoever holds it.
+async function netPostTrade(code, itemId, toId) {
   if (!NET.ready) return false;
+  const row = {
+    code, item_id: itemId, from_id: NET.playerId,
+    from_name: (state.playerName || 'a friend').slice(0, 14),
+  };
   try {
-    const { error } = await NET.client.from('trades').insert({
-      code, item_id: itemId, from_id: NET.playerId,
-      from_name: (state.playerName || 'a friend').slice(0, 14),
-    });
-    return !error;
+    const { error } = await NET.client.from('trades').insert({ ...row, to_id: toId || null });
+    if (!error) return true;
+    // Database not migrated yet? Register it unaddressed rather than not at
+    // all — a verified capsule you have to paste beats an unverified one.
+    const { error: e2 } = await NET.client.from('trades').insert(row);
+    return !e2;
   } catch (e) { return false; }
 }
 
@@ -127,6 +142,57 @@ async function netClaimTrade(code) {
 async function netCancelTrade(code) {
   if (!NET.ready) return;
   try { await NET.client.from('trades').delete().eq('code', code); } catch (e) {}
+}
+
+// ---------- inbox ----------
+// Capsules a friend addressed to you, waiting to be opened.
+//
+// This is the one thing the game tells the RECEIVING player about, and it
+// doesn't break the "notify the giver, never the asker" rule: nothing here is
+// a request. The gift already happened — the sticker has already left the
+// giver's binder. Showing it is delivery, not a nudge.
+
+let netInbox = [];
+
+async function netCheckInbox({ announce = false } = {}) {
+  if (!NET.ready) { netInbox = []; return 0; }
+  try {
+    const { data, error } = await NET.client
+      .from('trades').select('code, item_id, from_name')
+      .eq('to_id', NET.playerId).is('claimed_by', null);
+    if (error) { netInbox = []; return 0; }   // column missing = not migrated
+    netInbox = (data || [])
+      .filter(r => ITEMS_BY_ID[r.item_id] && !state.redeemed.includes(r.code))
+      .map(r => ({ code: r.code, item: ITEMS_BY_ID[r.item_id], from: r.from_name }));
+  } catch (e) { netInbox = []; return 0; }
+  if (announce && netInbox.length) {
+    const who = [...new Set(netInbox.map(c => c.from).filter(Boolean))];
+    keeperSay(netInbox.length === 1
+      ? `A capsule from ${who[0] || 'a friend'} is waiting for you!`
+      : `${netInbox.length} capsules are waiting for you!`);
+  }
+  const host = document.querySelector('#tab-market');
+  if (host && !host.hidden) renderMarket();
+  return netInbox.length;
+}
+
+function inboxHTML() {
+  if (!NET.ready || !netInbox.length) return '';
+  return `
+    <div class="inbox">
+      <p class="tp-tip"><b>🎁 Waiting for you:</b></p>
+      ${netInbox.map(c => `
+        <div class="tp-trade inbox-row">
+          ${stickerFace(c.item, { cls: 'tp-ic' })}
+          <span class="row-name">${escHTML(c.item.name)}<small>from ${escHTML(c.from || 'a friend')}</small></span>
+          <button class="btn small" data-inbox="${escHTML(c.code)}">Open</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+function wireInbox(host) {
+  host.querySelectorAll('[data-inbox]').forEach(b =>
+    b.addEventListener('click', () => doRedeem(b.dataset.inbox)));
 }
 
 // ---------- ui ----------
@@ -185,8 +251,8 @@ function friendsHTML() {
     <div class="friends">
       <div class="friends-row">
         ${fs.length
-          ? fs.map(f => `<span class="friend-chip" title="${f.code}">${f.name}
-              <button data-unfriend="${f.code}" title="remove">×</button></span>`).join('')
+          ? fs.map(f => `<span class="friend-chip" title="${escHTML(f.code)}">${escHTML(f.name)}
+              <button data-unfriend="${escHTML(f.code)}" title="remove">×</button></span>`).join('')
           : '<span class="tp-tip">no friends added yet — swap codes in your group chat</span>'}
       </div>
       <div class="friend-add">
@@ -291,10 +357,11 @@ function matchesHTML() {
       <p class="tp-tip"><b>Your friends are hunting these — and you have spares:</b></p>
       ${netMatches.map(m => `
         <div class="match-row">
-          <span class="match-who">${m.friend.name}</span>
+          <span class="match-who">${escHTML(m.friend.name)}</span>
           ${m.items.map(it => `
-            <button class="match-item" data-give="${it.id}" style="--rar:${RARITIES[it.rarity].color}">
-              ${stickerFace(it, { cls: 'match-ic' })}<span>${it.name}</span>
+            <button class="match-item" data-give="${it.id}" data-to="${escHTML(m.friend.code)}"
+                    style="--rar:${RARITIES[it.rarity].color}">
+              ${stickerFace(it, { cls: 'match-ic' })}<span>${escHTML(it.name)}</span>
             </button>`).join('')}
         </div>`).join('')}
     </div>`;
@@ -304,6 +371,8 @@ function wireMatches(host) {
   host.querySelectorAll('[data-give]').forEach(b =>
     b.addEventListener('click', () => {
       const it = ITEMS_BY_ID[b.dataset.give];
-      if (it) openShareDialog(it);      // straight into the existing give flow
+      // straight into the existing give flow, pre-addressed to the friend
+      // whose wants list this chip came from
+      if (it) openShareDialog(it, friendList().find(f => f.code === b.dataset.to));
     }));
 }

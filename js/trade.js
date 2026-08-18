@@ -265,10 +265,14 @@ function closeTradeOverlay() {
   ov.innerHTML = '';
 }
 
-function openShareDialog(item) {
+// `to` is an optional friend from the friend list. Addressing a capsule only
+// decides whose Trading Post it shows up in — the code still works for anyone
+// who holds it, so offline and pass-along trading are untouched.
+function openShareDialog(item, to) {
   const n = ownedCount(item.id);
   if (!n) return;
   const rar = RARITIES[item.rarity];
+  const friends = (typeof NET !== 'undefined' && NET.ready) ? friendList() : [];
   const ov = $('#overlay');
   ov.hidden = false;
   ov.innerHTML = `
@@ -285,6 +289,13 @@ function openShareDialog(item) {
       <label class="tr-from">from
         <input id="tr-name" maxlength="14" placeholder="your name" value="${(state.playerName || '').replace(/["<>&]/g, '')}">
       </label>
+      ${friends.length ? `
+        <label class="tr-from tr-to">to
+          <select id="tr-to">
+            <option value="">anyone with the code</option>
+            ${friends.map(f => `<option value="${escHTML(f.code)}"${to && to.code === f.code ? ' selected' : ''}>${escHTML(f.name)}</option>`).join('')}
+          </select>
+        </label>` : ''}
       <div class="r-btns">
         <button class="btn ghost" id="tr-cancel">Never mind</button>
         <button class="btn" id="tr-make">🎁 Make trade capsule</button>
@@ -293,17 +304,22 @@ function openShareDialog(item) {
   $('#tr-cancel').addEventListener('click', closeTradeOverlay);
   $('#tr-make').addEventListener('click', async () => {
     state.playerName = $('#tr-name').value.trim().slice(0, 14);
+    const pick = $('#tr-to');
+    const dest = pick ? friends.find(f => f.code === pick.value) : null;
     const code = createTrade(item);
     if (!code) return;
-    netPostTrade(code, item.id);      // registers it; harmless if offline
+    // registers it; harmless if offline, and the capsule works either way
+    const posted = await netPostTrade(code, item.id, dest && dest.id);
     sfx.pop();
     renderBinderPage();          // the hole appears behind the dialog
     updateBinderNav();
-    await showTradeResult(item, code);
+    await showTradeResult(item, code, posted && dest ? dest : null);
   });
 }
 
-async function showTradeResult(item, code) {
+// `dest` is set only when the capsule actually reached the server addressed to
+// someone — if the post failed we must not promise a delivery that isn't there.
+async function showTradeResult(item, code, dest) {
   const cv = await renderTradeCard(item, code, state.playerName);
   const ov = $('#overlay');
   ov.innerHTML = `
@@ -314,8 +330,11 @@ async function showTradeResult(item, code) {
         <button class="btn small ghost" id="tr-copy">copy code</button>
         <button class="btn small" id="tr-save">save PNG</button>
       </div>
-      <p class="r-note">send either one to a friend — they redeem it at the Market.<br>
-        changed your mind? take it back at the Market's Trading Post.</p>
+      <p class="r-note">${dest
+        ? `📬 on its way to <b>${escHTML(dest.name)}</b> — it's waiting in their Trading Post.<br>
+           send them the code too if you like; either way it opens once.`
+        : `send either one to a friend — they redeem it at the Market.<br>
+           changed your mind? take it back at the Market's Trading Post.`}</p>
       <div class="r-btns"><button class="btn ghost" id="tr-done">Done</button></div>
     </div>`;
   $('#tr-save').addEventListener('click', () => downloadTradeCard(cv, code));
@@ -344,6 +363,7 @@ function tradePostHTML() {
     <h2 class="market-head">Trading Post</h2>
     <div class="trade-post">
       ${netStatusHTML()}
+      ${inboxHTML()}
       ${NET.ready ? friendsHTML() : ''}
       ${matchesHTML()}
       <div class="tp-redeem">
@@ -369,6 +389,7 @@ async function doRedeem(raw, sender) {
     return;
   }
   showGiftReveal(res.item, res.isNew, res.sender);
+  netCheckInbox();     // it's opened — drop it from the waiting list
 }
 
 function wireTradePost(host) {
