@@ -75,7 +75,7 @@ function showTab(name) {
     noteStamp('binder');       // a stamp once a day just for stopping by
     renderAlbum();
   }
-  if (name === 'market') renderMarket();
+  if (name === 'market') { renderMarket(); netMaybeCheck(); }
   if (name === 'arcade') renderArcade();
   if (name === 'wall') renderWall();
 }

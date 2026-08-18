@@ -153,9 +153,12 @@ async function netCancelTrade(code) {
 // giver's binder. Showing it is delivery, not a nudge.
 
 let netInbox = [];
+let netLastCheck = 0;
+const netAnnounced = new Set();   // codes Poko has already mentioned this session
 
 async function netCheckInbox({ announce = false } = {}) {
   if (!NET.ready) { netInbox = []; return 0; }
+  netLastCheck = Date.now();      // stamped here so every route counts as a check
   try {
     const { data, error } = await NET.client
       .from('trades').select('code, item_id, from_name')
@@ -165,16 +168,70 @@ async function netCheckInbox({ announce = false } = {}) {
       .filter(r => ITEMS_BY_ID[r.item_id] && !state.redeemed.includes(r.code))
       .map(r => ({ code: r.code, item: ITEMS_BY_ID[r.item_id], from: r.from_name }));
   } catch (e) { netInbox = []; return 0; }
-  if (announce && netInbox.length) {
-    const who = [...new Set(netInbox.map(c => c.from).filter(Boolean))];
-    keeperSay(netInbox.length === 1
-      ? `A capsule from ${who[0] || 'a friend'} is waiting for you!`
-      : `${netInbox.length} capsules are waiting for you!`);
+  // Only ever announce capsules Poko hasn't mentioned yet — coming back to a
+  // tab that's been open for days must not re-nag about the same gift.
+  if (announce) {
+    const fresh = netInbox.filter(c => !netAnnounced.has(c.code));
+    if (fresh.length) {
+      const who = [...new Set(fresh.map(c => c.from).filter(Boolean))];
+      keeperSay(fresh.length === 1
+        ? `A capsule from ${who[0] || 'a friend'} is waiting for you!`
+        : `${fresh.length} capsules are waiting for you!`);
+    }
   }
+  for (const c of netInbox) netAnnounced.add(c.code);
+  updateInboxBadge();
   const host = document.querySelector('#tab-market');
   if (host && !host.hidden) renderMarket();
   return netInbox.length;
 }
+
+// The Market tab looks identical whether it's empty or holding three gifts.
+// A count on the tab is the whole notification: no polling, no timers — it
+// rides on the inbox we already fetch at launch and after every redeem.
+function updateInboxBadge() {
+  const btn = document.querySelector('.tabs button[data-tab="market"]');
+  if (!btn) return;
+  let dot = btn.querySelector('.tab-badge');
+  if (!netInbox.length) { if (dot) dot.remove(); return; }
+  if (!dot) {
+    dot = document.createElement('span');
+    dot.className = 'tab-badge';
+    btn.appendChild(dot);
+    if (!FX_REDUCED) dot.animate([{ transform: 'scale(0)' }, { transform: 'scale(1.25)', offset: 0.7 },
+      { transform: 'scale(1)' }], { duration: 320, easing: 'ease-out' });
+  }
+  dot.textContent = netInbox.length;
+}
+
+// People leave GaPon parked in a browser tab for days and refresh it to play,
+// so netInit covers most arrivals. This covers the rest: coming back to the
+// tab, and opening the Market. Rate-limited, because "check when the player
+// does something" must never turn into a poll running in a forgotten tab.
+const NET_CHECK_GAP = 45000;
+
+function netMaybeCheck() {
+  if (!NET.ready || Date.now() - netLastCheck < NET_CHECK_GAP) return;
+  netLastCheck = Date.now();
+  netCheckInbox({ announce: true });
+  netCheckMatches();
+}
+
+// The explicit button. Always checks, and always says something back — a
+// silent refresh looks identical to a broken one.
+async function netRefreshNow() {
+  if (!NET.ready) return;
+  netLastCheck = Date.now();
+  const n = await netCheckInbox();
+  netCheckMatches();
+  sfx.tick();
+  toast(n ? `${n} capsule${n > 1 ? 's' : ''} waiting!` : 'nothing new right now',
+        n ? 'good' : '');
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) netMaybeCheck();
+});
 
 function inboxHTML() {
   if (!NET.ready || !netInbox.length) return '';
@@ -193,6 +250,8 @@ function inboxHTML() {
 function wireInbox(host) {
   host.querySelectorAll('[data-inbox]').forEach(b =>
     b.addEventListener('click', () => doRedeem(b.dataset.inbox)));
+  const ref = host.querySelector('#net-refresh');
+  if (ref) ref.addEventListener('click', netRefreshNow);
 }
 
 // ---------- ui ----------
@@ -200,7 +259,8 @@ function wireInbox(host) {
 function netStatusHTML() {
   if (NET.ready) {
     return `<p class="tp-tip net-on">🟢 online — trades are verified.
-      Your friend code: <b class="friend-code">${NET.friendCode || '…'}</b></p>`;
+      Your friend code: <b class="friend-code">${NET.friendCode || '…'}</b>
+      <button class="net-refresh" id="net-refresh" title="check for new capsules">↻</button></p>`;
   }
   return `<p class="tp-tip net-off">⚪ offline — trading still works by code,
     just without server checks.</p>`;

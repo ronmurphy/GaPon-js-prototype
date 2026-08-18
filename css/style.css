@@ -125,6 +125,26 @@ button.icon-chip.muted .msr { opacity: 0.5; }
 
 .tabs button .msr { font-size: 20px; }
 
+/* count of capsules waiting for you (see updateInboxBadge in net.js) */
+.tabs button { position: relative; }
+
+.tab-badge {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #241a47;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(255, 193, 7, 0.6);
+}
+
 main { max-width: 960px; margin: 0 auto; padding: 0 20px; }
 
 h2 { font-size: 1.25rem; margin-bottom: 12px; }
@@ -3071,6 +3091,23 @@ footer button {
 }
 
 .inbox .tp-tip { color: var(--gold); margin-top: 4px; }
+
+.net-refresh {
+  border: none;
+  background: var(--card2);
+  color: var(--ink-dim);
+  border-radius: 50%;
+  width: 21px;
+  height: 21px;
+  line-height: 1;
+  font-size: 0.85rem;
+  cursor: pointer;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.net-refresh:hover { background: var(--gold); color: #241a47; }
+.net-refresh:active { transform: rotate(180deg); transition: transform 0.25s; }
 .inbox-row { border-top: 1px solid color-mix(in srgb, var(--gold) 22%, transparent); }
 .inbox-row:first-of-type { border-top: none; }
 .inbox-row .row-name { flex: 1; font-weight: 600; }
