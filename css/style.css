@@ -3048,12 +3048,18 @@ footer button {
    hugs the die-cut shape instead of filling a rectangle. Sets without art get
    a rainbow glyph instead — same idea, different material. */
 
-.foil { position: relative; }
+.foil, .foil-glyph { position: relative; }
 
+/* The mask-image itself is set inline by foilStyle() — a url() inside a
+   custom property resolves against THIS stylesheet, which silently rewrote
+   'assets/…' to 'css/assets/…' and masked the sheen out of existence.
+   The 11% inset matches how both hosts size their art (78% of the pocket
+   card, 116 of the reveal ring's 150), so `contain` here lands exactly on
+   the same pixels as the image's own object-fit: contain. */
 .foil::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 11%;
   pointer-events: none;
   background: linear-gradient(115deg,
     #ff8a65 0%, #ffc107 18%, #66bb6a 36%, #42a5f5 54%, #ab47bc 72%, #ff8a65 100%);
@@ -3066,15 +3072,39 @@ footer button {
   mask-position: center;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
+  mix-blend-mode: overlay;   /* screen washed the art out; overlay keeps its
+                                luminance and only shifts the colour */
+  opacity: 0.75;
+  animation: foil-drift 6s linear infinite;
+}
+
+/* The second half of the illusion: a narrow specular band travelling across
+   the same silhouette. The rainbow alone reads as a colour tint — it's the
+   moving highlight that makes it read as a tilted foil surface. */
+.foil::before {
+  content: "";
+  position: absolute;
+  inset: 11%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(115deg,
+    transparent 36%, rgba(255, 255, 255, 0.9) 47%, transparent 58%);
+  background-size: 250% 250%;
+  -webkit-mask-image: var(--art);
+  mask-image: var(--art);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
   mix-blend-mode: screen;
-  opacity: 0.55;
+  opacity: 0.6;
   animation: foil-drift 6s linear infinite;
 }
 
 /* no artDir yet (Ball Game) — shimmer the glyph itself */
-.foil:not([style*="--art"])::after { display: none; }
-
-.foil:not([style*="--art"]) .msr {
+.foil-glyph .msr {
   background: linear-gradient(115deg,
     #ff8a65 0%, #ffc107 18%, #66bb6a 36%, #42a5f5 54%, #ab47bc 72%, #ff8a65 100%);
   background-size: 300% 300%;
@@ -3115,10 +3145,11 @@ footer button {
 }
 
 /* the reveal ring gets a brighter, faster sheen — this is the payoff moment */
-.r-ring.foil::after { opacity: 0.65; animation-duration: 3.5s; }
+.r-ring.foil::after, .r-ring.foil::before { animation-duration: 3.5s; }
+.r-ring.foil::after { opacity: 0.85; }
 
 @media (prefers-reduced-motion: reduce) {
-  .foil::after, .foil .msr, .chip.foil-chip { animation: none; }
+  .foil::after, .foil::before, .foil-glyph .msr, .chip.foil-chip { animation: none; }
 }
 
 /* ---------- wants ---------- */

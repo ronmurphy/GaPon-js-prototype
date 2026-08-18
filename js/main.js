@@ -86,8 +86,8 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
   const rar = RARITIES[item.rarity];
   capColor ??= CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
   // a foil takes over the ring's glow, and needs the art URL to mask its sheen
-  const art = opts.foil ? itemArtSrc(item) : null;
-  const ringStyle = `--glow:${opts.foil ? '#ffd54f' : rar.color}` + (art ? `;--art:url('${art}')` : '');
+  const ringStyle = `--glow:${opts.foil ? '#ffd54f' : rar.color}`
+    + (opts.foil && foilStyle(item) ? ';' + foilStyle(item) : '');
   const ov = $('#overlay');
   ov.hidden = false;
   ov.innerHTML = `
@@ -97,7 +97,7 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
       </div>
       <div class="ov-hint">tap the capsule!</div>
       <div class="result" hidden>
-        <div class="r-ring${opts.foil ? ' foil' : ''}" style="${ringStyle}">
+        <div class="r-ring${opts.foil ? ' ' + foilClass(item) : ''}" style="${ringStyle}">
           ${stickerFace(item, { cls: 'r-icon' })}
         </div>
         <div class="r-name">${opts.foil ? '✨ ' : ''}${item.name}</div>

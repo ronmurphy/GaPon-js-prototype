@@ -88,13 +88,26 @@ function drawFoilImage(ctx, img, x, y, w, h, t = 0.3) {
 // already has a positioned wrapper, so it just needs the `foil` class and the
 // art URL to mask against. Glyph-only sets get a rainbow glyph instead.
 //
-// Returns only the custom property — the caller composes its own class list,
+// Returns only the inline style — the caller composes its own class list,
 // because emitting a second class="" attribute here would be silently ignored
 // by the browser and the sheen would never appear.
+//
+// The URL is made ABSOLUTE here, deliberately. A url() inside a custom
+// property is resolved against the stylesheet that consumes the var(), so a
+// relative `assets/…` became `css/assets/…`, the mask 404'd, and the sheen
+// masked itself out of existence — silently, with no console error and no
+// broken-image cue. An absolute URL has nothing left to resolve. (It can't
+// be an inline mask-image either: inline styles apply to the element, not to
+// its ::after.) document.baseURI keeps this correct on GitHub Pages, where
+// the whole site is served from a subpath.
 function foilStyle(item) {
   const src = itemArtSrc(item);
-  return src ? `--art:url('${src}')` : '';
+  return src ? `--art:url('${new URL(src, document.baseURI).href}')` : '';
 }
+
+// Art-backed stickers mask a rainbow to their own silhouette; glyph-only sets
+// (no artDir yet) paint the rainbow into the glyph instead.
+function foilClass(item) { return itemArtSrc(item) ? 'foil' : 'foil-glyph'; }
 
 function stickerFace(item, { owned = true, cls = '' } = {}) {
   const src = owned ? itemArtSrc(item) : null;
