@@ -585,12 +585,12 @@ function clawResult(m, card, grabbed) {
   machineSims[m.id].removeCapsule(grabbed);
   const capColor = grabbed.color;
   if (gold) takeClawGold(m.id);
-  let item = null, isNew = false;
+  let item = null, isNew = false, foil = false;
   if (!gold) {
     const pity = stockLeft(m.id) === 0;
     item = pity ? rollPityItem(m) : rollItem(m);
-    isNew = ownedCount(item.id) === 0;
-    addItem(item.id);
+    isNew = !hasItem(item.id);
+    foil = addItem(item.id);
   }
   state.totalPulls++;
   saveGame();
@@ -599,7 +599,7 @@ function clawResult(m, card, grabbed) {
   showChuteCapsule(card, capColor, () => {
     focusState.stage = 'capsule';
     if (gold) showTicketReveal(m);
-    else showReveal(item, isNew, m, card, capColor, { fromChute: true, pity: stockLeft(m.id) === 0 });
+    else showReveal(item, isNew, m, card, capColor, { fromChute: true, foil, pity: stockLeft(m.id) === 0 });
   });
 }
 
@@ -723,8 +723,8 @@ function vend() {
   // the machine's last capsule is the pity capsule — see rollPityItem
   const pity = !ticket && stockLeft(m.id) === 0;
   const item = ticket ? null : (pity ? rollPityItem(m) : rollItem(m));
-  const isNew = item ? ownedCount(item.id) === 0 : false;
-  if (item) addItem(item.id);
+  const isNew = item ? !hasItem(item.id) : false;
+  const foil = item ? addItem(item.id) : false;
   state.totalPulls++;
   saveGame();
   updateFooter();
@@ -737,7 +737,7 @@ function vend() {
     showChuteCapsule(card, capColor, () => {
       focusState.stage = 'capsule';
       if (ticket) showTicketReveal(m);
-      else showReveal(item, isNew, m, card, capColor, { fromChute: true, pity });
+      else showReveal(item, isNew, m, card, capColor, { fromChute: true, foil, pity });
     });
   }, 950);
 }

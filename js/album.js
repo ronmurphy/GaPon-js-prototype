@@ -47,23 +47,29 @@ function renderAlbum() {
 }
 
 function pocketHTML(it) {
-  const n = ownedCount(it.id);
+  const plain = ownedCount(it.id), foils = foilCount(it.id);
+  const n = plain + foils;
   const rar = RARITIES[it.rarity];
   const wanted = !n && (state.wants || []).includes(it.id);
+  // The pocket shows the best copy you own — no upgrading, no choosing.
   return `
     <div class="pocket ${n ? 'owned' : 'locked'}${it.rarity === 'chase' ? ' holo' : ''}${wanted ? ' wanted' : ''}"
          style="--rar:${rar.color}" data-item="${it.id}"
-         title="${n ? it.name + ' — tap to give away' : (wanted ? 'on your wants list' : 'tap to add to your wants list')}">
+         title="${n ? it.name + (foils ? ` — ✨${foils} foil` : '') + ' — tap to give away'
+                    : (wanted ? 'on your wants list' : 'tap to add to your wants list')}">
       ${wanted ? '<span class="pkt-want">★</span>' : ''}
-      <div class="pkt-card">${stickerFace(it, { owned: n > 0 })}</div>
+      <div class="pkt-card${foils ? ' foil' : ''}" style="${foils ? foilStyle(it) : ''}">${stickerFace(it, { owned: n > 0 })}</div>
       <div class="pkt-name">${n ? it.name : '???'}</div>
       ${n > 1 ? `<span class="pkt-count">×${n}</span>` : ''}
+      ${foils ? `<span class="pkt-foil">✨${foils > 1 ? foils : ''}</span>` : ''}
     </div>`;
 }
 
 function renderBinderPage() {
   const col = COLLECTIONS[albumPage];
   const prog = collectionProgress(col);
+  // shown as a second line, never folded into `prog` — foils don't complete sets
+  const foilProg = col.items.filter(it => foilCount(it.id)).length;
   const complete = isSetComplete(col);
   const claimed = state.claimedSets.includes(col.id);
   const page = $('#binder-page');
@@ -73,6 +79,7 @@ function renderBinderPage() {
     <div class="page-head">
       <span class="page-title" style="color:${col.color}">${col.name}</span>
       <span class="page-prog">${prog}/${col.items.length}</span>
+      ${foilProg ? `<span class="page-foil" title="foils are bonus — they never count toward completing a set">✨ ${foilProg}/${col.items.length}</span>` : ''}
       ${complete && !claimed
         ? `<button class="btn small" id="page-claim">${coinIcon()} Claim ${ECON.setBonus}!</button>`
         : ''}

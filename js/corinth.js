@@ -289,7 +289,7 @@ function corinthFinish(st) {
   const rarity = corinthRarity(scored);
   const pool = st.col.items.filter(it => it.rarity === rarity);
   const item = pool[Math.floor(Math.random() * pool.length)];
-  const isNew = ownedCount(item.id) === 0;
+  const isNew = !hasItem(item.id);
   addItem(item.id);
   state.totalPulls++;
   saveGame();

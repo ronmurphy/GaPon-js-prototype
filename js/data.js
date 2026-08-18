@@ -1,10 +1,17 @@
 // GaPon — all game-design data lives here (ports to Godot as-is later).
 
+// `foil` is the chance this sticker arrives shiny, rolled after rarity.
+//
+// It scales with rarity rather than being flat, and that was decided by
+// simulation, not taste: a flat 3% left the average player with 0.4 foil
+// chases after THREE MONTHS — the feature's best moment would essentially
+// never fire — while 70% of the foils they did get were commons. Scaling
+// triples foil chases to roughly one a season and halves the clutter.
 const RARITIES = {
-  common:   { label: 'Common',   sell: 2,  color: '#b0bec5' },
-  uncommon: { label: 'Uncommon', sell: 6,  color: '#66bb6a' },
-  rare:     { label: 'Rare',     sell: 15, color: '#42a5f5' },
-  chase:    { label: 'Chase ★',  sell: 45, color: '#ffc107' },
+  common:   { label: 'Common',   sell: 2,  color: '#b0bec5', foil: 0.010 },
+  uncommon: { label: 'Uncommon', sell: 6,  color: '#66bb6a', foil: 0.020 },
+  rare:     { label: 'Rare',     sell: 15, color: '#42a5f5', foil: 0.050 },
+  chase:    { label: 'Chase ★',  sell: 45, color: '#ffc107', foil: 0.100 },
 };
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'chase'];
@@ -124,6 +131,7 @@ const ECON = {
   dailyStreakCap: 20,   // ...up to +20
   setBonus: 150,        // claim once per completed collection
   swapCost: 3,          // spare copies traded for one sticker of the same tier
+                        // (foil odds live on RARITIES, keyed by rarity)
   machineStock: 10,     // real capsules per machine per rotation — the dome
                         // empties as you pull, and a drained machine sells
                         // out until the next restock

@@ -65,7 +65,8 @@ function createTrade(item) {
 function cancelTrade(code) {
   const i = state.trades.findIndex(t => t.code === code);
   if (i < 0) return false;
-  addItem(state.trades[i].itemId);
+  // returns exactly what was sealed — never re-rolls (see addItem)
+  addItem(state.trades[i].itemId, !!state.trades[i].foil);
   state.redeemed.push(code);   // dead code now — can't be redeemed here later
   state.trades.splice(i, 1);
   saveGame();
@@ -86,8 +87,8 @@ function redeemTrade(raw, sender, serverSaid) {
   if (state.redeemed.includes(parsed.code)) {
     return { err: 'that capsule was already opened on this device' };
   }
-  const isNew = ownedCount(parsed.item.id) === 0;
-  addItem(parsed.item.id);
+  const isNew = !hasItem(parsed.item.id);
+  addItem(parsed.item.id, false);      // codes carry no foil flag yet — step 6
   state.redeemed.push(parsed.code);
   // redeeming your own outstanding code = quietly taking it back
   const mine = state.trades.findIndex(t => t.code === parsed.code);
@@ -286,7 +287,17 @@ function closeTradeOverlay() {
 // who holds it, so offline and pass-along trading are untouched.
 function openShareDialog(item, to) {
   const n = ownedCount(item.id);
-  if (!n) return;
+  const foils = foilCount(item.id);
+  if (!n) {
+    // A foil-only pocket looks owned, because it is — but codes can't carry
+    // the foil flag yet, so say so instead of doing nothing. Silence here
+    // reads as a broken button.
+    if (foils) {
+      sfx.buzz();
+      toast("✨ foils can't be traded yet — this one stays in your binder", 'warn');
+    }
+    return;
+  }
   const rar = RARITIES[item.rarity];
   const friends = (typeof NET !== 'undefined' && NET.ready) ? friendList() : [];
   const ov = $('#overlay');
@@ -298,8 +309,9 @@ function openShareDialog(item, to) {
       <div class="r-chips">
         <span class="chip" style="background:${rar.color}">${rar.label}</span>
         <span class="chip dupe">×${n} owned</span>
+        ${foils ? `<span class="chip foil-chip">✨${foils} foil, kept</span>` : ''}
       </div>
-      <p class="r-note">${n === 1
+      <p class="r-note">${n === 1 && !foils
         ? '⚠️ your only copy — giving it leaves a hole in your set!'
         : 'seal one copy into a trade capsule for a friend'}</p>
       <label class="tr-from">from

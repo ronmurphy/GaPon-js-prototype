@@ -7,7 +7,8 @@ let state = null;
 function defaultState() {
   return {
     coins: ECON.startCoins,
-    inv: {},            // itemId -> count
+    inv: {},            // itemId -> count of PLAIN copies
+    foils: {},          // itemId -> count of FOIL copies (never sold in bulk)
     claimedSets: [],    // collection ids whose completion bonus was claimed
     lastDaily: null,    // 'YYYY-MM-DD' of last daily bonus
     streak: 0,
@@ -146,6 +147,7 @@ function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     state = raw ? Object.assign(defaultState(), JSON.parse(raw)) : defaultState();
+    if (!state.foils || typeof state.foils !== 'object') state.foils = {};   // pre-foil saves
   } catch (e) {
     state = defaultState();
   }
@@ -362,7 +364,7 @@ function rollItem(machine) {
 // don't own from its collection (weighted by the tier's odds so commons
 // stay likelier). Falls back to a normal roll if the set is complete.
 function rollPityItem(machine) {
-  const unowned = machine.collection.items.filter(it => !ownedCount(it.id));
+  const unowned = machine.collection.items.filter(it => !hasItem(it.id));
   if (!unowned.length) return rollItem(machine);
   const odds = machine.tier.odds;
   const total = unowned.reduce((s, it) => s + odds[it.rarity], 0);
@@ -376,11 +378,31 @@ function rollPityItem(machine) {
 
 // ---- inventory helpers ----
 
+// Foils live in their own map rather than as a flag inside `inv`, which buys
+// three things for free: old saves stay valid, `ownedCount` keeps meaning
+// PLAIN copies (so the spares rule can never offer up someone's only foil),
+// and anything that walks `state.inv` — the Swap Shop, dupe counting, bulk
+// selling — cannot consume a foil by accident.
 function ownedCount(itemId) { return state.inv[itemId] || 0; }
+function foilCount(itemId) { return (state.foils && state.foils[itemId]) || 0; }
 
-function addItem(itemId) {
-  const wasWanted = !ownedCount(itemId) && (state.wants || []).includes(itemId);
-  state.inv[itemId] = ownedCount(itemId) + 1;
+// "Is this pocket filled at all?" — the question almost everything actually
+// wants to ask. Use this for set progress, pity rolls, NEW! badges and wants;
+// use ownedCount only where PLAIN copies are specifically what's meant.
+function hasItem(itemId) { return ownedCount(itemId) + foilCount(itemId) > 0; }
+
+// `foil` left undefined means "this is a fresh sticker — roll for it". Every
+// acquisition route already funnels through here, so a new machine gets foils
+// for free and an existing one can't forget. Pass an explicit true/false only
+// where foilness is already decided: a trade carries the sender's, and a
+// take-back must return exactly what was sealed (rolling again would let you
+// launder a plain copy into a foil by cancelling your own capsule).
+// Returns true if the sticker landed foil.
+function addItem(itemId, foil) {
+  if (foil === undefined) foil = Math.random() < RARITIES[ITEMS_BY_ID[itemId].rarity].foil;
+  const wasWanted = !hasItem(itemId) && (state.wants || []).includes(itemId);
+  if (foil) state.foils[itemId] = foilCount(itemId) + 1;
+  else state.inv[itemId] = ownedCount(itemId) + 1;
   // Getting something clears it off your wants list, freeing a slot. Doing it
   // here rather than at each machine means every route — pulls, claw, Corinth,
   // pusher, drum, swaps, trades — is covered without having to remember.
@@ -391,6 +413,7 @@ function addItem(itemId) {
       toast(`★ ${ITEMS_BY_ID[itemId].name} was on your wants list!`, 'good');
     }
   }
+  return foil;
 }
 
 // Wants can go stale if a sticker arrives by a route that predates the list,
@@ -398,7 +421,7 @@ function addItem(itemId) {
 function pruneWants() {
   if (!state.wants || !state.wants.length) return false;
   const before = state.wants.length;
-  state.wants = state.wants.filter(id => ITEMS_BY_ID[id] && !ownedCount(id));
+  state.wants = state.wants.filter(id => ITEMS_BY_ID[id] && !hasItem(id));
   if (state.wants.length === before) return false;
   saveGame();
   return true;
@@ -491,7 +514,7 @@ function dupeCount(rarity) {
 // Collections still missing at least one sticker of this rarity.
 function swapTargets(rarity) {
   return COLLECTIONS
-    .map(col => ({ col, missing: col.items.filter(it => it.rarity === rarity && !ownedCount(it.id)) }))
+    .map(col => ({ col, missing: col.items.filter(it => it.rarity === rarity && !hasItem(it.id)) }))
     .filter(x => x.missing.length);
 }
 
@@ -574,7 +597,7 @@ function claimFuku(rarity, colId) {
 }
 
 function collectionProgress(col) {
-  return col.items.filter(it => ownedCount(it.id) > 0).length;
+  return col.items.filter(it => hasItem(it.id)).length;
 }
 
 function isSetComplete(col) {

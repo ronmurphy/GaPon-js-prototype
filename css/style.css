@@ -3043,6 +3043,84 @@ footer button {
 .friend-chip button:hover { background: #ef5350; color: #fff; }
 .friend-add { display: flex; gap: 8px; }
 
+/* ---------- foils ---------- */
+/* The sheen is GaPon's own brand rainbow, masked by the sticker's alpha so it
+   hugs the die-cut shape instead of filling a rectangle. Sets without art get
+   a rainbow glyph instead — same idea, different material. */
+
+.foil { position: relative; }
+
+.foil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg,
+    #ff8a65 0%, #ffc107 18%, #66bb6a 36%, #42a5f5 54%, #ab47bc 72%, #ff8a65 100%);
+  background-size: 300% 300%;
+  -webkit-mask-image: var(--art);
+  mask-image: var(--art);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  animation: foil-drift 6s linear infinite;
+}
+
+/* no artDir yet (Ball Game) — shimmer the glyph itself */
+.foil:not([style*="--art"])::after { display: none; }
+
+.foil:not([style*="--art"]) .msr {
+  background: linear-gradient(115deg,
+    #ff8a65 0%, #ffc107 18%, #66bb6a 36%, #42a5f5 54%, #ab47bc 72%, #ff8a65 100%);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: foil-drift 6s linear infinite;
+}
+
+@keyframes foil-drift {
+  from { background-position: 0% 50%; }
+  to   { background-position: 300% 50%; }
+}
+
+.pkt-foil {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  z-index: 2;
+  font-size: 0.72rem;
+  color: #ffd54f;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.page-foil {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #ffd54f;
+  opacity: 0.9;
+}
+
+.chip.foil-chip {
+  background: linear-gradient(115deg, #ff8a65, #ffc107, #66bb6a, #42a5f5, #ab47bc);
+  background-size: 300% 300%;
+  color: #241a47;
+  font-weight: 700;
+  animation: foil-drift 3s linear infinite;
+}
+
+/* the reveal ring gets a brighter, faster sheen — this is the payoff moment */
+.r-ring.foil::after { opacity: 0.65; animation-duration: 3.5s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .foil::after, .foil .msr, .chip.foil-chip { animation: none; }
+}
+
 /* ---------- wants ---------- */
 
 .pocket.wanted { box-shadow: inset 0 0 0 2px #ffc107, 0 2px 8px rgba(255, 193, 7, 0.35); }

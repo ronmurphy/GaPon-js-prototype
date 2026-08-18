@@ -85,6 +85,9 @@ function showTab(name) {
 function showReveal(item, isNew, machine, card, capColor, opts = {}) {
   const rar = RARITIES[item.rarity];
   capColor ??= CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
+  // a foil takes over the ring's glow, and needs the art URL to mask its sheen
+  const art = opts.foil ? itemArtSrc(item) : null;
+  const ringStyle = `--glow:${opts.foil ? '#ffd54f' : rar.color}` + (art ? `;--art:url('${art}')` : '');
   const ov = $('#overlay');
   ov.hidden = false;
   ov.innerHTML = `
@@ -94,14 +97,15 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
       </div>
       <div class="ov-hint">tap the capsule!</div>
       <div class="result" hidden>
-        <div class="r-ring" style="--glow:${rar.color}">
+        <div class="r-ring${opts.foil ? ' foil' : ''}" style="${ringStyle}">
           ${stickerFace(item, { cls: 'r-icon' })}
         </div>
-        <div class="r-name">${item.name}</div>
+        <div class="r-name">${opts.foil ? '✨ ' : ''}${item.name}</div>
         <div class="r-chips">
           <span class="chip" style="background:${rar.color}">${rar.label}</span>
+          ${opts.foil ? '<span class="chip foil-chip">FOIL!</span>' : ''}
           ${isNew ? '<span class="chip new">NEW!</span>'
-                  : `<span class="chip dupe">×${ownedCount(item.id)} owned · sells for ${rar.sell}</span>`}
+                  : `<span class="chip dupe">×${ownedCount(item.id) + foilCount(item.id)} owned · sells for ${rar.sell}</span>`}
           ${opts.pity ? '<span class="chip lucky">✨ LUCKY LAST!</span>' : ''}
         </div>
         <div class="r-btns">

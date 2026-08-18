@@ -130,6 +130,13 @@ const PHOTO_BG = {
   },
 };
 
+// A placed sticker shimmers if you hold a foil of it — placements themselves
+// store no foil flag, so trading one away simply stops the shimmer.
+function drawSticker(ctx, img, it, x, y, size) {
+  if (foilCount(it.id)) drawFoilImage(ctx, img, x, y, size, size);
+  else ctx.drawImage(img, x, y, size, size);
+}
+
 // ---------- drawing ----------
 
 function drawWall() {
@@ -174,14 +181,14 @@ function drawWall() {
       ctx.shadowColor = 'rgba(0,0,0,0.4)';
       ctx.shadowBlur = 12;
       ctx.shadowOffsetY = 5;
-      ctx.drawImage(img, -r, -r, r * 2, r * 2);
+      drawSticker(ctx, img, it, -r, -r, r * 2);
       ctx.shadowColor = 'transparent';
     } else if (artReady) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(img, -r, -r, r * 2, r * 2);
+      drawSticker(ctx, img, it, -r, -r, r * 2);
       ctx.restore();
     } else {
       ctx.fillStyle = st.color || col.color;
@@ -393,7 +400,7 @@ function renderWall() {
 
   const owned = [];
   for (const col of COLLECTIONS) {
-    for (const it of col.items) if (ownedCount(it.id) > 0) owned.push(it);
+    for (const it of col.items) if (hasItem(it.id)) owned.push(it);
   }
   // warm the canvas image cache so placed stickers export as art, not glyphs
   for (const it of owned) { const s = itemArtSrc(it); if (s) artImage(s); }
