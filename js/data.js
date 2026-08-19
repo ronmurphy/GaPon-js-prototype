@@ -311,7 +311,7 @@ const COLLECTIONS = [
     ],
   },
   {
-    id: 'sports', name: 'Ball Game', color: '#ef5350',
+    id: 'sports', name: 'Ball Game', color: '#ef5350', artDir: 'BallGamePngs',
     items: [
       { id: 'sb_soccer',  name: 'Goooal!',        icon: 'sports_soccer',       rarity: 'common' },
       { id: 'sb_hoop',    name: 'Swish',          icon: 'sports_basketball',   rarity: 'common' },
