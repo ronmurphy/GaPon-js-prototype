@@ -53,6 +53,7 @@ async function netInit() {
     await netEnsurePlayer();
     NET.ready = true;
     await netSyncWants();                      // push any wants set while offline
+    await netPruneClaimedTrades();             // forget capsules already opened
     await netCheckInbox({ announce: true });    // "a capsule is waiting for you"
     netCheckMatches({ announce: true });        // "you're holding 3 they need"
     netRefreshUI();
@@ -141,9 +142,46 @@ async function netClaimTrade(code) {
   } catch (e) { return null; }
 }
 
+// Retract a capsule — but ONLY if nobody has opened it.
+//
+// This is the same atomic trick as claiming: a conditional DELETE the database
+// resolves in one statement, so a take-back and a redemption racing each other
+// cannot both win. Without it, retracting an already-opened capsule duplicated
+// the sticker — the giver got it back while the receiver kept theirs. (Found
+// by David and Chris independently, within a day of each other.)
+//
+// Returns 'ok' (retracted), 'taken' (someone opened it — hands off), or
+// 'unknown' (the server never saw this code, so fall back to the honour system
+// exactly as an offline capsule always has).
 async function netCancelTrade(code) {
-  if (!NET.ready) return;
-  try { await NET.client.from('trades').delete().eq('code', code); } catch (e) {}
+  if (!NET.ready) return 'unknown';
+  try {
+    const { data } = await NET.client
+      .from('trades').delete().eq('code', code).is('claimed_by', null).select('code');
+    if (data && data.length) return 'ok';
+    const { data: found } = await NET.client
+      .from('trades').select('claimed_by').eq('code', code).maybeSingle();
+    if (found && found.claimed_by) return 'taken';
+    return 'unknown';
+  } catch (e) { return 'unknown'; }
+}
+
+// At boot, drop outstanding capsules that have since been opened, so the
+// Trading Post lists only what is genuinely still yours to retract.
+async function netPruneClaimedTrades() {
+  if (!NET.ready || !state.trades || !state.trades.length) return 0;
+  try {
+    const { data } = await NET.client
+      .from('trades').select('code')
+      .eq('from_id', NET.playerId).not('claimed_by', 'is', null);
+    if (!data || !data.length) return 0;
+    const opened = new Set(data.map(r => r.code));
+    const before = state.trades.length;
+    state.trades = state.trades.filter(t => !opened.has(t.code));
+    const gone = before - state.trades.length;
+    if (gone) saveGame();
+    return gone;
+  } catch (e) { return 0; }
 }
 
 // ---------- inbox ----------

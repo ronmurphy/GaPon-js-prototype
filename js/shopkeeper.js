@@ -238,7 +238,7 @@ function keeperTutorial() {
 // asking for more art. Falls back to the emoji if the file won't load.
 function leafMarkHTML(cls = '') {
   return SHOPKEEPER.leaf
-    ? `<i class="leaf-mark ${cls}" style="--leaf:url('${SHOPKEEPER.leaf}')" role="img"
+    ? `<i class="leaf-mark ${cls}" style="--leaf:${cssUrl(SHOPKEEPER.leaf)}" role="img"
           aria-label="stamp"></i>`
     : `<span class="${cls}">${SHOPKEEPER.emoji}</span>`;
 }

@@ -11,6 +11,18 @@ function setArtEnabled(on) {
   try { localStorage.setItem(ART_KEY, on ? '1' : '0'); } catch (e) {}
 }
 
+// ALWAYS build CSS url() values with this.
+//
+// A url() inside a custom property is resolved against the STYLESHEET that
+// consumes the var(), not the element that declared it — so a relative
+// 'assets/…' silently becomes 'css/assets/…', the file 404s, and anything
+// masked by it vanishes without a console error. That bug has now shipped
+// twice (the foil sheen, then Poko's leaf stamp). Absolute URLs have nothing
+// left to resolve. document.baseURI keeps it right on GitHub Pages' subpath.
+function cssUrl(path) {
+  return `url('${new URL(path, document.baseURI).href}')`;
+}
+
 // URL of an item's PNG, or null to fall back to its glyph.
 function itemArtSrc(item) {
   if (!ART.enabled || !item) return null;
@@ -92,17 +104,11 @@ function drawFoilImage(ctx, img, x, y, w, h, t = 0.3) {
 // because emitting a second class="" attribute here would be silently ignored
 // by the browser and the sheen would never appear.
 //
-// The URL is made ABSOLUTE here, deliberately. A url() inside a custom
-// property is resolved against the stylesheet that consumes the var(), so a
-// relative `assets/…` became `css/assets/…`, the mask 404'd, and the sheen
-// masked itself out of existence — silently, with no console error and no
-// broken-image cue. An absolute URL has nothing left to resolve. (It can't
-// be an inline mask-image either: inline styles apply to the element, not to
-// its ::after.) document.baseURI keeps this correct on GitHub Pages, where
-// the whole site is served from a subpath.
+// (It can't be an inline mask-image either: inline styles apply to the
+// element, not to its ::after — hence the custom property. See cssUrl.)
 function foilStyle(item) {
   const src = itemArtSrc(item);
-  return src ? `--art:url('${new URL(src, document.baseURI).href}')` : '';
+  return src ? `--art:${cssUrl(src)}` : '';
 }
 
 // Art-backed stickers mask a rainbow to their own silhouette; glyph-only sets

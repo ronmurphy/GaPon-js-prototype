@@ -496,11 +496,26 @@ function wireTradePost(host) {
     if (!t) return;
     downloadTradeCard(await renderTradeCard(ITEMS_BY_ID[t.itemId], t.code, state.playerName, !!t.foil), t.code);
   }));
-  host.querySelectorAll('[data-tpcancel]').forEach(b => b.addEventListener('click', () => {
+  // ASK FIRST, then restore. Retracting a capsule someone has already opened
+  // used to hand the sticker back while they kept theirs — a clean duplicate.
+  // The server decides, and only an unclaimed capsule comes home.
+  host.querySelectorAll('[data-tpcancel]').forEach(b => b.addEventListener('click', async () => {
     const t = state.trades.find(x => x.code === b.dataset.tpcancel);
     if (!t) return;
+    b.disabled = true;                      // no double-tapping the race open
+    const said = await netCancelTrade(t.code);
+    if (said === 'taken') {
+      // It's theirs now. Drop the dead row so the button stops tempting them.
+      state.trades = state.trades.filter(x => x.code !== t.code);
+      saveGame();
+      sfx.buzz();
+      toast(`Too late — that capsule was already opened!`, 'warn');
+      renderMarket();
+      return;
+    }
+    // 'ok' (we won the race) or 'unknown' (offline capsule the server never
+    // saw — honour system, exactly as before there was a server at all).
     cancelTrade(t.code);
-    netCancelTrade(t.code);          // release it server-side too
     sfx.thunk();
     toast(`${ITEMS_BY_ID[t.itemId].name} is back in your binder`, 'good');
     renderMarket();
