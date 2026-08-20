@@ -2806,6 +2806,7 @@ footer button {
   #toasts { width: 100vw; }
 
   .r-ring { width: 120px; height: 120px; }
+  .r-ring.foil::after, .r-ring.foil::before { inset: 10px; }
   .r-icon { font-size: 68px; }
   .r-ring .sticker-img { width: 92px; height: 92px; }
   .r-name { font-size: 1.3rem; }
@@ -3145,12 +3146,54 @@ footer button {
 }
 
 /* the reveal ring gets a brighter, faster sheen — this is the payoff moment */
-.r-ring.foil::after, .r-ring.foil::before { animation-duration: 3.5s; }
+/* `inset: %` resolves against the PADDING box, and .r-ring has a 4px border,
+   so the percentage that lands exactly on the art in a borderless pocket
+   falls ~5px short here. Pinned in px against the ring's own art size. */
+.r-ring.foil::after, .r-ring.foil::before { inset: 13px; animation-duration: 3.5s; }
 .r-ring.foil::after { opacity: 0.85; }
 
 @media (prefers-reduced-motion: reduce) {
   .foil::after, .foil::before, .foil-glyph .msr, .chip.foil-chip { animation: none; }
 }
+
+/* which copy to send — plain or foil */
+.tr-pick {
+  display: flex;
+  gap: 6px;
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.tr-opt {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-dim);
+  background: none;
+  border: none;
+  border-radius: 9px;
+  padding: 7px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tr-opt:hover { color: var(--ink); }
+
+.tr-opt.active {
+  color: #241a47;
+  background: var(--gold);
+}
+
+.tr-opt[data-foil="1"].active {
+  color: #241a47;
+  background: linear-gradient(115deg, #ff8a65, #ffc107, #66bb6a, #42a5f5, #ab47bc);
+  background-size: 300% 300%;
+  animation: foil-drift 3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) { .tr-opt[data-foil="1"].active { animation: none; } }
 
 /* ---------- wants ---------- */
 

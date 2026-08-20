@@ -30,34 +30,41 @@ function tradeChk(body) {
     .padStart(2, '0').slice(0, 2);
 }
 
-function makeTradeCode(itemId) {
+// A foil capsule is a GF- code instead of GP-. The flag is folded into the
+// CHECKSUM as well as the prefix, so flipping that one character invalidates
+// the code rather than upgrading a plain sticker into a foil. Plain codes
+// hash exactly as before, so every GP- code ever issued still resolves.
+function makeTradeCode(itemId, foil = false) {
   const idx = TRADE_ITEM_IDS.indexOf(itemId).toString(36).toUpperCase();
   let nonce = '';
   for (let i = 0; i < 4; i++) nonce += Math.floor(Math.random() * 36).toString(36).toUpperCase();
   const body = idx + '-' + nonce;
-  return 'GP-' + body + tradeChk(body);
+  return (foil ? 'GF-' : 'GP-') + body + tradeChk((foil ? 'F:' : '') + body);
 }
 
 function parseTradeCode(raw) {
   const code = String(raw || '').trim().toUpperCase();
-  const m = code.match(/^GP-([0-9A-Z]{1,2})-([0-9A-Z]{4})([0-9A-Z]{2})$/);
+  const m = code.match(/^G([PF])-([0-9A-Z]{1,2})-([0-9A-Z]{4})([0-9A-Z]{2})$/);
   if (!m) return null;
-  const [, idx, nonce, chk] = m;
-  if (tradeChk(idx + '-' + nonce) !== chk) return null;
+  const [, kind, idx, nonce, chk] = m;
+  const foil = kind === 'F';
+  if (tradeChk((foil ? 'F:' : '') + idx + '-' + nonce) !== chk) return null;
   const itemId = TRADE_ITEM_IDS[parseInt(idx, 36)];
   const item = itemId && ITEMS_BY_ID[itemId];
   if (!item) return null;      // ledger slot for a sticker that's left the game
-  return { code, item };
+  return { code, item, foil };
 }
 
 // ---------- trade state ----------
 
-function createTrade(item) {
-  if (!ownedCount(item.id)) return null;
-  state.inv[item.id]--;
-  if (!state.inv[item.id]) delete state.inv[item.id];
-  const code = makeTradeCode(item.id);
-  state.trades.push({ code, itemId: item.id, at: todayStr() });
+function createTrade(item, foil = false) {
+  const pile = foil ? state.foils : state.inv;
+  if (!pile[item.id]) return null;
+  pile[item.id]--;
+  if (!pile[item.id]) delete pile[item.id];
+  const code = makeTradeCode(item.id, foil);
+  // `foil` is stored so a take-back returns exactly what was sealed
+  state.trades.push({ code, itemId: item.id, at: todayStr(), foil });
   saveGame();
   return code;
 }
@@ -88,7 +95,7 @@ function redeemTrade(raw, sender, serverSaid) {
     return { err: 'that capsule was already opened on this device' };
   }
   const isNew = !hasItem(parsed.item.id);
-  addItem(parsed.item.id, false);      // codes carry no foil flag yet — step 6
+  addItem(parsed.item.id, parsed.foil);   // foilness rides in the code itself
   state.redeemed.push(parsed.code);
   // redeeming your own outstanding code = quietly taking it back
   const mine = state.trades.findIndex(t => t.code === parsed.code);
@@ -162,7 +169,7 @@ function tradeLoadImg(src) {
   });
 }
 
-async function renderTradeCard(item, code, sender) {
+async function renderTradeCard(item, code, sender, foil = false) {
   const W = 480, H = 640;
   const cv = document.createElement('canvas');
   cv.width = W;
@@ -228,7 +235,9 @@ async function renderTradeCard(item, code, sender) {
     try {
       const img = await tradeLoadImg(src);
       const s = R * 1.05;
-      ctx.drawImage(img, cx - s / 2, cy - s / 2, s, s);
+      // baked at a fixed angle — a saved PNG wants one flattering sheen
+      if (foil) drawFoilImage(ctx, img, cx - s / 2, cy - s / 2, s, s);
+      else ctx.drawImage(img, cx - s / 2, cy - s / 2, s, s);
       drewArt = true;
     } catch (e) {}   // art missing/blocked — glyph below
   }
@@ -246,7 +255,7 @@ async function renderTradeCard(item, code, sender) {
   ctx.fillText(item.name, W / 2, 435);
   ctx.fillStyle = rar.color;
   ctx.font = '600 24px Fredoka, sans-serif';
-  ctx.fillText(rar.label + ' · ' + col.name, W / 2, 470);
+  ctx.fillText((foil ? '✨ FOIL ' : '') + rar.label + ' · ' + col.name, W / 2, 470);
   ctx.fillStyle = '#b3a8dc';
   ctx.font = '600 22px Fredoka, sans-serif';
   ctx.fillText(sender ? 'from ' + sender : 'a gift for you!', W / 2, 505);
@@ -288,16 +297,10 @@ function closeTradeOverlay() {
 function openShareDialog(item, to) {
   const n = ownedCount(item.id);
   const foils = foilCount(item.id);
-  if (!n) {
-    // A foil-only pocket looks owned, because it is — but codes can't carry
-    // the foil flag yet, so say so instead of doing nothing. Silence here
-    // reads as a broken button.
-    if (foils) {
-      sfx.buzz();
-      toast("✨ foils can't be traded yet — this one stays in your binder", 'warn');
-    }
-    return;
-  }
+  if (!n && !foils) return;
+  // Plain unless you have nothing but foils. Sending a foil should always be
+  // a deliberate act, never the path of least resistance.
+  let sendFoil = !n;
   const rar = RARITIES[item.rarity];
   const friends = (typeof NET !== 'undefined' && NET.ready) ? friendList() : [];
   const ov = $('#overlay');
@@ -308,12 +311,14 @@ function openShareDialog(item, to) {
       <div class="r-name">${item.name}</div>
       <div class="r-chips">
         <span class="chip" style="background:${rar.color}">${rar.label}</span>
-        <span class="chip dupe">×${n} owned</span>
-        ${foils ? `<span class="chip foil-chip">✨${foils} foil, kept</span>` : ''}
+        <span class="chip dupe">×${n + foils} owned</span>
       </div>
-      <p class="r-note">${n === 1 && !foils
-        ? '⚠️ your only copy — giving it leaves a hole in your set!'
-        : 'seal one copy into a trade capsule for a friend'}</p>
+      ${n && foils ? `
+        <div class="tr-pick" role="group" aria-label="which copy to send">
+          <button type="button" class="tr-opt active" data-foil="0">plain ×${n}</button>
+          <button type="button" class="tr-opt" data-foil="1">✨ foil ×${foils}</button>
+        </div>` : ''}
+      <p class="r-note" id="tr-note"></p>
       <label class="tr-from">from
         <input id="tr-name" maxlength="14" placeholder="your name" value="${(state.playerName || '').replace(/["<>&]/g, '')}">
       </label>
@@ -329,26 +334,52 @@ function openShareDialog(item, to) {
         <button class="btn" id="tr-make">🎁 Make trade capsule</button>
       </div>
     </div>`;
+  // One note element, rewritten by the picker, so the warning always matches
+  // what's actually about to be sent.
+  const noteEl = $('#tr-note');
+  const ring = ov.querySelector('.r-ring');
+  const syncPick = () => {
+    const left = (sendFoil ? foils : n) - 1;
+    noteEl.innerHTML = sendFoil
+      ? (foils === 1
+          ? '✨ <b>this is your only foil of it</b> — sending it means finding another.'
+          : `sealing a foil copy · ✨${left} would stay with you`)
+      : (n === 1 && !foils
+          ? '⚠️ your only copy — giving it leaves a hole in your set!'
+          : 'seal one copy into a trade capsule for a friend');
+    // the ring previews what's leaving, so a foil is visibly a foil
+    ring.className = 'r-ring' + (sendFoil ? ' ' + foilClass(item) : '');
+    ring.setAttribute('style',
+      `--glow:${sendFoil ? '#ffd54f' : rar.color}` + (sendFoil && foilStyle(item) ? ';' + foilStyle(item) : ''));
+    ov.querySelectorAll('.tr-opt').forEach(b =>
+      b.classList.toggle('active', (b.dataset.foil === '1') === sendFoil));
+  };
+  syncPick();
+  ov.querySelectorAll('.tr-opt').forEach(b => b.addEventListener('click', () => {
+    sendFoil = b.dataset.foil === '1';
+    sfx.tick();
+    syncPick();
+  }));
   $('#tr-cancel').addEventListener('click', closeTradeOverlay);
   $('#tr-make').addEventListener('click', async () => {
     state.playerName = $('#tr-name').value.trim().slice(0, 14);
     const pick = $('#tr-to');
     const dest = pick ? friends.find(f => f.code === pick.value) : null;
-    const code = createTrade(item);
+    const code = createTrade(item, sendFoil);
     if (!code) return;
     // registers it; harmless if offline, and the capsule works either way
-    const posted = await netPostTrade(code, item.id, dest && dest.id);
+    const posted = await netPostTrade(code, item.id, dest && dest.id, sendFoil);
     sfx.pop();
     renderBinderPage();          // the hole appears behind the dialog
     updateBinderNav();
-    await showTradeResult(item, code, posted && dest ? dest : null);
+    await showTradeResult(item, code, posted && dest ? dest : null, sendFoil);
   });
 }
 
 // `dest` is set only when the capsule actually reached the server addressed to
 // someone — if the post failed we must not promise a delivery that isn't there.
-async function showTradeResult(item, code, dest) {
-  const cv = await renderTradeCard(item, code, state.playerName);
+async function showTradeResult(item, code, dest, foil = false) {
+  const cv = await renderTradeCard(item, code, state.playerName, foil);
   const ov = $('#overlay');
   ov.innerHTML = `
     <div class="ov-stage share-stage">
@@ -381,7 +412,7 @@ function tradePostHTML() {
     const it = ITEMS_BY_ID[t.itemId];
     return `<div class="tp-trade">
       ${stickerFace(it, { cls: 'tp-ic' })}
-      <span class="row-name">${it.name}<small>${t.code}</small></span>
+      <span class="row-name">${t.foil ? '✨ ' : ''}${it.name}<small>${t.code}</small></span>
       <button class="btn small ghost" data-tpcopy="${t.code}">copy</button>
       <button class="btn small ghost" data-tppng="${t.code}">PNG</button>
       <button class="btn small danger" data-tpcancel="${t.code}">take back</button>
@@ -463,7 +494,7 @@ function wireTradePost(host) {
   host.querySelectorAll('[data-tppng]').forEach(b => b.addEventListener('click', async () => {
     const t = state.trades.find(x => x.code === b.dataset.tppng);
     if (!t) return;
-    downloadTradeCard(await renderTradeCard(ITEMS_BY_ID[t.itemId], t.code, state.playerName), t.code);
+    downloadTradeCard(await renderTradeCard(ITEMS_BY_ID[t.itemId], t.code, state.playerName, !!t.foil), t.code);
   }));
   host.querySelectorAll('[data-tpcancel]').forEach(b => b.addEventListener('click', () => {
     const t = state.trades.find(x => x.code === b.dataset.tpcancel);

@@ -101,17 +101,19 @@ function escHTML(s) {
 // `toId` addresses it to a friend so it appears in their Trading Post — see
 // sql/addressed-capsules.sql. Addressing is delivery, not permission: the
 // code still works for whoever holds it.
-async function netPostTrade(code, itemId, toId) {
+async function netPostTrade(code, itemId, toId, foil = false) {
   if (!NET.ready) return false;
+  // The bare row is what every version of the schema has had. Anything added
+  // since goes in `extra`, so an unmigrated database degrades to a plain but
+  // still server-verified capsule rather than to no registration at all.
   const row = {
     code, item_id: itemId, from_id: NET.playerId,
     from_name: (state.playerName || 'a friend').slice(0, 14),
   };
+  const extra = { to_id: toId || null, foil };
   try {
-    const { error } = await NET.client.from('trades').insert({ ...row, to_id: toId || null });
+    const { error } = await NET.client.from('trades').insert({ ...row, ...extra });
     if (!error) return true;
-    // Database not migrated yet? Register it unaddressed rather than not at
-    // all — a verified capsule you have to paste beats an unverified one.
     const { error: e2 } = await NET.client.from('trades').insert(row);
     return !e2;
   } catch (e) { return false; }
@@ -161,12 +163,14 @@ async function netCheckInbox({ announce = false } = {}) {
   netLastCheck = Date.now();      // stamped here so every route counts as a check
   try {
     const { data, error } = await NET.client
-      .from('trades').select('code, item_id, from_name')
+      .from('trades').select('code, item_id, from_name, foil')
       .eq('to_id', NET.playerId).is('claimed_by', null);
     if (error) { netInbox = []; return 0; }   // column missing = not migrated
     netInbox = (data || [])
       .filter(r => ITEMS_BY_ID[r.item_id] && !state.redeemed.includes(r.code))
-      .map(r => ({ code: r.code, item: ITEMS_BY_ID[r.item_id], from: r.from_name }));
+      // `foil` here only decorates the row — what you actually receive is
+      // decided by parsing the code at redeem time, never by this flag.
+      .map(r => ({ code: r.code, item: ITEMS_BY_ID[r.item_id], from: r.from_name, foil: !!r.foil }));
   } catch (e) { netInbox = []; return 0; }
   // Only ever announce capsules Poko hasn't mentioned yet — coming back to a
   // tab that's been open for days must not re-nag about the same gift.
@@ -175,7 +179,7 @@ async function netCheckInbox({ announce = false } = {}) {
     if (fresh.length) {
       const who = [...new Set(fresh.map(c => c.from).filter(Boolean))];
       keeperSay(fresh.length === 1
-        ? `A capsule from ${who[0] || 'a friend'} is waiting for you!`
+        ? `A${fresh[0].foil ? ' ✨foil' : ''} capsule from ${who[0] || 'a friend'} is waiting for you!`
         : `${fresh.length} capsules are waiting for you!`);
     }
   }
@@ -241,7 +245,7 @@ function inboxHTML() {
       ${netInbox.map(c => `
         <div class="tp-trade inbox-row">
           ${stickerFace(c.item, { cls: 'tp-ic' })}
-          <span class="row-name">${escHTML(c.item.name)}<small>from ${escHTML(c.from || 'a friend')}</small></span>
+          <span class="row-name">${c.foil ? '✨ ' : ''}${escHTML(c.item.name)}<small>from ${escHTML(c.from || 'a friend')}</small></span>
           <button class="btn small" data-inbox="${escHTML(c.code)}">Open</button>
         </div>`).join('')}
     </div>`;
