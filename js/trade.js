@@ -104,7 +104,7 @@ function redeemTrade(raw, sender, serverSaid) {
     netCancelTrade(parsed.code);     // release the server copy too
   }
   saveGame();
-  return { item: parsed.item, isNew, sender };
+  return { item: parsed.item, isNew, sender, foil: parsed.foil };
 }
 
 // ---------- steganography (LSBs of RGB; survives PNG, not chat re-compress) ----------
@@ -447,7 +447,7 @@ async function doRedeem(raw, sender) {
     toast(res.err, 'warn');
     return;
   }
-  showGiftReveal(res.item, res.isNew, res.sender);
+  showGiftReveal(res.item, res.isNew, res.sender, { foil: res.foil });
   netCheckInbox();     // it's opened — drop it from the waiting list
 }
 
@@ -508,9 +508,14 @@ function wireTradePost(host) {
 }
 
 // A friend's capsule opening in your hands.
+// `opts.foil` must be passed by EVERY caller that awards a sticker — this is
+// the second reveal path (showReveal in main.js is the shop's), and a foil
+// arriving here silently plain is exactly the bug that shipped once already.
 function showGiftReveal(item, isNew, sender, opts = {}) {
   const rar = RARITIES[item.rarity];
   const col = COLLECTIONS.find(c => c.id === item.collection);
+  const ringStyle = `--glow:${opts.foil ? '#ffd54f' : rar.color}`
+    + (opts.foil && foilStyle(item) ? ';' + foilStyle(item) : '');
   const ov = $('#overlay');
   ov.hidden = false;
   ov.innerHTML = `
@@ -520,12 +525,13 @@ function showGiftReveal(item, isNew, sender, opts = {}) {
       </div>
       <div class="ov-hint">tap the capsule!</div>
       <div class="result" hidden>
-        <div class="r-ring" style="--glow:${rar.color}">${stickerFace(item, { cls: 'r-icon' })}</div>
-        <div class="r-name">${item.name}</div>
+        <div class="r-ring${opts.foil ? ' ' + foilClass(item) : ''}" style="${ringStyle}">${stickerFace(item, { cls: 'r-icon' })}</div>
+        <div class="r-name">${opts.foil ? '✨ ' : ''}${item.name}</div>
         <div class="r-chips">
           <span class="chip" style="background:${rar.color}">${rar.label}</span>
+          ${opts.foil ? '<span class="chip foil-chip">FOIL!</span>' : ''}
           ${isNew ? '<span class="chip new">NEW!</span>'
-                  : `<span class="chip dupe">×${ownedCount(item.id)} owned</span>`}
+                  : `<span class="chip dupe">×${ownedCount(item.id) + foilCount(item.id)} owned</span>`}
           <span class="chip lucky">${opts.chip || `🎁 from ${sender || 'a friend'}`}</span>
         </div>
         <div class="r-btns"><button class="btn" id="gift-close">Sweet!</button></div>
@@ -556,9 +562,14 @@ function showGiftReveal(item, isNew, sender, opts = {}) {
     setTimeout(() => {
       cap.remove();
       result.hidden = false;
-      if (item.rarity === 'chase') { sfx.fanfare(); confetti(30); }
+      if (item.rarity === 'chase' || opts.foil) {
+        sfx.fanfare();
+        confetti(30);
+        keeperReact(opts.foil ? 'foil' : 'chase');
+      }
       else if (isNew) sfx.chime();
-      fxSparkleBurst(ov.querySelector('.r-ring'), { count: 14, color: rar.color, spread: 100 });
+      fxSparkleBurst(ov.querySelector('.r-ring'),
+        { count: opts.foil ? 24 : 14, color: opts.foil ? '#ffd54f' : rar.color, spread: opts.foil ? 130 : 100 });
       const closeBtn = ov.querySelector('#gift-close');
       if (!closeBtn) return;      // another reveal replaced us mid-animation
       closeBtn.addEventListener('click', () => {

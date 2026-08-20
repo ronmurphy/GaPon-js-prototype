@@ -290,7 +290,7 @@ function corinthFinish(st) {
   const pool = st.col.items.filter(it => it.rarity === rarity);
   const item = pool[Math.floor(Math.random() * pool.length)];
   const isNew = !hasItem(item.id);
-  addItem(item.id);
+  const foil = addItem(item.id);
   state.totalPulls++;
   saveGame();
   updateFooter();
@@ -301,7 +301,7 @@ function corinthFinish(st) {
     `${collectionProgress(st.col)}/${st.col.items.length}`;
   showGiftReveal(item, isNew, null, {
     chip: bonus ? `🎱 ${st.total} +${bonus} ${f.kanji} = ${scored}` : `🎱 scored ${st.total}`,
-    pull: true,
+    pull: true, foil,
   });
   setTimeout(() => { st.balls = []; drawCorinth(st); }, 400);
 }

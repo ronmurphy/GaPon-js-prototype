@@ -533,9 +533,9 @@ function swapDupes(rarity, colId) {
     if (!need) break;
   }
   const got = target.missing[Math.floor(Math.random() * target.missing.length)];
-  addItem(got.id);
+  const foil = addItem(got.id);
   saveGame();
-  return { got, spent };
+  return { got, spent, foil };
 }
 
 // ---- medal pusher shelves ----
@@ -591,9 +591,9 @@ function claimFuku(rarity, colId) {
   const target = swapTargets(rarity).find(x => x.col.id === colId);
   if (!target) return null;
   const got = target.missing[Math.floor(Math.random() * target.missing.length)];
-  addItem(got.id);
+  const foil = addItem(got.id);
   saveGame();
-  return got;
+  return { item: got, foil };
 }
 
 function collectionProgress(col) {

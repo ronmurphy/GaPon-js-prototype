@@ -102,7 +102,7 @@ function revealOmikuji() {
   $('#omi-done').addEventListener('click', () => {
     ov.hidden = true;
     ov.innerHTML = '';
-    if (good) keeperSay(`${f.kanji}! Go spend that on something good.`);
-    else keeperSay('Bad luck left behind — tomorrow is a new draw.');
+    if (good) keeperSay(`${f.kanji}! Go spend that on something good.`, 4200, 'greet');
+    else keeperSay('Bad luck left behind — tomorrow is a new draw.', 4200, 'soldOut');
   });
 }

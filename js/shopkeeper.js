@@ -6,8 +6,40 @@
 const SHOPKEEPER = {
   name: 'Poko',        // tanuki — the lucky shop statue you see outside real
   emoji: '🦝',         // Japanese stores. "pon poko" = their belly-drum sound
-  art: null,           // e.g. 'assets/keeper/poko.png' — replaces the emoji
+  dir: 'assets/poko',  // set to null to fall back to the emoji everywhere
+  // The maple leaf is Poko's mark. In folklore a tanuki puts a leaf on his
+  // head to work its transformation magic, which is why it recurs in the art
+  // — so it doubles as the shop's stamp. Rendered as a flat silhouette by
+  // masking a solid fill with this file's alpha (see .leaf-mark).
+  leaf: 'assets/poko/tanuki_maple_leaf.png',
+  pose: 'welcome',     // current pose; keeperSay swaps it per mood
 };
+
+// Which drawing goes with which moment. Every mood Poko already reacts to is
+// covered; anything unlisted falls back to `welcome`, so adding a line never
+// requires adding art.
+const KEEPER_POSES = {
+  welcome:    'tanuki_welcome',
+  greet:      'tanuki_welcome',
+  greetFirst: 'tanuki_welcome',
+  greetStreak:'tanuki_welcome',
+  chase:      'tanuki_gacha_capsule',
+  ticket:     'tanuki_gacha_capsule',
+  setDone:    'tanuki_gacha_capsule',
+  foil:       'tanuki_dazzled',
+  stamp:      'tanuki_stamp_card',
+  cardFull:   'tanuki_stamp_card',
+  soldOut:    'tanuki_apologetic',
+  broke:      'tanuki_apologetic',
+  gift:       'tanuki_parcel',
+  wants:      'tanuki_thoughtful',
+  closed:     'tanuki_dozing',
+};
+
+function keeperPoseSrc(mood) {
+  if (!SHOPKEEPER.dir) return null;
+  return `${SHOPKEEPER.dir}/${KEEPER_POSES[mood] || KEEPER_POSES.welcome}.png`;
+}
 
 const KEEPER_LINES = {
   greetFirst: [`Oh! A new face! Welcome to GaPon — I'm ${SHOPKEEPER.name}.`],
@@ -39,6 +71,12 @@ const KEEPER_LINES = {
   ],
   stamp: ["That's a stamp on your card!", 'Stamp! Keep going.'],
   cardFull: ["Your card's full! Come see me for your reward."],
+  foil: [
+    'A FOIL one! Oh, hold it to the light — go on!',
+    "Shiny! I've only seen a handful of those.",
+    "A foil! Careful with that one, they don't come round often.",
+  ],
+  gift: ['Something came for you! A friend sent it over.'],
   broke: ['Coins running low? Sell your doubles at the market.'],
 };
 
@@ -47,10 +85,36 @@ function keeperPick(key) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function keeperFaceHTML(cls = '') {
-  return SHOPKEEPER.art
-    ? `<img class="keeper-img ${cls}" src="${SHOPKEEPER.art}" alt="${SHOPKEEPER.name}">`
+// A missing or blocked PNG swaps itself for the emoji, so the shop is never
+// left with a broken-image icon where the shopkeeper should be.
+function keeperFaceHTML(cls = '', mood = SHOPKEEPER.pose) {
+  const src = keeperPoseSrc(mood);
+  return src
+    ? `<img class="keeper-img ${cls}" src="${src}" alt="${SHOPKEEPER.name}"
+            data-cls="${cls}" onerror="keeperArtFallback(this)">`
     : `<span class="keeper-emoji ${cls}">${SHOPKEEPER.emoji}</span>`;
+}
+
+function keeperArtFallback(img) {
+  const span = document.createElement('span');
+  span.className = 'keeper-emoji ' + (img.dataset.cls || '');
+  span.textContent = SHOPKEEPER.emoji;
+  img.replaceWith(span);
+}
+
+// Swap the pose in place rather than re-rendering — the counter portrait is
+// mid-bob animation and rebuilding it would restart the bob every line.
+function keeperSetPose(mood) {
+  SHOPKEEPER.pose = mood;
+  const src = keeperPoseSrc(mood);
+  if (!src) return;
+  for (const [sel, cls] of [['#shopkeeper .keeper-char', ''], ['#keeper-bubble .kb-face', 'mini']]) {
+    const host = document.querySelector(sel);
+    if (!host) continue;
+    const img = host.querySelector('.keeper-img');
+    if (img) img.src = src;
+    else host.innerHTML = keeperFaceHTML(cls, mood);   // was showing the emoji
+  }
 }
 
 // ---------- speech bubble ----------
@@ -59,7 +123,7 @@ let kbTimer = null;
 let kbQueue = [];
 let kbShowing = false;
 
-function keeperSay(text, ms = 4200) {
+function keeperSay(text, ms = 4200, mood = null) {
   // Poko lives in the shop — if the player is off in another tab, they call
   // out with a toast instead of talking to an empty room
   const shopTab = document.querySelector('#tab-machines');
@@ -67,7 +131,9 @@ function keeperSay(text, ms = 4200) {
     toast(`${SHOPKEEPER.emoji} ${text}`, 'good');
     return;
   }
-  kbQueue.push({ text, ms });
+  // the mood rides with the line, so the pose changes exactly when the words
+  // do — including partway through a queued run of tutorial lines
+  kbQueue.push({ text, ms, mood });
   if (!kbShowing) keeperNext();
 }
 
@@ -82,6 +148,7 @@ function keeperNext() {
   const next = kbQueue.shift();
   if (!next) {
     kbShowing = false;
+    keeperSetPose('welcome');      // back to standing behind the counter
     if (!FX_REDUCED) bubble.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-in' });
     // hide on a timer, never on an animation event — a stalled animation
     // must not be able to strand the bubble on screen
@@ -90,6 +157,7 @@ function keeperNext() {
   }
   kbShowing = true;
   bubble.hidden = false;
+  if (next.mood) keeperSetPose(next.mood);
   bubble.querySelector('.kb-text').textContent = next.text;
   bubble.classList.toggle('more', kbQueue.length > 0);
   clearTimeout(kbTimer);
@@ -111,7 +179,7 @@ function keeperNext() {
 
 // Reaction helper — every game event routes through here.
 function keeperReact(key, extra = '') {
-  keeperSay(extra ? `${extra} ${keeperPick(key)}` : keeperPick(key));
+  keeperSay(extra ? `${extra} ${keeperPick(key)}` : keeperPick(key), 4200, key);
 }
 
 // ---------- setup ----------
@@ -143,11 +211,11 @@ function keeperGreet(firstRun, daily) {
     return;
   }
   if (daily && state.streak > 1) {
-    keeperSay(`${state.streak} ${keeperPick('greetStreak')}`);
+    keeperSay(`${state.streak} ${keeperPick('greetStreak')}`, 4200, 'greetStreak');
   } else {
-    keeperSay(keeperPick('greet'));
+    keeperSay(keeperPick('greet'), 4200, 'greet');
   }
-  if (stampCardFull()) keeperSay(keeperPick('cardFull'), 5200);
+  if (stampCardFull()) keeperSay(keeperPick('cardFull'), 5200, 'cardFull');
 }
 
 function keeperTutorial() {
@@ -164,12 +232,23 @@ function keeperTutorial() {
 
 // ---------- stamp rally card ----------
 
+// Poko's mark. The art is a painted leaf, so it's masked down to a flat
+// silhouette and filled with `currentColor` — that turns one file into a
+// stamp that can be inked red on the card, gold on a finished one, without
+// asking for more art. Falls back to the emoji if the file won't load.
+function leafMarkHTML(cls = '') {
+  return SHOPKEEPER.leaf
+    ? `<i class="leaf-mark ${cls}" style="--leaf:url('${SHOPKEEPER.leaf}')" role="img"
+          aria-label="stamp"></i>`
+    : `<span class="${cls}">${SHOPKEEPER.emoji}</span>`;
+}
+
 function stampSlotsHTML() {
   const have = Math.min(cardStamps(), STAMP.cardSize);
   let out = '';
   for (let i = 0; i < STAMP.cardSize; i++) {
     out += `<div class="stamp-slot${i < have ? ' stamped' : ''}">
-      ${i < have ? `<span class="stamp-mark">${SHOPKEEPER.emoji}</span>` : `<span class="stamp-no">${i + 1}</span>`}
+      ${i < have ? leafMarkHTML('stamp-mark') : `<span class="stamp-no">${i + 1}</span>`}
     </div>`;
   }
   return out;
@@ -288,7 +367,7 @@ function noteStamp(kind, count = 1) {
   if (filled) {
     const label = kind === 'pull' ? 'Capsule pulls' : kind === 'play' ? 'Arcade games' : 'Album visit';
     sfx.tick();
-    keeperSay(`${label} done on your stamp card! Still need ${stampNeeds().join(' and ')}.`, 5600);
+    keeperSay(`${label} done on your stamp card! Still need ${stampNeeds().join(' and ')}.`, 5600, 'stamp');
     return;
   }
   // That track was already finished, so this play couldn't move the card at

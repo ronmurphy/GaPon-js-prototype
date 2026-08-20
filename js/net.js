@@ -180,7 +180,7 @@ async function netCheckInbox({ announce = false } = {}) {
       const who = [...new Set(fresh.map(c => c.from).filter(Boolean))];
       keeperSay(fresh.length === 1
         ? `A${fresh[0].foil ? ' ✨foil' : ''} capsule from ${who[0] || 'a friend'} is waiting for you!`
-        : `${fresh.length} capsules are waiting for you!`);
+        : `${fresh.length} capsules are waiting for you!`, 4200, 'gift');
     }
   }
   for (const c of netInbox) netAnnounced.add(c.code);
@@ -407,7 +407,7 @@ async function netCheckMatches({ announce = false } = {}) {
   netMatches = await netFriendMatches();
   const total = netMatches.reduce((n, m) => n + m.items.length, 0);
   if (announce && total) {
-    keeperSay(`You're holding ${total} spare${total > 1 ? 's' : ''} your friends are after!`);
+    keeperSay(`You're holding ${total} spare${total > 1 ? 's' : ''} your friends are after!`, 4200, 'wants');
   }
   const host = document.querySelector('#tab-market');
   if (host && !host.hidden) renderMarket();

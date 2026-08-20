@@ -157,7 +157,15 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
         { opacity: 1, transform: 'scale(1)' },
       ], { duration: 350, easing: 'cubic-bezier(.2,1.6,.4,1)' });
       const ring = ov.querySelector('.r-ring');
-      if (item.rarity === 'chase') {
+      // A foil earns the big treatment whatever its rarity — a foil common is
+      // rarer than a plain chase, and the moment should say so.
+      if (opts.foil) {
+        keeperReact('foil');
+        sfx.fanfare();
+        confetti(40);
+        fxSparkleBurst(ring, { count: 26, color: '#ffd54f', spread: 140 });
+        setTimeout(() => fxSparkleBurst(ring, { count: 16, color: '#ffffff', spread: 120 }), 450);
+      } else if (item.rarity === 'chase') {
         keeperReact('chase');
         sfx.fanfare();
         confetti(40);

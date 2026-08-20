@@ -328,8 +328,39 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 }
 
 .keeper-emoji { font-size: 62px; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45)); }
-.keeper-img { width: 88px; height: auto; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45)); }
+.keeper-img {
+  width: 88px;
+  height: auto;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45));
+  /* poses swap mid-conversation; a short cross-fade stops them snapping */
+  transition: opacity 0.12s ease;
+}
 .keeper-emoji.mini, .keeper-img.mini { font-size: 26px; width: 30px; }
+
+/* Poko dozes when every machine on the floor is empty. His drawing includes
+   the counter, so he sits lower and doesn't bob. */
+.dec-keeper.closed .keeper-char { animation: none; bottom: 62px; }
+.dec-keeper.closed .keeper-img { width: 104px; }
+
+/* Poko's mark — a painted leaf masked down to a flat stamp silhouette, so one
+   file inks in whatever colour the context calls for. */
+.leaf-mark {
+  display: inline-block;
+  width: 1.5em;
+  height: 1.5em;
+  background: currentColor;
+  -webkit-mask-image: var(--leaf);
+  mask-image: var(--leaf);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.stamp-slot .leaf-mark { color: #ef5350; width: 1.4em; height: 1.4em; }
+.stamp-slot.stamped { color: #ef5350; }
 
 @keyframes keeperbob {
   0%, 100% { transform: translateX(-50%) translateY(0); }
@@ -3155,6 +3186,10 @@ footer button {
 @media (prefers-reduced-motion: reduce) {
   .foil::after, .foil::before, .foil-glyph .msr, .chip.foil-chip { animation: none; }
 }
+
+/* pusher haul tiles are small and the icon is centred in them, so the sheen
+   is pinned to the icon box instead of the tile */
+.haul-item.foil::after, .haul-item.foil::before { inset: 20% 18% 34%; }
 
 /* which copy to send — plain or foil */
 .tr-pick {

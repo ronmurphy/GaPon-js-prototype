@@ -71,6 +71,6 @@ function openSwapPicker(rarity) {
       updateFooter();
       // straight into the usual capsule reveal, so a swap still feels like
       // opening something rather than filling in a form
-      showGiftReveal(res.got, true, null, { chip: '🔄 swapped!' });
+      showGiftReveal(res.got, true, null, { chip: '🔄 swapped!', foil: res.foil });
     }));
 }

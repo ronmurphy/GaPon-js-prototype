@@ -119,7 +119,7 @@ function renderMachines() {
           { transform: 'translateX(5px)' }, { transform: 'translateX(0)' },
         ], { duration: 250 });
         const ms = msUntilRotate();
-        keeperSay(`${keeperPick('soldOut')} (${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m)`);
+        keeperSay(`${keeperPick('soldOut')} (${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m)`, 4200, 'soldOut');
         return;
       }
       focusMachine(m, card);
@@ -133,6 +133,18 @@ function renderMachines() {
     shopMachines.push({ m, card });
   }
   updateRotateTimer();
+  syncKeeperOpen();
+}
+
+// Poko dozes off when there's nothing left to sell — it makes the restock
+// clock feel like the shop having hours rather than a timer running out.
+function syncKeeperOpen() {
+  const keeper = document.querySelector('#shopkeeper');
+  if (!keeper || !shopMachines.length) return;
+  const closed = shopMachines.every(({ m }) => stockLeft(m.id) <= 0);
+  if (keeper.classList.contains('closed') === closed) return;
+  keeper.classList.toggle('closed', closed);
+  keeperSetPose(closed ? 'closed' : 'welcome');
 }
 
 function shopSyncProgress() {
@@ -143,6 +155,7 @@ function shopSyncProgress() {
       : `${collectionProgress(m.collection)}/${m.collection.items.length}`;
     card.classList.toggle('soldout', stockLeft(m.id) <= 0);
   }
+  syncKeeperOpen();
 }
 
 function updateRotateTimer() {
@@ -236,7 +249,7 @@ function initFern() {
     toast(luck
       ? `You found ${found} coins in the fern?! ${luck.kanji} is treating you well 🌿`
       : `You found ${found} coins in the fern?! 🌿`, 'good');
-    if (luck) keeperSay(`${luck.kanji} luck even in the pot plant! You've still got the fortune, mind.`);
+    if (luck) keeperSay(`${luck.kanji} luck even in the pot plant! You've still got the fortune, mind.`, 4200, 'wants');
   });
 }
 
@@ -457,7 +470,8 @@ function showMarbleResult(m, marble) {
       const got = claimFuku(marble.rarity, b.dataset.col);
       if (!got) return;
       updateFooter();
-      showGiftReveal(got, true, null, { chip: `🎊 ${marble.color} marble`, pull: true });
+      showGiftReveal(got.item, true, null,
+        { chip: `🎊 ${marble.color} marble`, pull: true, foil: got.foil });
       pulling = false;
       focusState.stage = 'idle';
       shopSyncProgress();
@@ -573,7 +587,7 @@ function clawResult(m, card, grabbed) {
     focusState.stage = 'retry';
     sfx.buzz();
     toast('The claw came up empty! Your capsule is still in there.', 'warn');
-    keeperSay('Ooh, so close! The claw never grips on the first try.');
+    keeperSay('Ooh, so close! The claw never grips on the first try.', 4200, 'soldOut');
     setTimeout(() => {
       if (focusState.card === card) beginCoinStage();   // straight into a retry
     }, 900);

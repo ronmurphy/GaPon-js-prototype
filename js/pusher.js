@@ -217,8 +217,8 @@ function pusherSettle(st, res) {
     // odds here would undercut the Prize Pon machine outright. The draw is
     // the spectacle and the pile, not efficiency.
     const item = rollItem({ tier: TIERS.low, collection: st.col });
-    addItem(item.id);
-    won.push(item);
+    const foil = addItem(item.id);
+    won.push({ item, foil });
   }
   state.totalPulls += won.length;
   saveGame();
@@ -242,18 +242,19 @@ function showPusherHaul(items) {
     <div class="ov-stage share-stage">
       <div class="r-name">${items.length} capsule${items.length > 1 ? 's' : ''}!</div>
       <div class="haul">
-        ${items.map(it => {
+        ${items.map(({ item: it, foil }) => {
           const rar = RARITIES[it.rarity];
-          return `<div class="haul-item" style="--rar:${rar.color}">
+          return `<div class="haul-item${foil ? ' ' + foilClass(it) : ''}"
+                       style="--rar:${foil ? '#ffd54f' : rar.color}${foil && foilStyle(it) ? ';' + foilStyle(it) : ''}">
             ${stickerFace(it, { cls: 'haul-ic' })}
-            <span class="haul-name">${it.name}</span>
+            <span class="haul-name">${foil ? '✨ ' : ''}${it.name}</span>
           </div>`;
         }).join('')}
       </div>
       <div class="r-btns"><button class="btn" id="haul-close">Nice!</button></div>
     </div>`;
   sfx.chime();
-  if (items.some(it => it.rarity === 'chase')) { sfx.fanfare(); confetti(26); }
+  if (items.some(h => h.item.rarity === 'chase' || h.foil)) { sfx.fanfare(); confetti(26); }
   ov.querySelector('#haul-close').addEventListener('click', () => {
     ov.hidden = true;
     ov.innerHTML = '';
