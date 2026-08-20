@@ -27,9 +27,11 @@ function defaultState() {
     // so overflow past a full card is never lost, it lands on the next one
     stamps: { earned: 0, cards: 0, pulls: 0, plays: 0, binderDay: null, binderDone: false },
     tutorialSeen: false,
+    wantsTipSeen: false, // Poko explains the wants list once, at the binder
     trades: [],         // outgoing trade capsules: { code, itemId, at }
     redeemed: [],       // trade codes already opened on this device
     playerName: '',     // name printed on trade cards
+    nameAsked: false,   // Poko asks once, at the Trading Post
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
     wallBg: 'plum',     // sticker wall wallpaper id
   };

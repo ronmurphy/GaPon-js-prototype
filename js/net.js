@@ -70,7 +70,18 @@ async function netEnsurePlayer() {
   if (data) {
     NET.friendCode = data.friend_code;
     if (state.playerName && state.playerName !== data.display_name) await netSetName(state.playerName);
-    else if (!state.playerName && data.display_name) { state.playerName = data.display_name; saveGame(); }
+    else if (!state.playerName && data.display_name && data.display_name !== 'Collector') {
+      state.playerName = data.display_name;
+      saveGame();
+    }
+    // Touch the row on every boot so `updated_at` means LAST SEEN. It's the
+    // only retention signal that exists — nothing else about a player is
+    // stored server-side, deliberately — and it costs one write per launch.
+    //   select count(*) from players where updated_at > now() - interval '7 days';
+    try {
+      await NET.client.from('players')
+        .update({ updated_at: new Date().toISOString() }).eq('id', NET.playerId);
+    } catch (e) {}
     return;
   }
   const { data: made } = await NET.client

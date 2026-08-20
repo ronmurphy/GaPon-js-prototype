@@ -3230,20 +3230,45 @@ footer button {
 
 @media (prefers-reduced-motion: reduce) { .tr-opt[data-foil="1"].active { animation: none; } }
 
+.ask-name {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gold) 8%, var(--card2));
+}
+.ask-name .tp-tip { margin: 0 0 8px; color: var(--ink); }
+
 /* ---------- wants ---------- */
 
 .pocket.wanted { box-shadow: inset 0 0 0 2px #ffc107, 0 2px 8px rgba(255, 193, 7, 0.35); }
 .pocket.locked { cursor: pointer; }
 
+/* Every empty pocket carries a hollow star, not just the wanted ones.
+   Before this the ONLY hints that a pocket was tappable were `cursor:
+   pointer` and a title tooltip — both desktop-only. On a phone an empty
+   pocket looked completely inert, which is why three playtesters never
+   discovered the wants list at all. */
 .pkt-want {
   position: absolute;
   top: 4px;
   left: 6px;
   z-index: 2;
-  color: #ffc107;
-  font-size: 0.85rem;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  color: #8d6e63;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.75;
+  transition: opacity 0.15s, color 0.15s, transform 0.15s;
 }
+
+.pkt-want.on {
+  color: #ffc107;
+  opacity: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transform: scale(1.15);
+}
+
+.pocket.locked:hover .pkt-want { opacity: 0.9; }
 
 .matches { margin-top: 10px; border-top: 1px solid var(--card2); padding-top: 10px; }
 .match-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }

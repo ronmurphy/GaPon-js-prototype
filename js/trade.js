@@ -451,7 +451,43 @@ async function doRedeem(raw, sender) {
   netCheckInbox();     // it's opened — drop it from the waiting list
 }
 
+// Poko asks for a nickname the first time you walk up to the Trading Post —
+// not at launch. A name only starts mattering when you're about to trade or
+// swap codes, and asking before any of that is a signup wall in disguise.
+// Skippable, changeable, no validation: it's a nickname, not an account.
+function maybeAskName(host) {
+  if (!NET.ready || state.playerName || state.nameAsked) return;
+  state.nameAsked = true;      // asked once; the *from* box is always there
+  saveGame();
+  const row = document.createElement('div');
+  row.className = 'ask-name';
+  row.innerHTML = `
+    <p class="tp-tip">${SHOPKEEPER.emoji} <b>${escHTML(keeperPick('askName'))}</b></p>
+    <div class="friend-add">
+      <input id="ask-name-in" maxlength="14" placeholder="your name" autocomplete="off">
+      <button class="btn small" id="ask-name-ok">That's me</button>
+    </div>`;
+  const anchor = host.querySelector('.trade-post .tp-redeem');
+  if (!anchor) return;
+  anchor.parentNode.insertBefore(row, anchor);
+  const input = row.querySelector('#ask-name-in');
+  row.querySelector('#ask-name-ok').addEventListener('click', () => {
+    const name = input.value.trim().slice(0, 14);
+    if (!name) { row.remove(); return; }      // left blank = fine, stay Collector
+    state.playerName = name;
+    saveGame();
+    if (typeof netSetName === 'function') netSetName(name);
+    sfx.chime();
+    toast(`Nice to meet you, ${escHTML(name)}!`, 'good');
+    renderMarket();
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') row.querySelector('#ask-name-ok').click();
+  });
+}
+
 function wireTradePost(host) {
+  maybeAskName(host);
   const codeInput = host.querySelector('#tp-code');
   host.querySelector('#tp-redeem').addEventListener('click', () => {
     if (codeInput.value.trim()) doRedeem(codeInput.value);

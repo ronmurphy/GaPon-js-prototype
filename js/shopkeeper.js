@@ -77,6 +77,13 @@ const KEEPER_LINES = {
     "A foil! Careful with that one, they don't come round often.",
   ],
   gift: ['Something came for you! A friend sent it over.'],
+  wantsTip: [
+    'See those empty sleeves with the little star? Tap one to say you want it.',
+  ],
+  askName: ["What should I call you? It goes on the capsules you send."],
+  wantsTip2: [
+    "Once you've swapped friend codes, anyone holding a spare of it gets told. That's how the good trades start.",
+  ],
   broke: ['Coins running low? Sell your doubles at the market.'],
 };
 
@@ -228,6 +235,25 @@ function keeperTutorial() {
     "Stickers go in your Album. Doubles can be sold at the Market for coins.",
     'Machines restock twice a day, so come back often. Tap me any time!',
   ]);
+}
+
+// The wants list is the engine of the whole social layer, and it was sitting
+// unused because nobody knew it existed — the only hints an empty pocket was
+// tappable were `cursor: pointer` and a tooltip, both invisible on a phone.
+// The hollow star fixes the affordance; this explains the part a star can't:
+// that friends holding a spare are told about it.
+//
+// Held back until there's something to point at — a binder with no gaps has
+// no empty sleeves to tap, and a brand-new player has nothing else either.
+function maybeExplainWants() {
+  if (state.wantsTipSeen) return;
+  if ((state.wants || []).length) { state.wantsTipSeen = true; saveGame(); return; }
+  const owned = COLLECTIONS.reduce((n, c) => n + collectionProgress(c), 0);
+  const gaps = COLLECTIONS.some(c => c.items.some(it => !hasItem(it.id)));
+  if (owned < 3 || !gaps) return;
+  state.wantsTipSeen = true;
+  saveGame();
+  keeperSayAll([keeperPick('wantsTip'), keeperPick('wantsTip2')], 6000);
 }
 
 // ---------- stamp rally card ----------

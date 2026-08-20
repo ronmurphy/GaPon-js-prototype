@@ -57,7 +57,7 @@ function pocketHTML(it) {
          style="--rar:${rar.color}" data-item="${it.id}"
          title="${n ? it.name + (foils ? ` — ✨${foils} foil` : '') + ' — tap to give away'
                     : (wanted ? 'on your wants list' : 'tap to add to your wants list')}">
-      ${wanted ? '<span class="pkt-want">★</span>' : ''}
+      ${n ? '' : `<span class="pkt-want${wanted ? ' on' : ''}">${wanted ? '★' : '☆'}</span>`}
       <div class="pkt-card${foils ? ' ' + foilClass(it) : ''}" style="${foils ? foilStyle(it) : ''}">${stickerFace(it, { owned: n > 0 })}</div>
       <div class="pkt-name">${n ? it.name : '???'}</div>
       ${n > 1 ? `<span class="pkt-count">×${n}</span>` : ''}
