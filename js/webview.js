@@ -34,15 +34,19 @@ function isInAppBrowser() {
   return IN_APP_UA.test(navigator.userAgent || '');
 }
 
-// Second guard, and the stronger of the two: if a save was already on disk
-// when we booted, storage demonstrably survives here whatever the UA claims.
-// Never warn someone whose progress is visibly persisting.
-function storageProven() {
-  return !!SAVE_EXISTED;
-}
+// This used to be suppressed whenever a save already existed, on the theory
+// that storage evidently worked so there was nothing to warn about. Measuring
+// it killed that: a webview save persists perfectly well — across reloads, app
+// restarts, even a phone reboot — it is simply a DIFFERENT save. Brad ended up
+// on day 3 with 0 pulls in Messenger and day 9 with 104 pulls in Firefox, and
+// the game never said a word. Having a save here is the reason to warn, not a
+// reason to stay quiet.
+const WV_DISMISSED = 'gapon-wv-ok';
 
 function shouldWarnWebView() {
-  return isInAppBrowser() && !storageProven();
+  if (!isInAppBrowser()) return false;
+  try { if (localStorage.getItem(WV_DISMISSED)) return false; } catch (e) {}
+  return true;
 }
 
 // Android can hand off to whatever the player's default browser is. The
@@ -56,30 +60,46 @@ function browserHandoffURL() {
 function showWebViewWarning() {
   if (!shouldWarnWebView()) return false;
   const android = /Android/i.test(navigator.userAgent || '');
+  // Someone who has already played here needs a way to CARRY the collection
+  // over, not just a warning. The backup code is that way, so offer it inline
+  // rather than making them find it in the footer.
+  const hasSave = SAVE_EXISTED && state && state.totalPulls > 0;
   const bar = document.createElement('div');
   bar.className = 'wv-warn';
   bar.innerHTML = `
     <div class="wv-inner">
-      <b>This collection won't follow you</b>
-      <p>You're in an app's built-in browser, and it keeps its own separate
-         save. Open GaPon in your real browser or you'll end up with two
-         half-finished binders — and this one can be wiped by the app.</p>
+      <b>${hasSave ? "This collection won't follow you" : 'Start in your real browser'}</b>
+      <p>${hasSave
+        ? `You're in an app's built-in browser, and it keeps a <b>separate</b> save
+           from your normal one. Copy your backup code, open GaPon properly, and
+           paste it into <b>restore</b> to bring this collection with you.`
+        : `You're in an app's built-in browser. Anything you collect here stays
+           here — it won't be in your normal browser, and the app can wipe it.`}</p>
       <div class="wv-acts">
         ${android
           ? `<a class="btn small" id="wv-open" href="${browserHandoffURL()}">Open in my browser</a>`
           : `<span class="wv-tip">Tap <b>⋯</b> and choose <b>Open in Browser</b></span>`}
-        <button class="btn small ghost" id="wv-copy">Copy link</button>
+        <button class="btn small ghost" id="wv-copy">${hasSave ? 'Copy backup code' : 'Copy link'}</button>
       </div>
     </div>
     <button class="wv-x" id="wv-close" aria-label="dismiss">×</button>`;
   document.body.appendChild(bar);
 
   bar.querySelector('#wv-copy').addEventListener('click', () => {
-    const url = location.href;
-    navigator.clipboard?.writeText(url)
-      .then(() => toast('Link copied — paste it into your browser', 'good'))
-      .catch(() => toast('Long-press the address bar to copy the link', 'warn'));
+    // the backup code IS the whole save — verified byte-identical on restore
+    const text = hasSave
+      ? btoa(unescape(encodeURIComponent(JSON.stringify(state))))
+      : location.href;
+    const ok = () => toast(hasSave
+      ? 'Backup copied — paste it into restore in your real browser'
+      : 'Link copied — paste it into your browser', 'good', 5000);
+    navigator.clipboard?.writeText(text).then(ok,
+      () => toast('Copy blocked — use backup in the footer instead', 'warn'));
   });
-  bar.querySelector('#wv-close').addEventListener('click', () => bar.remove());
+  bar.querySelector('#wv-close').addEventListener('click', () => {
+    // remembered in the webview's own storage, which does persist
+    try { localStorage.setItem(WV_DISMISSED, '1'); } catch (e) {}
+    bar.remove();
+  });
   return true;
 }
