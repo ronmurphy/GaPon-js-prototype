@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GaPon storage probe</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; background: #191233; color: #f5f2ff;
+         margin: 0; padding: 16px 14px 40px; }
+  h1 { font-size: 1.1rem; margin: 0 0 4px; }
+  p.sub { color: #b3a8dc; margin: 0 0 16px; font-size: 0.85rem; }
+  .verdict { border-radius: 12px; padding: 14px; margin-bottom: 16px; font-weight: 700; }
+  .ok   { background: #1b3a22; border: 1px solid #66bb6a; color: #c8e6c9; }
+  .bad  { background: #4a1f22; border: 1px solid #ef5350; color: #ffcdd2; }
+  .wait { background: #3a2d6e; border: 1px solid #7e57c2; color: #d1c4e9; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 7px 0; border-bottom: 1px solid #3a2d6e; vertical-align: top;
+       font-family: ui-monospace, monospace; font-size: 0.76rem; word-break: break-all; }
+  td.k { color: #b3a8dc; width: 38%; padding-right: 10px; border-bottom-color: #3a2d6e; }
+  button { font: inherit; font-weight: 700; background: #ffc107; color: #241a47;
+           border: 0; border-radius: 10px; padding: 10px 18px; margin-top: 14px; }
+</style>
+</head>
+<body>
+<h1>GaPon storage probe</h1>
+<p class="sub">Open this in the browser you want to test, then press Reload once.</p>
+<div class="verdict wait" id="verdict">checking…</div>
+<table id="rows"></table>
+<button onclick="location.reload()">Reload to test persistence</button>
+
+<script>
+const KEY = 'gapon-probe';
+const rows = [];
+const add = (k, v) => rows.push([k, String(v)]);
+
+// THE test: did a value written on a previous load survive?
+let prior = null, canWrite = false;
+try { prior = localStorage.getItem(KEY); } catch (e) { add('localStorage read', 'BLOCKED: ' + e.name); }
+try { localStorage.setItem(KEY, new Date().toISOString()); canWrite = true; }
+catch (e) { add('localStorage write', 'BLOCKED: ' + e.name); }
+
+const v = document.getElementById('verdict');
+if (prior) {
+  v.className = 'verdict ok';
+  v.textContent = '✅ STORAGE PERSISTS — first seen ' + prior;
+} else if (canWrite) {
+  v.className = 'verdict wait';
+  v.textContent = '⏳ Wrote a value. Press Reload — if it says PERSISTS, saves work here.';
+} else {
+  v.className = 'verdict bad';
+  v.textContent = '❌ CANNOT WRITE — GaPon could never save here.';
+}
+
+add('prior value found', prior || '(none)');
+add('can write', canWrite);
+add('userAgent', navigator.userAgent);
+add('referrer', document.referrer || '(empty)');
+add('cookieEnabled', navigator.cookieEnabled);
+add('in an iframe', window.top !== window.self);
+add('window', innerWidth + '×' + innerHeight);
+add('screen', screen.width + '×' + screen.height);
+add('vendor', navigator.vendor || '(none)');
+add('brands', (navigator.userAgentData && navigator.userAgentData.brands || [])
+      .map(b => b.brand + ' ' + b.version).join(', ') || '(unavailable)');
+add('platform hint', (navigator.userAgentData && navigator.userAgentData.platform) || '(unavailable)');
+
+function render() {
+  document.getElementById('rows').innerHTML =
+    rows.map(([k, val]) => `<tr><td class="k">${k}</td><td>${val
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td></tr>`).join('');
+}
+render();
+
+// async storage signals
+(async () => {
+  try {
+    add('storage.persisted()', navigator.storage ? await navigator.storage.persisted() : '(no API)');
+  } catch (e) { add('storage.persisted()', 'threw ' + e.name); }
+  try {
+    const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+    add('storage quota', est ? Math.round(est.quota / 1048576) + ' MB' : '(no API)');
+    add('storage used', est ? Math.round((est.usage || 0) / 1024) + ' KB' : '(no API)');
+  } catch (e) { add('storage.estimate()', 'threw ' + e.name); }
+  render();
+})();
+</script>
+</body>
+</html>
