@@ -9,7 +9,10 @@ let marketShowAll = false;   // Market lists spares by default (see renderMarket
 
 function fmtCoins(n) { return n.toLocaleString(); }
 
-function toast(msg, cls = '') {
+// `ms` is how long it stays up. It used to be hard-coded at 2600, which meant
+// Poko's longer lines were unreadable whenever he fell back to a toast — he
+// was asking for 6000 and being ignored.
+function toast(msg, cls = '', ms = 2600) {
   const el = document.createElement('div');
   el.className = 'toast ' + cls;
   el.innerHTML = msg;
@@ -18,9 +21,13 @@ function toast(msg, cls = '') {
     [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0)' }],
     { duration: 200, easing: 'ease-out' });
   setTimeout(() => {
-    el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 })
-      .onfinish = () => el.remove();
-  }, 2600);
+    el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
+    // Removed on a timer, never on the animation's onfinish. Same rule the
+    // speech bubble follows: an animation that never finishes (backgrounded
+    // tab, reduced motion, a browser quirk) must not be able to strand this
+    // on screen forever.
+    setTimeout(() => el.remove(), 320);
+  }, ms);
 }
 
 function coinIcon() { return '<span class="msr coin-ic">toll</span>'; }

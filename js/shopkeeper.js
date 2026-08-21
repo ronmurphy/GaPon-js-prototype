@@ -130,12 +130,18 @@ let kbTimer = null;
 let kbQueue = [];
 let kbShowing = false;
 
-function keeperSay(text, ms = 4200, mood = null) {
-  // Poko lives in the shop — if the player is off in another tab, they call
-  // out with a toast instead of talking to an empty room
+// Poko is only on screen in the shop. Anywhere else he calls out with a toast
+// instead of talking to an empty room — which matters for pacing, because the
+// bubble has a queue and toasts do not.
+function keeperOnScreen() {
   const shopTab = document.querySelector('#tab-machines');
-  if (!shopTab || shopTab.hidden) {
-    toast(`${SHOPKEEPER.emoji} ${text}`, 'good');
+  return !!shopTab && !shopTab.hidden;
+}
+
+function keeperSay(text, ms = 4200, mood = null) {
+  if (!keeperOnScreen()) {
+    // pass the duration through, clamped — a long line needs reading time
+    toast(`${SHOPKEEPER.emoji} ${text}`, 'good', Math.max(2600, Math.min(ms, 6000)));
     return;
   }
   // the mood rides with the line, so the pose changes exactly when the words
@@ -145,8 +151,18 @@ function keeperSay(text, ms = 4200, mood = null) {
 }
 
 // A tutorial-style run of lines, shown back to back.
+// On the shop floor the bubble queue paces these one after another. Anywhere
+// else every line becomes a toast, and toasts have NO queue — pushing them in
+// one tick stacks them on top of each other and they all expire together, so
+// the player sees a wall of text for two seconds and reads none of it. Space
+// them by hand in that case.
 function keeperSayAll(lines, ms = 5200) {
-  for (const l of lines) keeperSay(l, ms);
+  if (keeperOnScreen()) {
+    for (const l of lines) keeperSay(l, ms);
+    return;
+  }
+  const hold = Math.max(2600, Math.min(ms, 6000));
+  lines.forEach((l, i) => setTimeout(() => keeperSay(l, ms), i * (hold + 500)));
 }
 
 function keeperNext() {
