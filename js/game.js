@@ -32,6 +32,7 @@ function defaultState() {
     redeemed: [],       // trade codes already opened on this device
     playerName: '',     // name printed on trade cards
     nameAsked: false,   // Poko asks once, at the Trading Post
+    hasMigrated: false, // a collection accepts one merge (see mergeSave)
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
     wallBg: 'plum',     // sticker wall wallpaper id
   };
@@ -422,6 +423,63 @@ function addItem(itemId, foil) {
     }
   }
   return foil;
+}
+
+// ---- merging a second collection ----
+//
+// For people who built a collection in an app's in-app browser and a separate
+// one in their real browser — the webview keeps its own storage, so the two
+// never meet. This brings the STICKERS across and nothing else.
+//
+// The single rule: it fills EMPTY slots and never adds to a count you already
+// have. That's what stops it becoming a duplicator. You can't gain a spare
+// from a merge, so nothing new can reach the market or the trade economy —
+// by construction, not by tuning.
+//
+// It's also idempotent: merging the same save twice does nothing the second
+// time, because every slot it would fill is already full. `hasMigrated` is
+// therefore about telling the player what happened, not about security.
+//
+// Plain and foil copies are separate gaps on purpose. The binder already
+// counts them on separate lines, so someone holding a plain Dashy who pulled
+// a foil Dashy in the other save should get it.
+function mergeSave(data) {
+  if (!data || typeof data.inv !== 'object') return null;
+  const got = { plain: [], foils: [], friends: 0, wants: 0, codes: 0 };
+
+  for (const id of Object.keys(data.inv || {})) {
+    if (!ITEMS_BY_ID[id] || !(data.inv[id] > 0)) continue;
+    if (ownedCount(id) === 0) { state.inv[id] = 1; got.plain.push(id); }
+  }
+  for (const id of Object.keys(data.foils || {})) {
+    if (!ITEMS_BY_ID[id] || !(data.foils[id] > 0)) continue;
+    if (foilCount(id) === 0) { state.foils[id] = 1; got.foils.push(id); }
+  }
+  // Not part of the collection, but it must travel: a trade capsule already
+  // opened over there must not be openable again here.
+  for (const c of data.redeemed || []) {
+    if (!state.redeemed.includes(c)) { state.redeemed.push(c); got.codes++; }
+  }
+  for (const f of data.friends || []) {
+    if (f && f.code && !friendList().some(x => x.code === f.code)) {
+      friendList().push(f);
+      got.friends++;
+    }
+  }
+  for (const id of data.wants || []) {
+    if (ITEMS_BY_ID[id] && !hasItem(id) && !(state.wants || []).includes(id)
+        && state.wants.length < WANTS_MAX) {
+      state.wants.push(id);
+      got.wants++;
+    }
+  }
+  // Coins, stamps, streak, days, pulls and claimed set bonuses are deliberately
+  // NOT merged — those are the economy, and summing them is the exploit.
+  state.hasMigrated = true;
+  pruneWants();          // anything the merge just filled leaves the list
+  saveGame();
+  if (typeof netSyncWants === 'function') netSyncWants();
+  return got;
 }
 
 // Wants can go stale if a sticker arrives by a route that predates the list,

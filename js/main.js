@@ -385,6 +385,43 @@ function applyRestoreCode(code) {
   }
 }
 
+// Bring a second collection's stickers into this one. See mergeSave() for why
+// it only ever fills empty slots.
+function applyMergeCode(code) {
+  if (state.hasMigrated) {
+    toast('This collection has already merged once — that one only works a single time.', 'warn', 5000);
+    return;
+  }
+  let data;
+  try {
+    data = JSON.parse(decodeURIComponent(escape(atob(code))));
+    if (typeof data.inv !== 'object') throw new Error();
+  } catch {
+    toast("That code didn't parse — was the whole thing pasted?", 'warn');
+    return;
+  }
+  const got = mergeSave(data);
+  if (!got) { toast("That code didn't hold a collection.", 'warn'); return; }
+  const bits = [];
+  if (got.plain.length) bits.push(`${got.plain.length} sticker${got.plain.length > 1 ? 's' : ''}`);
+  if (got.foils.length) bits.push(`✨${got.foils.length} foil${got.foils.length > 1 ? 's' : ''}`);
+  if (got.friends) bits.push(`${got.friends} friend${got.friends > 1 ? 's' : ''}`);
+  $('#overlay').hidden = true;
+  $('#overlay').innerHTML = '';
+  if (!bits.length) {
+    // the idempotent case — nothing over there this collection was missing
+    toast('Nothing new in that one — this collection already had all of it.', 'good', 5000);
+  } else {
+    sfx.fanfare();
+    confetti(24);
+    toast(`Merged in ${bits.join(', ')}!`, 'good', 5000);
+  }
+  updateHeader();
+  updateFooter();
+  if (!$('#tab-album').hidden) renderAlbum();
+  if (!$('#tab-market').hidden) renderMarket();
+}
+
 function updateArtToggle() {
   $('#toggle-art').textContent = ART.enabled ? 'stickers: art' : 'stickers: glyphs';
 }
@@ -486,19 +523,26 @@ function boot() {
 
   $('#import-save').addEventListener('click', () => {
     const ov = showSaveModal(`
-      <h3>Restore backup</h3>
+      <h3>Restore or merge</h3>
       <p class="sm-sub">Paste a backup code — or load a saved wall PNG,
         every exported wall picture secretly carries your full save.</p>
       <textarea id="sm-text" placeholder="paste your save code here"></textarea>
+      <p class="sm-note"><b>Restore</b> replaces this collection completely.<br>
+        <b>Merge</b> keeps this one and fills its empty slots from the other —
+        stickers only, one merge per collection. Coins, streak and your stamp
+        card stay exactly as they are.</p>
       <div class="r-btns">
         <label class="btn ghost sm-filebtn">From wall PNG
           <input type="file" id="sm-file" accept="image/png" hidden>
         </label>
         <button class="btn ghost" id="sm-close">Cancel</button>
+        <button class="btn ghost" id="sm-merge">Merge</button>
         <button class="btn" id="sm-apply">Restore</button>
       </div>`);
     ov.querySelector('#sm-apply').addEventListener('click', () =>
       applyRestoreCode(ov.querySelector('#sm-text').value.trim()));
+    ov.querySelector('#sm-merge').addEventListener('click', () =>
+      applyMergeCode(ov.querySelector('#sm-text').value.trim()));
     ov.querySelector('#sm-file').addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;

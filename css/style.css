@@ -3239,6 +3239,17 @@ footer button {
 }
 .ask-name .tp-tip { margin: 0 0 8px; color: var(--ink); }
 
+.sm-note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  background: var(--bg2);
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin-top: 8px;
+}
+.sm-note b { color: var(--ink); }
+
 /* in-app browser warning (see js/webview.js) */
 .wv-warn {
   position: fixed;
