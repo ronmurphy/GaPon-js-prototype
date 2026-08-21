@@ -418,6 +418,9 @@ function boot() {
   // decode the stored backdrop early; it redraws the wall once it's ready
   loadStoredPhoto(() => { if (wallCtx) drawWall(); });
   const firstRun = state.totalPulls === 0 && state.days.length === 0;
+  // Warn before they invest an hour, not after — but only in a webview that
+  // has no evidence of persisting anything. See js/webview.js.
+  showWebViewWarning();
   const daily = checkDaily();
   updateHeader();
   updateFooter();

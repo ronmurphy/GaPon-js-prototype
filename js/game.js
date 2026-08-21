@@ -145,9 +145,15 @@ function saveGame() {
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
 }
 
+// Whether a save was already on disk at boot. That's direct evidence storage
+// persists in this browser, which is what the in-app-browser warning checks
+// before nagging anyone (see js/webview.js).
+let SAVE_EXISTED = false;
+
 function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
+    SAVE_EXISTED = !!raw;
     state = raw ? Object.assign(defaultState(), JSON.parse(raw)) : defaultState();
     if (!state.foils || typeof state.foils !== 'object') state.foils = {};   // pre-foil saves
   } catch (e) {
