@@ -41,12 +41,26 @@ function isInAppBrowser() {
 // on day 3 with 0 pulls in Messenger and day 9 with 104 pulls in Firefox, and
 // the game never said a word. Having a save here is the reason to warn, not a
 // reason to stay quiet.
+// Dismissal is tracked PER WORDING, not once overall. The banner says two very
+// different things — "start in your real browser" to someone with nothing yet,
+// and "copy your backup code" to someone holding a collection. A single flag
+// meant tapping × on day one, when there was nothing to lose, also silenced
+// the migration version forever — so the one message that comes with a working
+// tool was only ever shown to people who had no use for it.
 const WV_DISMISSED = 'gapon-wv-ok';
 
+// 'save' once they've actually played here, 'new' before that.
+function wvVariant() {
+  return (SAVE_EXISTED && state && state.totalPulls > 0) ? 'save' : 'new';
+}
+
+function wvSeen() {
+  try { return (localStorage.getItem(WV_DISMISSED) || '').split(',').filter(Boolean); }
+  catch (e) { return []; }
+}
+
 function shouldWarnWebView() {
-  if (!isInAppBrowser()) return false;
-  try { if (localStorage.getItem(WV_DISMISSED)) return false; } catch (e) {}
-  return true;
+  return isInAppBrowser() && !wvSeen().includes(wvVariant());
 }
 
 // Android can hand off to whatever the player's default browser is. The
@@ -63,7 +77,8 @@ function showWebViewWarning() {
   // Someone who has already played here needs a way to CARRY the collection
   // over, not just a warning. The backup code is that way, so offer it inline
   // rather than making them find it in the footer.
-  const hasSave = SAVE_EXISTED && state && state.totalPulls > 0;
+  const variant = wvVariant();
+  const hasSave = variant === 'save';
   const bar = document.createElement('div');
   bar.className = 'wv-warn';
   bar.innerHTML = `
@@ -97,8 +112,12 @@ function showWebViewWarning() {
       () => toast('Copy blocked — use backup in the footer instead', 'warn'));
   });
   bar.querySelector('#wv-close').addEventListener('click', () => {
-    // remembered in the webview's own storage, which does persist
-    try { localStorage.setItem(WV_DISMISSED, '1'); } catch (e) {}
+    // remembered in the webview's own storage, which does persist. Only THIS
+    // wording is silenced — the migration one still gets its one showing once
+    // there's a collection worth carrying.
+    const seen = wvSeen();
+    if (!seen.includes(variant)) seen.push(variant);
+    try { localStorage.setItem(WV_DISMISSED, seen.join(',')); } catch (e) {}
     bar.remove();
   });
   return true;
