@@ -4,20 +4,33 @@
 //
 //   • a CUSTOM TAB — the real Chrome or Firefox in a slim frame. It shares
 //     the browser's storage, so the save persists and everything is fine.
-//   • an in-app WEBVIEW — a private browser inside the Facebook app with its
-//     own storage, commonly discarded when the app closes. GaPon's whole save
-//     lives in localStorage, so a player here can put in an hour and lose the
-//     lot without ever being told.
+//   • an in-app WEBVIEW — a browser inside the Facebook app with its OWN
+//     storage bucket. Measured on a real phone: storage there does persist
+//     across reloads, but it is completely separate from the real browser's
+//     (0 KB used in the webview vs 1.7 MB in Firefox on the same device, and
+//     a different anonymous account). So a player builds a collection that
+//     silently isn't there the day they open the link properly — and that the
+//     app may clear whenever it likes.
 //
-// Only the second one deserves a warning, and telling them apart matters:
-// Brad has Firefox set as his custom-tab provider, and those users must never
-// see this. The distinction is that WEBVIEWS stamp the user agent
-// (FB_IAB / FBAN / FBAV) while custom tabs do not — they're indistinguishable
-// from the real browser because they ARE the real browser.
-
-const IN_APP_UA = /(FB_IAB|FBAN|FBAV|FBIOS|FB4A|Instagram|MicroMessenger|Snapchat|Line\/)/i;
+// Only the second one deserves a warning, and custom tabs must never see it —
+// they're indistinguishable from the real browser because they ARE it.
+//
+// Measured on a real device (Android 16, Messenger) rather than guessed. Three
+// signals, in order of how much they can be trusted:
+//
+//   1. `brands` reports "Android WebView". Structural, app-agnostic, and it
+//      catches in-app browsers from apps nobody has heard of yet.
+//   2. `; wv)` in the UA — the same thing for older Android WebViews.
+//   3. Named apps (FB_IAB / FBAN / Instagram …). The only option on iOS, where
+//      every webview is honestly indistinguishable from Safari.
+//
+// `storage.persisted()` was tried and dropped: it returns false in real
+// Firefox where storage demonstrably works, so it says nothing useful.
+const IN_APP_UA = /(FB_IAB|FBAN|FBAV|FBIOS|FB4A|Instagram|MicroMessenger|Snapchat|Line\/|;\s*wv[;)])/i;
 
 function isInAppBrowser() {
+  const brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+  if (brands.some(b => /Android WebView/i.test(b.brand || ''))) return true;
   return IN_APP_UA.test(navigator.userAgent || '');
 }
 
@@ -47,9 +60,10 @@ function showWebViewWarning() {
   bar.className = 'wv-warn';
   bar.innerHTML = `
     <div class="wv-inner">
-      <b>Your progress won't be saved here</b>
-      <p>You're in Facebook's built-in browser. It forgets everything when you
-         close it — coins, pulls, your whole binder.</p>
+      <b>This collection won't follow you</b>
+      <p>You're in an app's built-in browser, and it keeps its own separate
+         save. Open GaPon in your real browser or you'll end up with two
+         half-finished binders — and this one can be wiped by the app.</p>
       <div class="wv-acts">
         ${android
           ? `<a class="btn small" id="wv-open" href="${browserHandoffURL()}">Open in my browser</a>`
