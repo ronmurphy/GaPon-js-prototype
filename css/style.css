@@ -3070,25 +3070,20 @@ footer button {
   align-items: center;
   gap: 5px;
   background: var(--card2);
+  border: 1px solid transparent;
   border-radius: 999px;
-  padding: 4px 6px 4px 11px;
+  padding: 6px 13px;
+  font-family: inherit;
   font-size: 0.78rem;
   font-weight: 600;
-}
-
-.friend-chip button {
-  border: none;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--ink-dim);
-  border-radius: 50%;
-  width: 17px;
-  height: 17px;
-  line-height: 1;
+  color: var(--ink);
   cursor: pointer;
-  font-size: 0.8rem;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.friend-chip button:hover { background: #ef5350; color: #fff; }
+.friend-chip:hover { background: var(--card); border-color: var(--gold); }
+.friend-chip:active { transform: scale(0.97); }
+
 .friend-add { display: flex; gap: 8px; }
 
 /* ---------- foils ---------- */
@@ -3319,6 +3314,139 @@ footer button {
   cursor: pointer;
   flex-shrink: 0;
 }
+
+/* ---------- a friend, up close ---------- */
+/* Shaped as a note pinned to the shop's board rather than a dialog — it's a
+   thing in the shop, like everything else. The two themes are two papers:
+   a US corkboard slip, and a JP washi note with a red seal. */
+
+.fp-note {
+  position: relative;
+  width: min(340px, calc(100vw - 44px));
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 20px 18px 16px;
+  border-radius: 4px;
+  background: linear-gradient(170deg, #fdf6e3, #f2e7cd);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), inset 0 0 30px rgba(141, 110, 99, 0.09);
+  transform: rotate(-0.7deg);
+  color: #4e342e;
+}
+
+.fp-pin {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 32%, #ff8a80, #c62828 62%, #8e2020);
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.45);
+}
+
+.fp-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.fp-name { font-size: 1.3rem; font-weight: 700; color: #3e2723; }
+.fp-seen { font-size: 0.74rem; color: #8d6e63; }
+
+.fp-code {
+  align-self: flex-start;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #5d4037;
+  background: rgba(93, 64, 55, 0.09);
+  border: 1px dashed rgba(93, 64, 55, 0.4);
+  border-radius: 7px;
+  padding: 4px 11px;
+  cursor: pointer;
+}
+.fp-code:hover { background: rgba(93, 64, 55, 0.16); }
+
+.fp-hunting { display: flex; flex-direction: column; gap: 7px; }
+
+.fp-label {
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: #a1887f;
+}
+
+.fp-wants { display: flex; flex-wrap: wrap; gap: 6px; max-height: 190px; overflow-y: auto; }
+.fp-dim { font-size: 0.8rem; color: #a1887f; font-style: italic; }
+
+.fp-want {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #5d4037;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid color-mix(in srgb, var(--rar) 45%, transparent);
+  border-radius: 999px;
+  padding: 3px 9px 3px 4px;
+}
+
+.fp-ic { font-size: 17px; width: 19px; height: 19px; object-fit: contain; }
+
+/* only a want you hold a SPARE of is offered — never your last copy */
+.fp-want.can {
+  cursor: pointer;
+  background: color-mix(in srgb, var(--rar) 24%, #fffaf0);
+  border-color: var(--rar);
+}
+.fp-want.can:hover { filter: brightness(1.06); }
+.fp-want[disabled] { opacity: 0.72; }
+
+.fp-tick {
+  font-style: normal;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #fff;
+  background: #43a047;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.fp-acts { display: flex; justify-content: space-between; gap: 10px; margin-top: 2px; }
+.fp-acts .btn.ghost { color: #8d6e63; border-color: rgba(141, 110, 99, 0.5); }
+
+/* the same note, on washi, with a seal instead of a pin */
+.theme-jp .fp-note {
+  background: linear-gradient(170deg, #fbf7f0, #f0e9dd);
+  border-left: 4px solid #c62828;
+  transform: rotate(0.5deg);
+}
+
+.theme-jp .fp-pin {
+  border-radius: 3px;
+  background: #c62828;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  top: 14px;
+  left: auto;
+  right: 14px;
+  margin-left: 0;
+  width: 22px;
+  height: 22px;
+}
+
+.theme-jp .fp-pin::after {
+  content: '友';
+  display: block;
+  text-align: center;
+  line-height: 22px;
+  font-size: 0.72rem;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) { .fp-note { transform: none; } }
 
 /* ---------- wants ---------- */
 

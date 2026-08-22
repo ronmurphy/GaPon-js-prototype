@@ -412,8 +412,8 @@ function friendsHTML() {
     <div class="friends">
       <div class="friends-row">
         ${fs.length
-          ? fs.map(f => `<span class="friend-chip" title="${escHTML(f.code)}">${escHTML(f.name)}
-              <button data-unfriend="${escHTML(f.code)}" title="remove">×</button></span>`).join('')
+          ? fs.map(f => `<button class="friend-chip" data-friend="${escHTML(f.code)}"
+              title="see what ${escHTML(f.name)} is hunting">${escHTML(f.name)}</button>`).join('')
           : '<span class="tp-tip">no friends added yet — swap codes in your group chat</span>'}
       </div>
       <div class="friend-add">
@@ -435,11 +435,129 @@ function wireFriends(host) {
   };
   host.querySelector('#friend-add-btn').addEventListener('click', add);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
-  host.querySelectorAll('[data-unfriend]').forEach(b =>
+  // The × used to live on the chip, a few pixels from the name. Once tapping
+  // the name DOES something, that's a mis-tap that unfriends someone — the
+  // costly direction to get wrong, and not undoable without their code. So the
+  // chip has exactly one action now and removal lives inside the panel.
+  host.querySelectorAll('[data-friend]').forEach(b =>
     b.addEventListener('click', () => {
-      netRemoveFriend(b.dataset.unfriend);
-      renderMarket();
+      const f = friendList().find(x => x.code === b.dataset.friend);
+      if (f) openFriendPanel(f);
     }));
+}
+
+// ---------- one friend, up close ----------
+//
+// Tapping a friend chip opens this instead of a whole new tab or room. It is
+// the friends list Chris and Michelle asked for, just shaped as chip-plus-
+// detail rather than a scrolling list.
+//
+// It shows their FULL wants list, not only the ones you can act on. That's
+// deliberate and it doesn't break "notify the giver, never the asker": this is
+// PULL, not push. Nobody is asked for anything — you went looking, perhaps
+// because you have spare coins and fancy fishing for a second copy of
+// something a friend needs.
+
+// Their wants and when they last played, in one trip.
+async function netFriendDetail(friend) {
+  if (!NET.ready || !friend) return null;
+  try {
+    const [wantsRes, whoRes] = await Promise.all([
+      NET.client.from('wants').select('item_id').eq('player_id', friend.id),
+      NET.client.from('players').select('display_name, updated_at').eq('id', friend.id).maybeSingle(),
+    ]);
+    const items = (wantsRes.data || [])
+      .map(r => ITEMS_BY_ID[r.item_id])
+      .filter(Boolean)
+      .sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity));
+    return { items, seen: whoRes.data && whoRes.data.updated_at, name: whoRes.data && whoRes.data.display_name };
+  } catch (e) { return null; }
+}
+
+function lastSeenText(iso) {
+  if (!iso) return '';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (!(days >= 0)) return '';
+  if (days === 0) return 'played today';
+  if (days === 1) return 'played yesterday';
+  if (days < 7) return `played ${days} days ago`;
+  if (days < 14) return 'played last week';
+  return `last played ${Math.floor(days / 7)} weeks ago`;
+}
+
+function openFriendPanel(friend) {
+  const ov = $('#overlay');
+  ov.hidden = false;
+  ov.innerHTML = `
+    <div class="ov-stage">
+      <div class="fp-note">
+        <i class="fp-pin"></i>
+        <div class="fp-head">
+          <span class="fp-name">${escHTML(friend.name)}</span>
+          <span class="fp-seen" id="fp-seen">…</span>
+        </div>
+        <button class="fp-code" id="fp-code" title="tap to copy">${escHTML(friend.code)}</button>
+        <div class="fp-hunting">
+          <span class="fp-label">hunting</span>
+          <div class="fp-wants" id="fp-wants"><span class="fp-dim">asking…</span></div>
+        </div>
+        <div class="fp-acts">
+          <button class="btn ghost small" id="fp-remove">Remove friend</button>
+          <button class="btn small" id="fp-close">Done</button>
+        </div>
+      </div>
+    </div>`;
+
+  const close = () => { ov.hidden = true; ov.innerHTML = ''; };
+  ov.querySelector('#fp-close').addEventListener('click', close);
+  ov.querySelector('#fp-code').addEventListener('click', () => {
+    navigator.clipboard?.writeText(friend.code)
+      .then(() => { sfx.tick(); toast(`${escHTML(friend.name)}'s code copied`, 'good'); })
+      .catch(() => toast('Copy blocked — read it out instead', 'warn'));
+  });
+  ov.querySelector('#fp-remove').addEventListener('click', () => {
+    if (!confirm(`Remove ${friend.name} from your friends list?\n\nYou'll need their code again to add them back.`)) return;
+    netRemoveFriend(friend.code);
+    close();
+    renderMarket();
+    toast(`${escHTML(friend.name)} removed`, 'warn');
+  });
+
+  netFriendDetail(friend).then(detail => {
+    const seenEl = ov.querySelector('#fp-seen');
+    const wantsEl = ov.querySelector('#fp-wants');
+    if (!seenEl || !wantsEl) return;          // panel closed while we waited
+    seenEl.textContent = (detail && lastSeenText(detail.seen)) || '';
+    const items = (detail && detail.items) || [];
+    if (!items.length) {
+      wantsEl.innerHTML = `<span class="fp-dim">nothing starred right now</span>`;
+      return;
+    }
+    // A want you hold a SPARE of is actionable. One you hold a single copy of
+    // is shown plainly and never highlighted — the spares rule exists so that
+    // nobody gets nudged toward giving away the chase they just chased.
+    wantsEl.innerHTML = items.map(it => {
+      const spare = ownedCount(it.id) > 1;
+      return `<button class="fp-want${spare ? ' can' : ''}" ${spare ? `data-give="${it.id}"` : 'disabled'}
+                style="--rar:${RARITIES[it.rarity].color}">
+        ${stickerFace(it, { cls: 'fp-ic' })}<span>${escHTML(it.name)}</span>
+        ${spare ? '<i class="fp-tick">send</i>' : ''}
+      </button>`;
+    }).join('');
+    wantsEl.querySelectorAll('[data-give]').forEach(b =>
+      b.addEventListener('click', () => {
+        const it = ITEMS_BY_ID[b.dataset.give];
+        if (it) openFriendGive(it, friend);
+      }));
+  });
+}
+
+// straight into the give flow, already addressed to them
+function openFriendGive(item, friend) {
+  const ov = $('#overlay');
+  ov.hidden = true;
+  ov.innerHTML = '';
+  openShareDialog(item, friend);
 }
 
 // ---------- wants ----------
