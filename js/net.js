@@ -303,20 +303,68 @@ function inboxHTML() {
 function wireInbox(host) {
   host.querySelectorAll('[data-inbox]').forEach(b =>
     b.addEventListener('click', () => doRedeem(b.dataset.inbox)));
-  const ref = host.querySelector('#net-refresh');
-  if (ref) ref.addEventListener('click', netRefreshNow);
 }
 
 // ---------- ui ----------
 
+// Your friend code gates every social feature in the game — nobody can trade
+// with you until they have it. It used to render as a plain <b> inside a dim
+// 0.8rem sentence with no way to copy it, and both Chris and Michelle said it
+// was easy to miss. Now it's the first thing in the Trading Post, it's big
+// enough to read across a room, and tapping it copies.
 function netStatusHTML() {
-  if (NET.ready) {
-    return `<p class="tp-tip net-on">🟢 online — trades are verified.
-      Your friend code: <b class="friend-code">${NET.friendCode || '…'}</b>
-      <button class="net-refresh" id="net-refresh" title="check for new capsules">↻</button></p>`;
+  if (!NET.ready) {
+    return `<p class="tp-tip net-off">⚪ offline — trading still works by code,
+      just without server checks.</p>`;
   }
-  return `<p class="tp-tip net-off">⚪ offline — trading still works by code,
-    just without server checks.</p>`;
+  const code = NET.friendCode || '······';
+  return `
+    <div class="fc-card">
+      <div class="fc-head">
+        <span class="fc-label">your friend code</span>
+        <button class="net-refresh" id="net-refresh" title="check for new capsules">↻</button>
+      </div>
+      <div class="fc-row">
+        <button class="fc-code" id="fc-copy" title="tap to copy">${escHTML(code)}</button>
+        <button class="btn small" id="fc-share">Share</button>
+      </div>
+      <p class="fc-note">give this to a friend so they can send you capsules.</p>
+    </div>`;
+}
+
+// The invite carries the code AND the link, in one string. Deliberately not
+// using the `url` field: some share targets take the url and drop the text,
+// which would send a friend the game without the code — the one thing the
+// message exists to deliver.
+function friendInviteText() {
+  const url = location.href.split('#')[0].split('?')[0];
+  return `Add me on GaPon! My friend code is ${NET.friendCode} — ${url}`;
+}
+
+function wireNetStatus(host) {
+  const refresh = host.querySelector('#net-refresh');
+  if (refresh) refresh.addEventListener('click', netRefreshNow);
+
+  const codeBtn = host.querySelector('#fc-copy');
+  if (codeBtn) codeBtn.addEventListener('click', () => {
+    // just the code — this is the one you paste into a friend-code box
+    navigator.clipboard?.writeText(NET.friendCode || '')
+      .then(() => { sfx.tick(); toast('Friend code copied!', 'good'); })
+      .catch(() => toast('Copy blocked — read it out instead', 'warn'));
+  });
+
+  const shareBtn = host.querySelector('#fc-share');
+  if (shareBtn) shareBtn.addEventListener('click', async () => {
+    const text = friendInviteText();
+    if (navigator.share) {
+      try { await navigator.share({ title: 'GaPon', text }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }   // they cancelled
+    }
+    // no share sheet (desktop, mostly) — the clipboard does the same job
+    navigator.clipboard?.writeText(text)
+      .then(() => toast('Invite copied — paste it to a friend', 'good', 4000))
+      .catch(() => toast('Copy blocked — read the code out instead', 'warn'));
+  });
 }
 
 function netRefreshUI() {

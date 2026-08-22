@@ -348,7 +348,7 @@ function renderMarket() {
     </div>`;
 
   wireTradePost(host);
-  if (NET.ready) { wireInbox(host); wireFriends(host); wireMatches(host); }
+  if (NET.ready) { wireNetStatus(host); wireInbox(host); wireFriends(host); wireMatches(host); }
   wireSwapShop(host);
   host.querySelectorAll('[data-filter]').forEach(b =>
     b.addEventListener('click', () => {
