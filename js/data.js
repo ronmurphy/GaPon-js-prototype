@@ -346,6 +346,41 @@ const COLLECTIONS = [
   },
 ];
 
+// ---- monthly rotation ----
+//
+// Which sets are IN THE MACHINES this month. Hand-picked and committed, NOT
+// computed from a query: the shop floor is seeded client-side off the period
+// string so it works offline and is identical for every player, and a
+// server-derived pool would break both of those.
+//
+// Rules that keep this healthy:
+//   • KEEP IT AT TEN. With five floor slots a specific set shows up about
+//     5/N of rotations, so the wait for one is roughly N/10 days — one day at
+//     ten sets, three days at thirty. Letting the pool grow slowly ruins the
+//     hunt. One set in, one set out.
+//   • Out of rotation is NOT retired. Nothing is ever discontinued: the
+//     Fukubiki drum, the Swap Shop and the Special Pon all still reach every
+//     set in the game, so an out-of-rotation set is expensive to chase, never
+//     impossible. The binder keeps its page and marks it.
+//   • Bring every set back within about three months, popular or not.
+//     Popularity decides the ORDER, never whether a set returns — otherwise
+//     an unloved set leaves, nobody new starts it, and it never comes back.
+//   • What to swap in is a judgement call informed by real demand. Run this
+//     once a month; item ids carry their set as a prefix:
+//       select split_part(item_id,'_',1) as set_prefix, count(*) as hunters
+//       from public.wants group by 1 order by hunters desc;
+//     A set that is OUT of rotation collects wants from people who cannot
+//     finish it, which is exactly the signal that it is time to bring it back.
+//   • Seasonal sets (a Halloween or Christmas set) are exempt from the
+//     three-month rule — they come back annually, on the calendar.
+//
+// An empty or missing list means "everything", so the game still works if
+// this is ever mangled.
+const ROTATION = [
+  'space', 'critters', 'snacks', 'music', 'ocean',
+  'garden', 'retro', 'roadtrip', 'sports', 'weather',
+];
+
 const ITEMS_BY_ID = {};
 for (const col of COLLECTIONS) {
   for (const it of col.items) {

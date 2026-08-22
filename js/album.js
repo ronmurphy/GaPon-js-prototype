@@ -79,6 +79,8 @@ function renderBinderPage() {
     <div class="page-head">
       <span class="page-title" style="color:${col.color}">${col.name}</span>
       <span class="page-prog">${prog}/${col.items.length}</span>
+      ${isInRotation(col.id) ? '' : `<span class="page-outrot"
+        title="not in the machines this month — still reachable from the drum, the Swap Shop, the Special Pon, and trades">out of rotation</span>`}
       ${foilProg ? `<span class="page-foil" title="foils are bonus — they never count toward completing a set">✨ ${foilProg}/${col.items.length}</span>` : ''}
       ${complete && !claimed
         ? `<button class="btn small" id="page-claim">${coinIcon()} Claim ${ECON.setBonus}!</button>`

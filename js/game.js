@@ -248,9 +248,23 @@ const FLOOR_TIERS = ['low', 'low', 'mid', 'mid', 'high'];
 
 // 5 of the collections are available each half-day —
 // plus the Special Pon on Saturdays.
+// The sets currently stocked in the machines. Everything else in the game —
+// the binder, the drum, the Swap Shop, the Special Pon — still sees every
+// collection; only the shop floor is filtered.
+function rotatingCollections() {
+  if (!Array.isArray(ROTATION) || !ROTATION.length) return COLLECTIONS.slice();
+  const inRotation = COLLECTIONS.filter(c => ROTATION.includes(c.id));
+  return inRotation.length ? inRotation : COLLECTIONS.slice();
+}
+
+function isInRotation(colId) {
+  if (!Array.isArray(ROTATION) || !ROTATION.length) return true;
+  return ROTATION.includes(colId);
+}
+
 function getTodaysMachines() {
   const rng = mulberry32(hashString('gapon:' + currentPeriod()));
-  const pool = COLLECTIONS.slice();
+  const pool = rotatingCollections();
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
