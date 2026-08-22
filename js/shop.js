@@ -174,6 +174,16 @@ function updateRotateTimer() {
 }
 setInterval(updateRotateTimer, 60000);
 
+// A focused machine is lifted into #focus-layer and everything behind it is
+// dimmed — including the header, where the coin counter lives. So spending
+// was correct but invisible: Chris pointed out you never see the number move
+// while you're standing at the machine. Show the cost coming off AT the slot,
+// where the player is already looking.
+function spendFloat(card, cost) {
+  const slot = card && card.querySelector('.coin-slot');
+  if (slot) fxFloat('−' + cost, slot, '#ff8a65');
+}
+
 // ---------- focus (zoom to machine) ----------
 
 function initShopOnce() {
@@ -362,6 +372,7 @@ function tryInsertCoin() {
   state.coins -= m.tier.cost;
   saveGame();
   updateHeader();
+  spendFloat(card, m.tier.cost);
   card.classList.remove('await-coin');
   setHint('');
   flyCoin(document.querySelector('.coin-chip'), card.querySelector('.coin-slot'), () => {
@@ -470,12 +481,15 @@ function showMarbleResult(m, marble) {
       const got = claimFuku(marble.rarity, b.dataset.col);
       if (!got) return;
       updateFooter();
-      showGiftReveal(got.item, true, null,
-        { chip: `🎊 ${marble.color} marble`, pull: true, foil: got.foil });
       pulling = false;
-      focusState.stage = 'idle';
-      shopSyncProgress();
-      shopUnfocus();
+      focusState.stage = 'capsule';
+      showGiftReveal(got.item, true, null, {
+        chip: `🎊 ${marble.color} marble`,
+        pull: true,
+        foil: got.foil,
+        again: { label: 'Draw again', cost: m.tier.cost, fn: shopAutoPull },
+        onClose: () => { shopSyncProgress(); shopUnfocus(); },
+      });
     }));
 }
 
@@ -606,6 +620,10 @@ function clawResult(m, card, grabbed) {
     isNew = !hasItem(item.id);
     foil = addItem(item.id);
   }
+  // The band reads "3/12" for the set — your progress, not capsules left — so
+  // it has to refresh once the sticker is actually yours. It used to wait
+  // until you walked away from the machine, which is what Chris noticed.
+  shopSyncProgress();
   state.totalPulls++;
   saveGame();
   updateFooter();
@@ -739,6 +757,7 @@ function vend() {
   const item = ticket ? null : (pity ? rollPityItem(m) : rollItem(m));
   const isNew = item ? !hasItem(item.id) : false;
   const foil = item ? addItem(item.id) : false;
+  shopSyncProgress();      // set progress updates now, not when you step back
   state.totalPulls++;
   saveGame();
   updateFooter();
@@ -804,6 +823,7 @@ function shopAutoPull() {
   state.coins -= m.tier.cost;
   saveGame();
   updateHeader();
+  spendFloat(card, m.tier.cost);
   flyCoin(document.querySelector('.coin-chip'), card.querySelector('.coin-slot'), () => {
     sfx.coin();
     if (m.kind === 'claw') {
@@ -813,7 +833,13 @@ function shopAutoPull() {
       return;
     }
     focusState.stage = 'crank';
-    armCrank(card, vend);
+    if (m.kind === 'fuku') {
+      setHint('turn the drum!');
+      armCrank(card, () => vendFuku(m, card));
+    } else {
+      setHint('turn the crank!');
+      armCrank(card, vend);
+    }
     focusState.autoSpin();
   });
 }

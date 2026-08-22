@@ -585,7 +585,10 @@ function showGiftReveal(item, isNew, sender, opts = {}) {
                   : `<span class="chip dupe">×${ownedCount(item.id) + foilCount(item.id)} owned</span>`}
           <span class="chip lucky">${opts.chip || `🎁 from ${sender || 'a friend'}`}</span>
         </div>
-        <div class="r-btns"><button class="btn" id="gift-close">Sweet!</button></div>
+        <div class="r-btns">
+          <button class="btn${opts.again ? ' ghost' : ''}" id="gift-close">${opts.again ? 'Done' : 'Sweet!'}</button>
+          ${opts.again ? `<button class="btn" id="gift-again">${coinIcon()} ${escHTML(opts.again.label || 'Again')} · ${opts.again.cost}</button>` : ''}
+        </div>
       </div>
     </div>`;
   const cap = ov.querySelector('.capsule');
@@ -623,15 +626,26 @@ function showGiftReveal(item, isNew, sender, opts = {}) {
         { count: opts.foil ? 24 : 14, color: opts.foil ? '#ffd54f' : rar.color, spread: opts.foil ? 130 : 100 });
       const closeBtn = ov.querySelector('#gift-close');
       if (!closeBtn) return;      // another reveal replaced us mid-animation
-      closeBtn.addEventListener('click', () => {
+      // Machines that charge coins for a sticker (the drum, the Corinth
+      // board) credit the stamp card just like a capsule pull — otherwise
+      // playing them would actively cost you card progress. Trades and
+      // swaps deliberately don't: swaps are free, so counting them would
+      // make the pull track farmable from a pile of doubles.
+      const finish = () => {
         closeTradeOverlay();
-        // Machines that charge coins for a sticker (the drum, the Corinth
-        // board) credit the stamp card just like a capsule pull — otherwise
-        // playing them would actively cost you card progress. Trades and
-        // swaps deliberately don't: swaps are free, so counting them would
-        // make the pull track farmable from a pile of doubles.
         if (opts.pull) noteStamp('pull');
         else renderMarket();
+      };
+      closeBtn.addEventListener('click', () => {
+        finish();
+        // Machines step back from the player here rather than the moment the
+        // sticker was decided — otherwise "again" has nothing to go back to.
+        if (opts.onClose) opts.onClose();
+      });
+      const againBtn = ov.querySelector('#gift-again');
+      if (againBtn) againBtn.addEventListener('click', () => {
+        finish();
+        opts.again.fn();
       });
     }, 450);
   };

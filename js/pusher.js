@@ -178,6 +178,7 @@ function pusherPlay(st) {
     return;
   }
   state.coins -= PUSHER.cost;
+  fxFloat('−' + PUSHER.cost, st.card.querySelector('[data-push]'), '#ff8a65');
   saveGame();
   updateHeader();
   sfx.coin();
@@ -226,7 +227,7 @@ function pusherSettle(st, res) {
   setPushTally(st, `${won.length} capsule${won.length > 1 ? 's' : ''} over the edge!`);
   st.card.querySelector('.m-prog').textContent =
     `${collectionProgress(st.col)}/${st.col.items.length}`;
-  showPusherHaul(won);
+  showPusherHaul(won, () => pusherPlay(st));
 }
 
 function setPushTally(st, text) {
@@ -235,7 +236,7 @@ function setPushTally(st, text) {
 
 // A haul can be several capsules at once, so it gets its own summary rather
 // than a chain of single-capsule reveals.
-function showPusherHaul(items) {
+function showPusherHaul(items, again) {
   const ov = $('#overlay');
   ov.hidden = false;
   ov.innerHTML = `
@@ -251,15 +252,21 @@ function showPusherHaul(items) {
           </div>`;
         }).join('')}
       </div>
-      <div class="r-btns"><button class="btn" id="haul-close">Nice!</button></div>
+      <div class="r-btns">
+        <button class="btn${again ? ' ghost' : ''}" id="haul-close">${again ? 'Done' : 'Nice!'}</button>
+        ${again ? `<button class="btn" id="haul-again">${coinIcon()} Push again · ${PUSHER.cost}</button>` : ''}
+      </div>
     </div>`;
   sfx.chime();
   if (items.some(h => h.item.rarity === 'chase' || h.foil)) { sfx.fanfare(); confetti(26); }
-  ov.querySelector('#haul-close').addEventListener('click', () => {
+  const finish = () => {
     ov.hidden = true;
     ov.innerHTML = '';
     noteStamp('pull', items.length);   // one credit per capsule that fell
-  });
+  };
+  ov.querySelector('#haul-close').addEventListener('click', finish);
+  const againBtn = ov.querySelector('#haul-again');
+  if (againBtn) againBtn.addEventListener('click', () => { finish(); again(); });
 }
 
 // ---------- room integration ----------

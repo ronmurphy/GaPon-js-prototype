@@ -221,6 +221,7 @@ function corinthPlay(st) {
     return;
   }
   state.coins -= CORINTH.cost;
+  fxFloat('−' + CORINTH.cost, st.card.querySelector('[data-play]'), '#ff8a65');
   saveGame();
   updateHeader();
   sfx.coin();
@@ -302,6 +303,8 @@ function corinthFinish(st) {
   showGiftReveal(item, isNew, null, {
     chip: bonus ? `🎱 ${st.total} +${bonus} ${f.kanji} = ${scored}` : `🎱 scored ${st.total}`,
     pull: true, foil,
+    // the shop machines all offer a repeat; the board should too
+    again: { label: 'Play again', cost: CORINTH.cost, fn: () => corinthPlay(st) },
   });
   setTimeout(() => { st.balls = []; drawCorinth(st); }, 400);
 }

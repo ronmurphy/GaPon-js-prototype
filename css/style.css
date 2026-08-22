@@ -74,7 +74,14 @@ header {
 .hchip .msr { font-size: 20px; }
 .coin-chip .msr, .coin-ic { color: var(--gold); }
 .streak-chip .msr { color: #ff7043; }
-.coin-chip { box-shadow: 0 0 12px rgba(255, 193, 7, 0.18); }
+/* Stays lit above the focus spotlight (z-index 44). Your balance is the one
+   number you want while deciding whether to pull again, and it used to be
+   dimmed out behind the machine you were standing at. */
+.coin-chip {
+  box-shadow: 0 0 12px rgba(255, 193, 7, 0.18);
+  position: relative;
+  z-index: 46;
+}
 .streak-chip { box-shadow: 0 0 12px rgba(255, 112, 67, 0.18); }
 
 button.icon-chip {
