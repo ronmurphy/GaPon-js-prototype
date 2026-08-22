@@ -1945,19 +1945,35 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   z-index: 3;
 }
 
+/* Each tab fills from the bottom in proportion to that set's progress, so you
+   read the whole binder's state in one glance down the column. A number would
+   have been better information but these are 20px wide — "2/12" cannot render
+   legibly at that size, and the fill is more scannable anyway. Exact counts
+   live in the tooltip and the page header. */
 .b-tab {
   width: 20px;
   height: 30px;
   border: none;
   border-radius: 0 7px 7px 0;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--tabc) 70%, #000), var(--tabc));
-  opacity: 0.65;
+  background:
+    linear-gradient(to top,
+      var(--tabc) 0 var(--fill, 0%),
+      color-mix(in srgb, var(--tabc) 20%, #241a45) var(--fill, 0%) 100%);
+  opacity: 0.72;
   cursor: pointer;
   transition: width 0.15s, opacity 0.15s;
-  box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: inset -3px 0 6px rgba(0, 0, 0, 0.35), 1px 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .b-tab.active { width: 27px; opacity: 1; }
+
+/* a finished set stops being a progress bar and just glows */
+.b-tab.full {
+  opacity: 1;
+  box-shadow: inset -3px 0 6px rgba(0, 0, 0, 0.25),
+              1px 1px 4px rgba(0, 0, 0, 0.4),
+              0 0 7px color-mix(in srgb, var(--tabc) 70%, transparent);
+}
 
 .binder-nav {
   display: flex;

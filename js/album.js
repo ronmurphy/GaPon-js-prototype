@@ -2,20 +2,59 @@
 // twelve pockets, commons up top, the chase card living in the last slot
 // with a holo sleeve. Pages flip (buttons, edge tabs, or swipe).
 
-let albumPage = 0;
+let albumPage = 0;          // index into albumOrder, NOT into COLLECTIONS
+let albumOrder = [];        // the page order the tabs were last built with
 let albumFlipping = false;
 
+// Three groups, each keeping its original internal order:
+//
+//   1. IN PROGRESS — started but not finished. What you're actually working
+//      on, so it's what the binder opens to.
+//   2. COMPLETE — your trophies. Worth keeping, but there is nothing left to
+//      do on those pages, so they must not sit in front of the live ones. Put
+//      finished sets first and the ordering gets WORSE the better you do at
+//      the game: eventually you'd scroll past eight trophies to reach the one
+//      set you're still chasing.
+//   3. UNTOUCHED — the map. Still visible (seeing what exists is what makes
+//      you want it) but at the back, where it isn't disheartening.
+//
+// Deliberately GROUPS rather than a continuous sort by progress: sorting would
+// make a 5/12 and a 6/12 swap places every time you pulled and the tabs would
+// never sit still. Here a set moves exactly twice in its life — the day you
+// start it and the day you finish it — and both are moments worth the binder
+// rearranging itself for.
+//
+// The payoff is that page 0 is something you've worked on. David opened the
+// binder to a wall of ??? every session because `albumPage` resets to 0 on
+// every load and Cosmo Club happened to be first in the file.
+function binderOrder() {
+  const going = [], done = [], untouched = [];
+  for (const c of COLLECTIONS) {
+    const n = collectionProgress(c);
+    (n === 0 ? untouched : n === c.items.length ? done : going).push(c);
+  }
+  return going.concat(done, untouched);
+}
+
+// Only recomputed on a full render, never mid-page. Giving away your last copy
+// of something can drop a set back into the untouched group — recomputing on
+// every little re-render would reshuffle the tabs under the player's thumb.
 function renderAlbum() {
-  albumPage = Math.max(0, Math.min(albumPage, COLLECTIONS.length - 1));
+  albumOrder = binderOrder();
+  albumPage = Math.max(0, Math.min(albumPage, albumOrder.length - 1));
   const host = $('#tab-album');
   host.innerHTML = `
     <div class="binder">
       <div class="binder-rings">${'<i></i>'.repeat(5)}</div>
       <div class="binder-page" id="binder-page"></div>
       <div class="binder-tabs">
-        ${COLLECTIONS.map((c, i) => `
-          <button class="b-tab${i === albumPage ? ' active' : ''}"
-                  style="--tabc:${c.color}" data-page="${i}" title="${c.name}"></button>`).join('')}
+        ${albumOrder.map((c, i) => {
+          const done = collectionProgress(c), of = c.items.length;
+          return `
+          <button class="b-tab${i === albumPage ? ' active' : ''}${done === of ? ' full' : ''}"
+                  style="--tabc:${c.color};--fill:${Math.round(done / of * 100)}%"
+                  data-page="${i}" title="${c.name} — ${done}/${of}"></button>`;
+        }).join('')}
       </div>
     </div>
     <div class="binder-nav">
@@ -66,7 +105,9 @@ function pocketHTML(it) {
 }
 
 function renderBinderPage() {
-  const col = COLLECTIONS[albumPage];
+  if (!albumOrder.length) albumOrder = binderOrder();
+  const col = albumOrder[albumPage];
+  if (!col) return;
   const prog = collectionProgress(col);
   // shown as a second line, never folded into `prog` — foils don't complete sets
   const foilProg = col.items.filter(it => foilCount(it.id)).length;
@@ -114,8 +155,8 @@ function renderBinderPage() {
 
 function updateBinderNav() {
   $('#pg-prev').disabled = albumPage === 0;
-  $('#pg-next').disabled = albumPage === COLLECTIONS.length - 1;
-  $('#pg-num').textContent = `page ${albumPage + 1} / ${COLLECTIONS.length}`;
+  $('#pg-next').disabled = albumPage === albumOrder.length - 1;
+  $('#pg-num').textContent = `page ${albumPage + 1} / ${albumOrder.length}`;
   document.querySelectorAll('.b-tab').forEach((t, i) =>
     t.classList.toggle('active', i === albumPage));
 }
@@ -123,7 +164,7 @@ function updateBinderNav() {
 // Cheap-but-convincing page turn: fold the page edge-on about the rings,
 // swap the content while it's invisible, and unfold showing the new page.
 function flipTo(idx) {
-  if (albumFlipping || idx === albumPage || idx < 0 || idx >= COLLECTIONS.length) return;
+  if (albumFlipping || idx === albumPage || idx < 0 || idx >= albumOrder.length) return;
   const page = $('#binder-page');
   const forward = idx > albumPage;
   albumPage = idx;
