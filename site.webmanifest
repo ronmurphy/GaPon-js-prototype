@@ -1,0 +1,25 @@
+{
+  "name": "GaPon — daily capsule machines",
+  "short_name": "GaPon",
+  "description": "A little gachapon shop. Pull capsules, fill your binder, trade with friends.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#191233",
+  "background_color": "#191233",
+  "icons": [
+    {
+      "src": "assets/favicon/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/favicon/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
