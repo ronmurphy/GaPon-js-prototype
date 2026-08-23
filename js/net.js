@@ -17,7 +17,8 @@ const SUPABASE_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const NET = {
   ready: false,      // signed in and the player row exists
   client: null,
-  playerId: null,
+  authId: null,      // THIS device's anonymous login
+  playerId: null,    // who that login plays as — usually the same, not always
   friendCode: null,
 };
 
@@ -49,7 +50,8 @@ async function netInit() {
       session = data.session;
     }
     if (!session?.user) return;
-    NET.playerId = session.user.id;
+    NET.authId = session.user.id;
+    NET.playerId = await netResolvePlayer(NET.authId);
     await netEnsurePlayer();
     NET.ready = true;
     await netSyncWants();                      // push any wants set while offline
@@ -60,6 +62,24 @@ async function netInit() {
   } catch (e) {
     NET.ready = false;      // any surprise at all: stay offline, stay working
   }
+}
+
+// Who this device plays as.
+//
+// It is NOT necessarily this device's login. A device that has adopted a save
+// is bound to an existing player, and every query in this file keys off
+// NET.playerId — so resolving it correctly here is the whole account model as
+// far as the client is concerned.
+//
+// Falls back to the login id, which is what an unmapped device resolves to
+// anyway. That keeps the rule this file has always obeyed: a surprise leaves
+// the game working, it doesn't break it.
+async function netResolvePlayer(fallbackId) {
+  try {
+    const { data, error } = await NET.client.rpc('current_player_id');
+    if (!error && data) return data;
+  } catch (e) {}
+  return fallbackId;
 }
 
 // One row per player: a nickname and a friend code. Nothing else about them
@@ -131,6 +151,21 @@ async function netPostTrade(code, itemId, toId, foil = false) {
   } catch (e) { return false; }
 }
 
+// Has this code been opened? true / false / null (no such code), or
+// undefined if we couldn't ask at all.
+//
+// Goes through an RPC rather than reading `trades` directly, because that
+// table's SELECT policy is now "rows you are party to". The open read it used
+// to rely on also handed anyone with the publishable key every outstanding
+// capsule code in the game — see sql/02-trade-status.sql.
+async function netTradeStatus(code) {
+  try {
+    const { data, error } = await NET.client.rpc('trade_status', { p_code: code });
+    if (error) return undefined;
+    return data;                    // true | false | null
+  } catch (e) { return undefined; }
+}
+
 // Returns { item, sender } on success, 'taken' if someone already opened it,
 // or null if the server doesn't know this code (so we fall back to local).
 async function netClaimTrade(code) {
@@ -146,10 +181,7 @@ async function netClaimTrade(code) {
     //     local path take it back, as it always has
     //   • the server never saw this code → let the local honour system run
     // Only the first should ever stop a redemption.
-    const { data: found } = await NET.client
-      .from('trades').select('claimed_by').eq('code', code).maybeSingle();
-    if (found && found.claimed_by) return 'taken';
-    return null;
+    return (await netTradeStatus(code)) === true ? 'taken' : null;
   } catch (e) { return null; }
 }
 
@@ -170,10 +202,10 @@ async function netCancelTrade(code) {
     const { data } = await NET.client
       .from('trades').delete().eq('code', code).is('claimed_by', null).select('code');
     if (data && data.length) return 'ok';
-    const { data: found } = await NET.client
-      .from('trades').select('claimed_by').eq('code', code).maybeSingle();
-    if (found && found.claimed_by) return 'taken';
-    return 'unknown';
+    // The conditional delete matched nothing. Either someone opened it, or the
+    // server never had it. Anything else can't happen from your own outstanding
+    // list, so it falls through to the honour system exactly as before.
+    return (await netTradeStatus(code)) === true ? 'taken' : 'unknown';
   } catch (e) { return 'unknown'; }
 }
 
