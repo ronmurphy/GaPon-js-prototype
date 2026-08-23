@@ -227,6 +227,85 @@ async function netPruneClaimedTrades() {
   } catch (e) { return 0; }
 }
 
+// ---------- cloud saves ----------
+//
+// The point of this is NOT "backups on a server" — the save was always
+// backup-able. It's that moving a collection between a PC and a phone meant
+// carrying a 3,000-character string. This turns that into twelve characters.
+//
+// The recovery code does two jobs: it finds the save, and it decrypts it.
+// That's why encrypting costs the player nothing — the code was already
+// mandatory. See js/crypt.js.
+//
+// The code is cached OUTSIDE the save on purpose. It must survive a restore
+// that replaces everything, and it must not travel inside a payload that gets
+// pasted into chat apps.
+const RECOVERY_KEY = 'gapon-recovery';
+
+function storedRecoveryCode() {
+  try { return localStorage.getItem(RECOVERY_KEY) || ''; } catch (e) { return ''; }
+}
+
+function rememberRecoveryCode(code) {
+  try { localStorage.setItem(RECOVERY_KEY, cleanRecoveryCode(code)); } catch (e) {}
+}
+
+// Upload. Returns { code, updatedAt } or an { err } explaining itself.
+async function netSaveOnline() {
+  if (!NET.ready) return { err: "you're offline — GaPon can't reach the server right now" };
+  if (!cryptoReady()) {
+    return { err: "this browser can't encrypt, so online saving isn't available here" };
+  }
+  try {
+    // Get (or mint) the row first, so the server decides the code.
+    let { data: row } = await NET.client
+      .from('saves').select('recovery_code').eq('player_id', NET.playerId).maybeSingle();
+    if (!row) {
+      const made = await NET.client
+        .from('saves')
+        .insert({ player_id: NET.playerId, payload: 'x' })
+        .select('recovery_code').single();
+      if (made.error) return { err: "couldn't start an online save just now" };
+      row = made.data;
+    }
+    const code = row.recovery_code;
+    const payload = await encryptSave(JSON.stringify(state), code);
+    if (!payload) return { err: 'encryption failed, so nothing was uploaded' };
+    const { error } = await NET.client
+      .from('saves').update({ payload }).eq('player_id', NET.playerId);
+    if (error) return { err: "couldn't upload just now — try again in a moment" };
+    rememberRecoveryCode(code);
+    return { code, updatedAt: new Date().toISOString() };
+  } catch (e) {
+    return { err: "couldn't reach the server" };
+  }
+}
+
+// Bind this device to whoever owns that code, and bring the save back.
+// Returns { save, updatedAt, playerId } or { err }.
+//
+// One path for both cases on purpose. A brand-new phone adopts a player it has
+// never been; the PC that made the save "adopts" itself, which is a harmless
+// self-mapping. Two branches here would be two chances to get identity wrong.
+async function netAdoptSave(code) {
+  if (!NET.ready) return { err: "you're offline — GaPon can't reach the server right now" };
+  if (!cryptoReady()) return { err: "this browser can't decrypt, so online saves aren't available here" };
+  const clean = cleanRecoveryCode(code);
+  try {
+    const { data, error } = await NET.client.rpc('adopt_device', { p_code: clean });
+    if (error) return { err: "couldn't reach the server just now" };
+    const row = data && data[0];
+    if (!row) return { err: "no save found for that code — check it and try again" };
+    const plain = await decryptSave(row.payload, clean);
+    // The code both finds the save and opens it, so a decrypt failure here
+    // means the row was written by a different code — corruption, not a typo.
+    if (!plain) return { err: "that save wouldn't open — the code may be damaged" };
+    return { save: plain, updatedAt: row.updated_at, playerId: row.player_id };
+  } catch (e) {
+    return { err: "couldn't reach the server" };
+  }
+}
+
 // ---------- inbox ----------
 // Capsules a friend addressed to you, waiting to be opened.
 //

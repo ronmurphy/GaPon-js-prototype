@@ -422,6 +422,134 @@ function applyMergeCode(code) {
   if (!$('#tab-market').hidden) renderMarket();
 }
 
+// "saved 3 days ago" — the line that has to be impossible to miss before
+// anyone overwrites a collection.
+function savedAgoText(iso) {
+  if (!iso) return '';
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (!(mins >= 0)) return '';
+  if (mins < 2) return 'saved just now';
+  if (mins < 60) return `saved ${mins} minutes ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `saved ${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'saved yesterday';
+  if (days < 30) return `saved ${days} days ago`;
+  return `saved ${Math.floor(days / 30)} month${days >= 60 ? 's' : ''} ago`;
+}
+
+// The block that appears inside the Backup modal. Cloud lives INSIDE the two
+// modals that already exist rather than adding footer buttons: "where the save
+// comes from" stays separate from "what happens to it".
+function cloudBackupHTML() {
+  if (!NET.ready) {
+    return `<p class="sm-note">Online saving needs a connection — you're offline
+      right now, so the code below is the way to move this collection.</p>`;
+  }
+  const known = storedRecoveryCode();
+  return `
+    <div class="cloud-box">
+      <p class="cloud-lead"><b>Save online instead.</b> Then moving to another device
+        is twelve characters, not three thousand.</p>
+      <div class="cloud-row">
+        <button class="btn small" id="sm-cloud">${known ? 'Update online save' : 'Save online'}</button>
+        <span class="cloud-msg" id="sm-cloud-msg"></span>
+      </div>
+      <div id="sm-code-wrap" ${known ? '' : 'hidden'}>
+        <span class="cloud-label">your recovery code</span>
+        <button class="cloud-code" id="sm-code" title="tap to copy">${escHTML(prettyRecoveryCode(known))}</button>
+        <p class="cloud-warn">Not a friend code. Anyone with this can load your
+          collection onto their device — keep it to yourself, and write it down:
+          <b>lose it with no working device and the save is gone for good.</b></p>
+      </div>
+    </div>`;
+}
+
+function wireCloudBackup(ov) {
+  const btn = ov.querySelector('#sm-cloud');
+  if (!btn) return;
+  const msg = ov.querySelector('#sm-cloud-msg');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    msg.textContent = 'saving…';
+    const res = await netSaveOnline();
+    btn.disabled = false;
+    if (res.err) { msg.textContent = res.err; msg.classList.add('bad'); return; }
+    msg.classList.remove('bad');
+    msg.textContent = 'saved online ✓';
+    btn.textContent = 'Update online save';
+    const wrap = ov.querySelector('#sm-code-wrap');
+    const code = ov.querySelector('#sm-code');
+    if (wrap && code) { code.textContent = prettyRecoveryCode(res.code); wrap.hidden = false; }
+    sfx.chime();
+  });
+  const code = ov.querySelector('#sm-code');
+  if (code) code.addEventListener('click', () => {
+    navigator.clipboard?.writeText(cleanRecoveryCode(code.textContent))
+      .then(() => toast('Recovery code copied — keep it somewhere safe', 'good', 4000))
+      .catch(() => toast('Copy blocked — write it down instead', 'warn'));
+  });
+}
+
+function cloudRestoreHTML() {
+  if (!NET.ready) return '';
+  const known = storedRecoveryCode();
+  return `
+    <div class="cloud-box">
+      <p class="cloud-lead"><b>From your online save.</b> Twelve characters, from
+        the Backup screen on your other device.</p>
+      <div class="cloud-row">
+        <input id="sm-rec" class="cloud-in" maxlength="14" placeholder="XXXX-XXXX-XXXX"
+               autocomplete="off" spellcheck="false" value="${escHTML(prettyRecoveryCode(known))}">
+        <button class="btn small" id="sm-cloud-load">Load</button>
+      </div>
+      <span class="cloud-msg" id="sm-cloud-msg"></span>
+    </div>`;
+}
+
+function wireCloudRestore(ov) {
+  const btn = ov.querySelector('#sm-cloud-load');
+  if (!btn) return;
+  const input = ov.querySelector('#sm-rec');
+  const msg = ov.querySelector('#sm-cloud-msg');
+  const go = async () => {
+    const code = cleanRecoveryCode(input.value);
+    if (!looksLikeRecoveryCode(code)) {
+      msg.textContent = 'a recovery code is 12 letters and numbers';
+      msg.classList.add('bad');
+      return;
+    }
+    btn.disabled = true;
+    msg.classList.remove('bad');
+    msg.textContent = 'looking…';
+    const res = await netAdoptSave(code);
+    btn.disabled = false;
+    if (res.err) { msg.textContent = res.err; msg.classList.add('bad'); return; }
+    msg.textContent = '';
+    applyCloudSave(res.save, res.updatedAt, code);
+  };
+  btn.addEventListener('click', go);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+}
+
+// Cloud restore REPLACES — always. Merge stays for pasted codes, where it was
+// built to repair a second collection made in an in-app browser. Keeping cloud
+// replace-only is what stops two devices' daily bonuses being combined.
+function applyCloudSave(plain, updatedAt, code) {
+  let data;
+  try { data = JSON.parse(plain); } catch (e) {
+    toast("that online save didn't read properly", 'warn');
+    return;
+  }
+  const when = savedAgoText(updatedAt);
+  if (!confirm(`Your online save holds:\n${saveSummary(data)}\n${when}.\n\n` +
+               `Replace this device's collection with it?`)) return;
+  state = Object.assign(defaultState(), data);
+  saveGame();
+  rememberRecoveryCode(code);      // cached outside the save, so it survives this
+  location.reload();
+}
+
 function updateArtToggle() {
   $('#toggle-art').textContent = ART.enabled ? 'stickers: art' : 'stickers: glyphs';
 }
@@ -501,13 +629,16 @@ function boot() {
   $('#export-save').addEventListener('click', () => {
     const code = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
     const ov = showSaveModal(`
-      <h3>Backup code</h3>
-      <p class="sm-sub">This code holds: <b>${saveSummary(state)}</b></p>
+      <h3>Backup</h3>
+      <p class="sm-sub">This holds: <b>${saveSummary(state)}</b></p>
+      ${cloudBackupHTML()}
+      <p class="cloud-label">or copy the whole thing by hand</p>
       <textarea id="sm-text" readonly></textarea>
       <div class="r-btns">
         <button class="btn ghost" id="sm-close">Close</button>
         <button class="btn" id="sm-copy">Copy code</button>
       </div>`);
+    wireCloudBackup(ov);
     const ta = ov.querySelector('#sm-text');
     ta.value = code;
     ov.querySelector('#sm-copy').addEventListener('click', () => {
@@ -524,7 +655,8 @@ function boot() {
   $('#import-save').addEventListener('click', () => {
     const ov = showSaveModal(`
       <h3>Restore or merge</h3>
-      <p class="sm-sub">Paste a backup code — or load a saved wall PNG,
+      ${cloudRestoreHTML()}
+      <p class="sm-sub">Or paste a backup code — or load a saved wall PNG,
         every exported wall picture secretly carries your full save.</p>
       <textarea id="sm-text" placeholder="paste your save code here"></textarea>
       <p class="sm-note"><b>Restore</b> replaces this collection completely.<br>
@@ -539,6 +671,7 @@ function boot() {
         <button class="btn ghost" id="sm-merge">Merge</button>
         <button class="btn" id="sm-apply">Restore</button>
       </div>`);
+    wireCloudRestore(ov);
     ov.querySelector('#sm-apply').addEventListener('click', () =>
       applyRestoreCode(ov.querySelector('#sm-text').value.trim()));
     ov.querySelector('#sm-merge').addEventListener('click', () =>
