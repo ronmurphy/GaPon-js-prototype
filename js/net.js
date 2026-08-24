@@ -387,14 +387,40 @@ function netMarkDirty() {
   cloudTimer = setTimeout(netFlushCloud, CLOUD_QUIET);
 }
 
+// A receipt, not a status light. It appears when an upload lands and clears
+// itself. Anything permanent in the header would be one more thing to read
+// every time you look at your coins.
+let blipTimer = null;
+
+function cloudBlip(kind) {
+  const el = document.querySelector('#save-blip');
+  if (!el) return;
+  clearTimeout(blipTimer);
+  if (kind === 'off') { el.hidden = true; return; }
+  el.classList.toggle('working', kind === 'saving');
+  el.classList.toggle('bad', kind === 'bad');
+  el.querySelector('.msr').textContent =
+    kind === 'saving' ? 'cloud_upload' : kind === 'bad' ? 'cloud_off' : 'cloud_done';
+  el.hidden = false;
+  if (kind === 'saving') return;          // stays put until the upload resolves
+  if (!FX_REDUCED) el.animate(
+    [{ transform: 'scale(0.55)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }],
+    { duration: 260, easing: 'cubic-bezier(.2,1.4,.4,1)' });
+  // A timer, never animation.onfinish. A tab backgrounded mid-fade would
+  // strand this on screen forever — same rule as the toasts and the bubble.
+  blipTimer = setTimeout(() => { el.hidden = true; }, kind === 'bad' ? 4200 : 2200);
+}
+
 async function netFlushCloud() {
   clearTimeout(cloudTimer);
   if (!cloudDirty || cloudBusy || !cloudSyncOn()) return;
   cloudBusy = true;
   cloudDirty = false;
+  cloudBlip('saving');
   const res = await netUploadSave();
   cloudBusy = false;
   if (res.conflict) {
+    cloudBlip('bad');
     // Refusing IS the feature. Which copy survives is the player's call, and
     // the Backup screen is where they get to make it.
     cloudStuck = res.updatedAt || 'unknown';
@@ -402,9 +428,11 @@ async function netFlushCloud() {
           'warn', 6000);
     return;
   }
-  // A failed upload isn't worth a message. Put the flag back and it rides
-  // along with the next thing the player does.
-  if (res.err) { cloudDirty = true; return; }
+  // A failed upload isn't worth a message — being offline is not news, and a
+  // warning every twenty seconds of play would be. Put the flag back, clear
+  // the mark, and it rides along with the next thing the player does.
+  if (res.err) { cloudDirty = true; cloudBlip('off'); return; }
+  cloudBlip('ok');
   updateCloudLine();
 }
 

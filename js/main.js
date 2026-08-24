@@ -524,6 +524,7 @@ function wireCloudBackup(ov) {
     if (wrap && code) { code.textContent = prettyRecoveryCode(res.code); wrap.hidden = false; }
     netClearStuck();
     updateCloudLine();
+    cloudBlip('ok');
     sfx.chime();
   });
   const code = ov.querySelector('#sm-code');
@@ -543,9 +544,11 @@ function cloudRestoreHTML() {
         the Backup screen on your other device.</p>
       <div class="cloud-row">
         <input id="sm-rec" class="cloud-in" maxlength="14" placeholder="XXXX-XXXX-XXXX"
-               autocomplete="off" spellcheck="false" value="${escHTML(prettyRecoveryCode(known))}">
+               autocomplete="off" spellcheck="false" autocapitalize="characters"
+               inputmode="latin" value="${escHTML(prettyRecoveryCode(known))}">
         <button class="btn small" id="sm-cloud-load">Load</button>
       </div>
+      <span class="cloud-when">dashes optional — lower case and spaces are fine too</span>
       <span class="cloud-msg" id="sm-cloud-msg"></span>
     </div>`;
 }
@@ -573,6 +576,17 @@ function wireCloudRestore(ov) {
   };
   btn.addEventListener('click', go);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  // The code has never cared about dashes or case — cleanRecoveryCode() strips
+  // both. But a field showing XXXX-XXXX-XXXX looks like it cares, so it tidies
+  // as you type and the question stops coming up. Only reflows when the caret
+  // is at the end, so editing a typo mid-code doesn't fling it away.
+  input.addEventListener('input', () => {
+    const atEnd = input.selectionStart === input.value.length;
+    const pretty = prettyRecoveryCode(input.value);
+    if (pretty === input.value) return;
+    input.value = pretty;
+    if (atEnd) input.setSelectionRange(pretty.length, pretty.length);
+  });
 }
 
 // Cloud restore REPLACES — always. Merge stays for pasted codes, where it was

@@ -61,6 +61,24 @@ header {
 
 .tagline { color: var(--ink-dim); font-size: 0.85rem; flex: 1; }
 
+/* The online save catching up is the one thing an automatic feature does
+   invisibly, which is indistinguishable from it being broken. This is the
+   receipt: it shows up, then takes itself away. */
+.save-blip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: color-mix(in srgb, var(--gold) 20%, var(--card));
+  color: var(--gold);
+}
+.save-blip .msr { font-size: 17px; }
+.save-blip.working { background: var(--card); color: var(--ink-dim); }
+.save-blip.bad { background: rgba(255, 138, 101, 0.16); color: #ff8a65; }
+
 .hchip {
   display: flex;
   align-items: center;

@@ -25,6 +25,12 @@
 <body>
   <header>
     <span class="brand">GaPon</span>
+    <!-- Receipt for the automatic cloud upload. Sits on the LEFT on purpose:
+         it's a momentary mark, not a stat, and it must not crowd the two
+         numbers people actually read. -->
+    <span class="save-blip" id="save-blip" hidden aria-live="polite">
+      <span class="msr">cloud_done</span>
+    </span>
     <span class="tagline">daily capsule machines</span>
     <span class="hchip coin-chip"><span class="msr">toll</span><span id="coin-count">0</span></span>
     <span class="hchip streak-chip"><span class="msr">local_fire_department</span><span id="streak-count">0</span></span>
