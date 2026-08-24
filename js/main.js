@@ -438,6 +438,26 @@ function savedAgoText(iso) {
   return `saved ${Math.floor(days / 30)} month${days >= 60 ? 's' : ''} ago`;
 }
 
+// What the Backup screen says about the online copy. Once a player has opted
+// in, the age of that copy is the only thing that tells them whether the
+// feature is actually working — silence reads as broken.
+function cloudWhenText() {
+  if (!storedRecoveryCode()) return '';
+  if (netCloudStuck()) return 'online copy: not up to date';
+  const when = savedAgoText(storedCloudStamp());
+  // No stamp yet means this device opted in before conditional uploads
+  // existed. Say what's true — that it looks after itself now — rather than
+  // claiming a freshness nobody has measured.
+  return when ? `online copy: ${when}` : 'online copy: updates on its own';
+}
+
+// Called after a background upload lands, so an open Backup screen doesn't sit
+// there showing a stale age.
+function updateCloudLine() {
+  const el = document.querySelector('#sm-when');
+  if (el) el.textContent = cloudWhenText();
+}
+
 // The block that appears inside the Backup modal. Cloud lives INSIDE the two
 // modals that already exist rather than adding footer buttons: "where the save
 // comes from" stays separate from "what happens to it".
@@ -455,6 +475,11 @@ function cloudBackupHTML() {
         <button class="btn small" id="sm-cloud">${known ? 'Update online save' : 'Save online'}</button>
         <span class="cloud-msg" id="sm-cloud-msg"></span>
       </div>
+      ${cloudWhenText() ? `<span class="cloud-when" id="sm-when">${escHTML(cloudWhenText())}</span>` : ''}
+      ${netCloudStuck() ? `<p class="cloud-warn"><b>Two copies have drifted apart.</b>
+        This device stopped uploading because your online save was changed
+        somewhere else. Close this and press <b>restore</b> to keep that copy, or
+        press <b>Update online save</b> to keep this device's collection instead.</p>` : ''}
       <div id="sm-code-wrap" ${known ? '' : 'hidden'}>
         <span class="cloud-label">your recovery code</span>
         <button class="cloud-code" id="sm-code" title="tap to copy">${escHTML(prettyRecoveryCode(known))}</button>
@@ -472,7 +497,23 @@ function wireCloudBackup(ov) {
   btn.addEventListener('click', async () => {
     btn.disabled = true;
     msg.textContent = 'saving…';
-    const res = await netSaveOnline();
+    let res = await netUploadSave();
+    // The refusal path. The server won't pick a winner and neither will the
+    // game — it names what's up there and lets the player decide.
+    if (res.conflict) {
+      msg.textContent = '';
+      const when = savedAgoText(res.updatedAt) || 'saved at some point';
+      const ok = confirm(`Your online save was changed on another device (${when}).\n\n` +
+        `Overwrite it with THIS device's collection?\n` +
+        `Anything the other device did since then would be lost.`);
+      if (!ok) {
+        btn.disabled = false;
+        msg.textContent = 'left the online save alone';
+        return;
+      }
+      msg.textContent = 'saving…';
+      res = await netUploadSave({ force: true });
+    }
     btn.disabled = false;
     if (res.err) { msg.textContent = res.err; msg.classList.add('bad'); return; }
     msg.classList.remove('bad');
@@ -481,6 +522,8 @@ function wireCloudBackup(ov) {
     const wrap = ov.querySelector('#sm-code-wrap');
     const code = ov.querySelector('#sm-code');
     if (wrap && code) { code.textContent = prettyRecoveryCode(res.code); wrap.hidden = false; }
+    netClearStuck();
+    updateCloudLine();
     sfx.chime();
   });
   const code = ov.querySelector('#sm-code');
@@ -547,6 +590,7 @@ function applyCloudSave(plain, updatedAt, code) {
   state = Object.assign(defaultState(), data);
   saveGame();
   rememberRecoveryCode(code);      // cached outside the save, so it survives this
+  rememberCloudStamp(updatedAt);   // this device now holds exactly what's up there
   location.reload();
 }
 

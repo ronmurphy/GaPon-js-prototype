@@ -3306,6 +3306,13 @@ footer button {
   color: var(--ink-dim);
 }
 
+.cloud-when {
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
 .cloud-msg { font-size: 0.78rem; color: #66bb6a; }
 .cloud-msg.bad { color: #ff8a65; }
 

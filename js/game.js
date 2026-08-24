@@ -144,6 +144,11 @@ function useArcadePlay() {
 
 function saveGame() {
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  // If this player has an online save, it should track the local one without
+  // being asked again. Costs a flag and a timer here; the upload itself waits
+  // for a quiet moment. See js/net.js. Guarded because saveGame() can run
+  // before net.js has had a chance to decide anything.
+  if (typeof netMarkDirty === 'function') netMarkDirty();
 }
 
 // Whether a save was already on disk at boot. That's direct evidence storage

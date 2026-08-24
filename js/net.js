@@ -242,16 +242,38 @@ async function netPruneClaimedTrades() {
 // pasted into chat apps.
 const RECOVERY_KEY = 'gapon-recovery';
 
+// The updated_at of the copy we believe is sitting on the server. Cached
+// beside the code and outside the save for the same reason — it has to survive
+// a restore that replaces everything. An empty stamp means "no idea what's up
+// there", which is deliberately NOT treated as permission to overwrite.
+const CLOUD_STAMP_KEY = 'gapon-cloud-stamp';
+
 function storedRecoveryCode() {
   try { return localStorage.getItem(RECOVERY_KEY) || ''; } catch (e) { return ''; }
+}
+
+function storedCloudStamp() {
+  try { return localStorage.getItem(CLOUD_STAMP_KEY) || ''; } catch (e) { return ''; }
+}
+
+function rememberCloudStamp(iso) {
+  try { localStorage.setItem(CLOUD_STAMP_KEY, iso || ''); } catch (e) {}
 }
 
 function rememberRecoveryCode(code) {
   try { localStorage.setItem(RECOVERY_KEY, cleanRecoveryCode(code)); } catch (e) {}
 }
 
-// Upload. Returns { code, updatedAt } or an { err } explaining itself.
-async function netSaveOnline() {
+// Upload. Returns { code, updatedAt }, { conflict, updatedAt }, or { err }.
+//
+// The write is conditional on updated_at: it lands only if the row is still
+// the one this device last saw. That is the whole defence against "last upload
+// wins" — play on the tablet, then on the phone, and the tablet's next upload
+// is refused rather than quietly erasing the phone's afternoon.
+//
+// `force` drops the condition. Nothing calls it without asking the player
+// first, in so many words, which copy they want to keep.
+async function netUploadSave({ force = false } = {}) {
   if (!NET.ready) return { err: "you're offline — GaPon can't reach the server right now" };
   if (!cryptoReady()) {
     return { err: "this browser can't encrypt, so online saving isn't available here" };
@@ -259,23 +281,37 @@ async function netSaveOnline() {
   try {
     // Get (or mint) the row first, so the server decides the code.
     let { data: row } = await NET.client
-      .from('saves').select('recovery_code').eq('player_id', NET.playerId).maybeSingle();
+      .from('saves').select('recovery_code, updated_at')
+      .eq('player_id', NET.playerId).maybeSingle();
     if (!row) {
       const made = await NET.client
         .from('saves')
         .insert({ player_id: NET.playerId, payload: 'x' })
-        .select('recovery_code').single();
+        .select('recovery_code, updated_at').single();
       if (made.error) return { err: "couldn't start an online save just now" };
       row = made.data;
+      rememberCloudStamp(row.updated_at);   // we just made it, so it is ours
     }
     const code = row.recovery_code;
+    const stamp = storedCloudStamp();
+    // A stamp we hold that doesn't match the row means somebody else has been
+    // here. Stop before spending a second on encryption.
+    if (!force && stamp && stamp !== row.updated_at) {
+      return { conflict: true, updatedAt: row.updated_at, code };
+    }
     const payload = await encryptSave(JSON.stringify(state), code);
     if (!payload) return { err: 'encryption failed, so nothing was uploaded' };
-    const { error } = await NET.client
-      .from('saves').update({ payload }).eq('player_id', NET.playerId);
+    let q = NET.client.from('saves').update({ payload }).eq('player_id', NET.playerId);
+    // No stamp means this device opted in before conditional writes existed.
+    // It gets the old unconditional behaviour rather than being locked out.
+    if (!force && stamp) q = q.eq('updated_at', stamp);
+    const { data: done, error } = await q.select('updated_at');
     if (error) return { err: "couldn't upload just now — try again in a moment" };
+    // Zero rows back = another device wrote in the gap between read and write.
+    if (!done || !done.length) return { conflict: true, updatedAt: row.updated_at, code };
     rememberRecoveryCode(code);
-    return { code, updatedAt: new Date().toISOString() };
+    rememberCloudStamp(done[0].updated_at);
+    return { code, updatedAt: done[0].updated_at };
   } catch (e) {
     return { err: "couldn't reach the server" };
   }
@@ -300,10 +336,76 @@ async function netAdoptSave(code) {
     // The code both finds the save and opens it, so a decrypt failure here
     // means the row was written by a different code — corruption, not a typo.
     if (!plain) return { err: "that save wouldn't open — the code may be damaged" };
+    // Deliberately does NOT stamp the cloud copy here. Looking at a save is not
+    // taking it: the player still gets a confirm, and backing out of that must
+    // not leave this device believing it holds the server's copy — its next
+    // auto-upload would overwrite the very save they just declined.
     return { save: plain, updatedAt: row.updated_at, playerId: row.player_id };
   } catch (e) {
     return { err: "couldn't reach the server" };
   }
+}
+
+// ---------- keeping the online save fresh ----------
+//
+// Opting in stays manual. Staying current does not: waiting to be asked a
+// second time is how a device ends up holding a save three weeks older than
+// the collection sitting on it.
+//
+// Two rules keep this from being a background process that eats data and
+// battery. It only runs when the save actually changed, and it never runs on a
+// schedule — a tab left parked open for a week uploads nothing at all.
+
+const CLOUD_QUIET = 20000;    // ms of quiet after a change before uploading
+let cloudDirty = false;
+let cloudBusy = false;
+let cloudTimer = null;
+let cloudStuck = '';          // set when the server refused; blocks further tries
+
+function netCloudStuck() { return cloudStuck; }
+function netClearStuck() { cloudStuck = ''; }
+
+// Two separate questions, and conflating them loses changes. Opting in is a
+// fact about the player and is known offline; being able to upload is a fact
+// about right now.
+function cloudOptedIn() { return !!storedRecoveryCode(); }
+
+function cloudSyncOn() {
+  return cloudOptedIn() && NET.ready && cryptoReady() && !cloudStuck;
+}
+
+// Called from saveGame(), which fires on very nearly every action, so this has
+// to stay free: set a flag, restart a timer, do no work.
+//
+// Gated on opt-in, NOT on being online — a pull made on a train still has to
+// be waiting to go up when the signal comes back. A flush that can't reach the
+// server leaves the flag set, and the player's next action re-arms the timer.
+function netMarkDirty() {
+  if (!cloudOptedIn() || cloudStuck) return;
+  cloudDirty = true;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(netFlushCloud, CLOUD_QUIET);
+}
+
+async function netFlushCloud() {
+  clearTimeout(cloudTimer);
+  if (!cloudDirty || cloudBusy || !cloudSyncOn()) return;
+  cloudBusy = true;
+  cloudDirty = false;
+  const res = await netUploadSave();
+  cloudBusy = false;
+  if (res.conflict) {
+    // Refusing IS the feature. Which copy survives is the player's call, and
+    // the Backup screen is where they get to make it.
+    cloudStuck = res.updatedAt || 'unknown';
+    toast('Your online save changed on another device — open Backup to sort it out.',
+          'warn', 6000);
+    return;
+  }
+  // A failed upload isn't worth a message. Put the flag back and it rides
+  // along with the next thing the player does.
+  if (res.err) { cloudDirty = true; return; }
+  updateCloudLine();
 }
 
 // ---------- inbox ----------
@@ -393,8 +495,14 @@ async function netRefreshNow() {
         n ? 'good' : '');
 }
 
+// Leaving the tab is the best moment to catch a pending upload: the browser
+// may freeze this page for hours, and a phone may never come back to it at
+// all. This is a best effort, not a guarantee — encryption is async, so a tab
+// closed outright can still take an unsaved change with it. The quiet timer is
+// what actually does the work; this just shortens the window.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) netMaybeCheck();
+  if (document.hidden) netFlushCloud();
+  else netMaybeCheck();
 });
 
 function inboxHTML() {
