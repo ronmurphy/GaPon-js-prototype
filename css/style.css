@@ -625,12 +625,20 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .mach-dome canvas.shaking { animation: cshake 0.7s linear; }
 
+/* Shakes with the independent `translate` property, NOT `transform`.
+   A focused machine carries its zoom as an inline transform (js/shop.js:282),
+   and a running CSS animation outranks an inline style. A transform-based
+   shake here therefore replaced the zoom with translate(0,0) for its whole
+   0.7s, and when it ended `.mach.focused`'s 0.48s transition eased the zoom
+   back in — so the machine appeared to retreat to its shelf and walk back to
+   you between the crank and the capsule. `translate` composes with `transform`
+   instead of overwriting it. */
 @keyframes cshake {
-  0%, 100% { transform: translate(0, 0); }
-  20% { transform: translate(-3px, 2px); }
-  40% { transform: translate(3px, -2px); }
-  60% { transform: translate(-3px, -1px); }
-  80% { transform: translate(2px, 2px); }
+  0%, 100% { translate: 0 0; }
+  20% { translate: -3px 2px; }
+  40% { translate: 3px -2px; }
+  60% { translate: -3px -1px; }
+  80% { translate: 2px 2px; }
 }
 
 .dome-shine {
