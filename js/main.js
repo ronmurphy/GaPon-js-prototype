@@ -589,6 +589,21 @@ function wireCloudRestore(ov) {
   });
 }
 
+// Poko's offer was accepted. Downloading and decrypting changes nothing on
+// this device, so it happens without further ceremony — and only now, holding
+// the actual save, can the game say what's in it. The plain summary panel does
+// that. Poko makes the offer; Poko does not confirm the replace.
+async function cloudOfferAccept(stamp) {
+  const code = storedRecoveryCode();
+  if (!code) return;
+  toast('Fetching your online save…', '', 2600);
+  const res = await netAdoptSave(code);
+  if (res.err) { toast(res.err, 'warn'); return; }
+  // Backing out at the summary is still a no to this copy, so it doesn't ask
+  // again on every launch. A newer one later is a fresh question.
+  if (!applyCloudSave(res.save, res.updatedAt, code)) netDeclineCloud(stamp);
+}
+
 // Cloud restore REPLACES — always. Merge stays for pasted codes, where it was
 // built to repair a second collection made in an in-app browser. Keeping cloud
 // replace-only is what stops two devices' daily bonuses being combined.
@@ -596,16 +611,17 @@ function applyCloudSave(plain, updatedAt, code) {
   let data;
   try { data = JSON.parse(plain); } catch (e) {
     toast("that online save didn't read properly", 'warn');
-    return;
+    return false;
   }
   const when = savedAgoText(updatedAt);
   if (!confirm(`Your online save holds:\n${saveSummary(data)}\n${when}.\n\n` +
-               `Replace this device's collection with it?`)) return;
+               `Replace this device's collection with it?`)) return false;
   state = Object.assign(defaultState(), data);
   saveGame();
   rememberRecoveryCode(code);      // cached outside the save, so it survives this
   rememberCloudStamp(updatedAt);   // this device now holds exactly what's up there
   location.reload();
+  return true;
 }
 
 function updateArtToggle() {

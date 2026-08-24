@@ -310,6 +310,11 @@ function focusMachine(m, card) {
 function shopUnfocus(instant = false) {
   const { card, ghost } = focusState;
   if (!card) return;
+  // Stepping back from a machine is the real end of a session — "pull again"
+  // keeps you standing here, so the reveal isn't it. Emptying a 25-coin
+  // machine one pull at a time would otherwise send the whole save, photos
+  // and all, once per capsule.
+  if (typeof netFlushCloud === 'function') netFlushCloud();
   clearInterval(focusState.clawLoop);
   for (const sim of Object.values(machineSims)) {
     if (sim.claw) sim.claw.aiming = false;

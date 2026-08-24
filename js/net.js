@@ -59,6 +59,10 @@ async function netInit() {
     await netCheckInbox({ announce: true });    // "a capsule is waiting for you"
     netCheckMatches({ announce: true });        // "you're holding 3 they need"
     netRefreshUI();
+    // Behind the greeting on purpose. Arriving at a decision before you've
+    // seen the room is the kind of thing people dismiss reflexively — and a
+    // reflexive no would burn this copy's one chance to be offered.
+    setTimeout(netOfferCloudRestore, 2600);
   } catch (e) {
     NET.ready = false;      // any surprise at all: stay offline, stay working
   }
@@ -356,7 +360,9 @@ async function netAdoptSave(code) {
 // battery. It only runs when the save actually changed, and it never runs on a
 // schedule — a tab left parked open for a week uploads nothing at all.
 
-const CLOUD_QUIET = 20000;    // ms of quiet after a change before uploading
+// The backstop, not the main event. Machines flush on shopUnfocus() and the
+// tab flushes on hide, so this only has to catch everything else.
+const CLOUD_QUIET = 8000;     // ms of quiet after a change before uploading
 let cloudDirty = false;
 let cloudBusy = false;
 let cloudTimer = null;
@@ -434,6 +440,62 @@ async function netFlushCloud() {
   if (res.err) { cloudDirty = true; cloudBlip('off'); return; }
   cloudBlip('ok');
   updateCloudLine();
+}
+
+// ---------- the other direction ----------
+//
+// Nothing downloads on its own, ever. Cloud restore REPLACES, and a background
+// download that guessed wrong would eat a collection with no undo. So this
+// only ever asks.
+//
+// It reads ONE column. The payload stays on the server, encrypted and unread,
+// which is exactly why the offer can't say anything about contents: newer is
+// not the same as more. A device that traded three stickers away also has a
+// newer save.
+const CLOUD_DECLINED_KEY = 'gapon-cloud-declined';
+
+function cloudDeclinedStamp() {
+  try { return localStorage.getItem(CLOUD_DECLINED_KEY) || ''; } catch (e) { return ''; }
+}
+
+function netDeclineCloud(stamp) {
+  try { localStorage.setItem(CLOUD_DECLINED_KEY, stamp || ''); } catch (e) {}
+}
+
+async function netCloudPeek() {
+  if (!NET.ready || !cloudOptedIn()) return '';
+  try {
+    const { data, error } = await NET.client
+      .from('saves').select('updated_at').eq('player_id', NET.playerId).maybeSingle();
+    if (error || !data) return '';
+    return data.updated_at;
+  } catch (e) { return ''; }
+}
+
+// Is the copy on the server a different one from what this device last put
+// there or took from there? If so, offer it — once per version.
+async function netOfferCloudRestore() {
+  const server = await netCloudPeek();
+  if (!server) return;
+  const stamp = storedCloudStamp();
+  if (stamp && server === stamp) return;          // this device already holds it
+  if (server === cloudDeclinedStamp()) return;    // already said no to THIS copy
+  // A device with no stamp can't tell which copy is newer. It asks anyway —
+  // that's the same device that would otherwise upload unconditionally and
+  // quietly bury the other one.
+  const when = savedAgoText(server) || 'saved a while back';
+  const asked = keeperAsk(
+    `Your collection was saved somewhere else — ${when}. Want a look at that copy?`,
+    {
+      yes: 'Show me',
+      no: 'Not now',
+      mood: 'gift',
+      onYes: () => cloudOfferAccept(server),
+      onNo: () => netDeclineCloud(server),
+    });
+  // Keeper wasn't on screen, so nothing was asked and nothing was declined —
+  // it'll come round again next launch rather than being silently used up.
+  if (!asked) return;
 }
 
 // ---------- inbox ----------

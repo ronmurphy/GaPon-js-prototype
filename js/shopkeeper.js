@@ -129,6 +129,7 @@ function keeperSetPose(mood) {
 let kbTimer = null;
 let kbQueue = [];
 let kbShowing = false;
+let kbAsking = false;      // a question is on screen and waiting for an answer
 
 // Poko is only on screen in the shop. Anywhere else he calls out with a toast
 // instead of talking to an empty room — which matters for pacing, because the
@@ -165,12 +166,59 @@ function keeperSayAll(lines, ms = 5200) {
   lines.forEach((l, i) => setTimeout(() => keeperSay(l, ms), i * (hold + 500)));
 }
 
+// A yes/no from Poko. Goes through the SAME queue as everything else — an ask
+// that jumped the line would wipe the daily greeting mid-sentence, and one
+// that fired early would arrive before the player has seen the room.
+//
+// Returns false if the keeper isn't on screen. There is no toast fallback on
+// purpose: a toast can't hold buttons, and a question with nowhere to answer
+// is worse than no question.
+function keeperAsk(text, opts = {}) {
+  if (!keeperOnScreen()) return false;
+  kbQueue.push({ text, ms: 0, mood: opts.mood || null, ask: opts });
+  if (!kbShowing) keeperNext();
+  return true;
+}
+
+function keeperShowAsk(bubble, ask) {
+  kbAsking = true;
+  bubble.classList.remove('more');     // not "tap to continue" — it's a choice
+  bubble.classList.add('asking');
+  const row = document.createElement('span');
+  row.className = 'kb-ask';
+  const add = (label, cls, fn) => {
+    const b = document.createElement('button');
+    b.className = 'kb-btn' + (cls ? ' ' + cls : '');
+    b.textContent = label;
+    b.addEventListener('click', e => {
+      e.stopPropagation();            // the bubble's own click skips ahead
+      keeperClearAsk(bubble);
+      kbShowing = false;
+      keeperNext();                   // drain anything behind it, or hide
+      if (fn) fn();
+    });
+    row.appendChild(b);
+  };
+  add(ask.yes || 'Yes please', 'yes', ask.onYes);
+  add(ask.no || 'Not now', '', ask.onNo);
+  bubble.appendChild(row);
+  // Deliberately no kbTimer. Nothing times out a decision.
+}
+
+function keeperClearAsk(bubble) {
+  kbAsking = false;
+  bubble.classList.remove('asking');
+  const row = bubble.querySelector('.kb-ask');
+  if (row) row.remove();
+}
+
 function keeperNext() {
   const bubble = document.querySelector('#keeper-bubble');
   if (!bubble) return;
   const next = kbQueue.shift();
   if (!next) {
     kbShowing = false;
+    keeperClearAsk(bubble);
     keeperSetPose('welcome');      // back to standing behind the counter
     if (!FX_REDUCED) bubble.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-in' });
     // hide on a timer, never on an animation event — a stalled animation
@@ -184,7 +232,9 @@ function keeperNext() {
   bubble.querySelector('.kb-text').textContent = next.text;
   bubble.classList.toggle('more', kbQueue.length > 0);
   clearTimeout(kbTimer);
-  kbTimer = setTimeout(keeperNext, next.ms);
+  keeperClearAsk(bubble);
+  if (next.ask) keeperShowAsk(bubble, next.ask);
+  else kbTimer = setTimeout(keeperNext, next.ms);
   if (!FX_REDUCED) {
     // transform-only entrance: even if the animation never runs, the bubble
     // is readable — nothing here is allowed to make it invisible
@@ -214,7 +264,11 @@ function initShopkeeper() {
   keeper.querySelector('.keeper-char').innerHTML = keeperFaceHTML();
   bubble.querySelector('.kb-face').innerHTML = keeperFaceHTML('mini');
   // tapping the bubble skips ahead; tapping Poko opens the stamp card
-  bubble.addEventListener('click', () => { clearTimeout(kbTimer); keeperNext(); });
+  bubble.addEventListener('click', () => {
+    if (kbAsking) return;      // tapping past a question would answer it by accident
+    clearTimeout(kbTimer);
+    keeperNext();
+  });
   keeper.addEventListener('click', () => {
     sfx.hello();
     openStampCard();

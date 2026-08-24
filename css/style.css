@@ -488,6 +488,31 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .kb-face { flex-shrink: 0; line-height: 1; }
 .kb-text { flex: 1; }
 
+/* Poko asking something rather than saying something. The buttons wrap to
+   their own line when the bubble is narrow — a yes and a no squeezed against
+   the text is how you get a mis-tap on a question that replaces a collection. */
+.keeper-bubble.asking { flex-wrap: wrap; cursor: default; }
+.kb-ask {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.kb-btn {
+  font: inherit;
+  font-size: 0.82rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  background: rgba(78, 52, 46, 0.12);
+  color: #4e342e;
+}
+.kb-btn:hover { background: rgba(78, 52, 46, 0.2); }
+.kb-btn.yes { background: #4e342e; color: #f6e7c8; }
+.kb-btn.yes:hover { background: #6d4c41; }
+.kb-btn:focus-visible { outline: 2px solid #6d4c41; outline-offset: 2px; }
+
 /* --- hanging restock sign --- */
 
 .shop-sign {
