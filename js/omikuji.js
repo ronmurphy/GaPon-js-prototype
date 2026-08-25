@@ -62,6 +62,9 @@ function openOmikuji() {
       ], { duration: 320, easing: 'ease-in-out' });
     }
     if (shakes === 3) {
+      // the slip rises out of the hole — the art swap IS the animation, and
+      // the 620ms wait below is what gives you time to see it
+      box.classList.add('drawn');
       $('#omi-hint').textContent = 'a stick slides out…';
       setTimeout(revealOmikuji, 620);
     } else {

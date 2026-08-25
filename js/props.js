@@ -15,7 +15,13 @@ const PROPS = {
   dir: 'assets/props',        // ← null falls the whole room back to CSS
   files: {
     fern:         'fern.png',
-    omikuji:      'omikuji.png',
+    // omikuji-shrine.png and omikuji.png are interchangeable — measured object
+    // 179x344 vs 178x341 with the same margins, so swapping the filename here
+    // is the whole change. The shrine adds tied bad-luck ribbons and a small
+    // hex box at its side, which is the box you shake in the modal.
+    omikuji:      'omikuji-shrine.png',
+    'omi-box':       'omikuji_hex_box_empty.png',
+    'omi-box-drawn': 'omikuji_hex_box_fortune.png',
     'door-arcade': 'door_arcade.png',
     'door-parlour': 'door_parlor.png',
     // Frame only, panes transparent — so the CSS sky underneath keeps all FOUR
