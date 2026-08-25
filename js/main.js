@@ -672,6 +672,7 @@ function boot() {
   });
 
   applyTheme();
+  initProps();      // illustrated scenery, or CSS if PROPS.dir is null
   $('#toggle-theme').addEventListener('click', () => {
     cycleTheme();
     sfx.tick();

@@ -1566,6 +1566,82 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .dec-door:hover .door-glass { filter: brightness(1.2); }
 
+/* ---------- illustrated props ---------- */
+/* Everything here is additive: without `props-on` the room is exactly the CSS
+   scene it has always been, which is what makes PROPS.dir = null a real
+   revert rather than a half-off state. Each prop hides the CSS parts it
+   replaces and keeps the ones it does not — a door's sign and mat stay CSS,
+   because the sign's text swaps with the theme and the art has no sign on it. */
+
+.props-on .dec-plant {
+  font-size: 0;                       /* the emoji was the artwork */
+  width: 84px;
+  height: 84px;
+  background: var(--prop-fern) center bottom / contain no-repeat;
+}
+
+.props-on .dec-omikuji {
+  width: 112px;                       /* the art is 0.67 wide, the CSS box was 0.50 */
+  background: var(--prop-omikuji) center bottom / contain no-repeat;
+}
+.props-on .omi-roof,
+.props-on .omi-jar,
+.props-on .omi-post { display: none; }
+
+/* Frame art sits ON TOP of the CSS sky, which is why the sky keeps morning,
+   day, dusk and night rather than folding into two baked PNGs. The sky is
+   inset so it cannot show past the frame's rounded outer corners. */
+.props-on .dec-window {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+.props-on .dec-window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--prop-window-frame) center / contain no-repeat;
+  pointer-events: none;
+}
+/* Measured from window_frame.png, not guessed. The frame's solid area starts
+   10.6px in horizontally and 9.7px vertically (scaled to this box) with a
+   7.4px outer corner radius, and its bars are 9.2px thick. So the sky has a
+   ~9px band to hide in: past the frame's outer edge, still under the bar.
+   Anything shallower and the sky's corners show past the rounded frame — that
+   is the halo you get with inset: 7px. */
+.props-on .dec-window .sky {
+  inset: 12px 13px;
+  border-radius: 7px;
+}
+.props-on .dec-window .bars { display: none; }   /* the frame draws its own */
+
+/* The counter art is square but its box is 132x86, so it is 9-SLICED rather
+   than scaled: corners and the moulded edges stay at their drawn size and only
+   the flat middle stretches. That is what border-image exists for, and it
+   means the same file works at any counter width. */
+.props-on .keeper-counter {
+  background: none;
+  box-shadow: none;              /* the art carries its own edge shading */
+  border: 34px solid transparent;
+  border-image: var(--prop-counter) 34 fill stretch;
+}
+
+/* 116px read as skinny beside a 218px machine — a door should be WIDER than a
+   gachapon cabinet, not half of it. Ratio held at the art's 0.56. */
+.props-on .dec-door {
+  width: 152px;
+  height: 272px;
+  background: var(--prop-door-parlour) center bottom / contain no-repeat;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.45));
+  border: 0;
+  transition: filter 0.18s;
+}
+.props-on .arcade-door { background-image: var(--prop-door-arcade); }
+.props-on .door-frame { display: none; }
+/* the hover tell lived on .door-glass, which is inside the art now */
+.props-on .dec-door:hover { filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.45)) brightness(1.12); }
+
 /* ---------- the Corinth room ---------- */
 
 .parlour {

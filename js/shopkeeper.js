@@ -262,6 +262,10 @@ function initShopkeeper() {
   const bubble = document.querySelector('#keeper-bubble');
   if (!keeper || !bubble) return;
   keeper.querySelector('.keeper-char').innerHTML = keeperFaceHTML();
+  // The counter says who is behind it, not what the app is called — the app's
+  // name is already in the header, and this is Poko's counter.
+  const plate = keeper.querySelector('.keeper-counter span');
+  if (plate) plate.textContent = SHOPKEEPER.name;
   bubble.querySelector('.kb-face').innerHTML = keeperFaceHTML('mini');
   // tapping the bubble skips ahead; tapping Poko opens the stamp card
   bubble.addEventListener('click', () => {
