@@ -46,12 +46,49 @@ function defaultState() {
 // collide. `special` is the Saturday machine's own slot.
 const STOCK_SLOTS = ['m0', 'm1', 'm2', 'm3', 'm4', 'special'];
 
-// 1–2 golden FREE PLAY ticket positions among the capsules still in the
-// machine — never the final slot, which is reserved for the pity sticker.
-function seedTicketPositions(done = 0) {
+// How many capsules this machine holds. See the note on ECON.stockBudget —
+// the short version is that the last capsule is a guaranteed missing sticker,
+// so stock size is the PRICE of that guarantee, and a flat count sold it far
+// too cheaply on the cheap machines.
+function stockFor(tierId) {
+  if (tierId === 'special') return ECON.stockSpecial;
+  if (tierId === 'fuku') return ECON.stockFuku;
+  const cost = (TIERS[tierId] || TIERS.mid).cost;
+  return Math.max(2, Math.round(ECON.stockBudget / cost));
+}
+
+// getTodaysMachines() is pure and seeded, but stockLeft() runs on every render
+// — cache the shuffle for the period instead of redoing it each time.
+let floorCache = { period: null, machines: null };
+
+function todaysMachines() {
+  const period = currentPeriod();
+  if (floorCache.period !== period) floorCache = { period, machines: getTodaysMachines() };
+  return floorCache.machines;
+}
+
+function slotStock(slot) {
+  const m = todaysMachines().find(x => x.id === slot);
+  return stockFor(m ? m.tierId : 'mid');
+}
+
+// Golden FREE PLAY ticket positions among the capsules still in the machine —
+// never the final slot, which is reserved for the pity sticker.
+//
+// The COUNT scales with stock so the RATE holds. It used to be a flat 1-or-2
+// however big the machine was, which was fine when every machine held 10; once
+// a Pebble Pon holds 25 that is a 2.6x nerf to the one thing that softens a
+// dry run. At stock 10 this is arithmetically identical to the old rule —
+// 1.35 expected, a 35% chance of two.
+const TICKET_RATE = 0.135;
+
+function seedTicketPositions(stock, done = 0) {
   const open = [];
-  for (let i = done; i < ECON.machineStock - 1; i++) open.push(i);
-  const n = Math.min(open.length, Math.random() < 0.35 ? 2 : 1);
+  for (let i = done; i < stock - 1; i++) open.push(i);
+  const target = stock * TICKET_RATE;
+  let n = Math.floor(target);
+  if (Math.random() < target - n) n++;
+  n = Math.min(open.length, n);
   const picks = new Set();
   while (picks.size < n) picks.add(open[Math.floor(Math.random() * open.length)]);
   return [...picks];
@@ -60,23 +97,42 @@ function seedTicketPositions(done = 0) {
 function machineStock() {
   const period = currentPeriod();
   if (!state.stock || state.stock.period !== period) {
-    state.stock = { period, left: {}, tickets: {} };
+    state.stock = { period, left: {}, max: {}, tickets: {} };
     for (const t of STOCK_SLOTS) {
-      state.stock.left[t] = ECON.machineStock;
-      state.stock.tickets[t] = seedTicketPositions();
+      const n = slotStock(t);
+      state.stock.max[t] = n;
+      state.stock.left[t] = n;
+      state.stock.tickets[t] = seedTicketPositions(n);
     }
     saveGame();
   }
-  // older saves mid-rotation (pre-ticket or pre-special builds): fill gaps
+  // older saves mid-rotation (pre-ticket, pre-special or pre-per-tier builds)
   if (!state.stock.tickets) state.stock.tickets = {};
+  if (!state.stock.max) state.stock.max = {};
   let patched = false;
   for (const t of STOCK_SLOTS) {
-    if (state.stock.left[t] == null) {
-      state.stock.left[t] = ECON.machineStock;
+    const n = slotStock(t);
+    if (state.stock.left[t] == null) { state.stock.left[t] = n; patched = true; }
+    if (state.stock.max[t] == null) {
+      // A save written before machines had per-tier sizes. It only recorded
+      // what was LEFT, so infer what they'd already pulled from the old flat
+      // 10 and carry that across rather than handing out a free restock.
+      const used = Math.max(0, 10 - state.stock.left[t]);
+      state.stock.max[t] = n;
+      state.stock.left[t] = Math.max(0, n - used);
+      state.stock.tickets[t] = seedTicketPositions(n, Math.min(used, Math.max(0, n - 1)));
+      patched = true;
+    } else if (state.stock.max[t] !== n) {
+      // A deploy changed this machine's size mid-rotation. Resize around what
+      // they've already pulled; never restore capsules they've spent.
+      const used = state.stock.max[t] - state.stock.left[t];
+      state.stock.max[t] = n;
+      state.stock.left[t] = Math.max(0, n - used);
+      state.stock.tickets[t] = seedTicketPositions(n, Math.min(used, Math.max(0, n - 1)));
       patched = true;
     }
     if (!state.stock.tickets[t]) {
-      state.stock.tickets[t] = seedTicketPositions(ECON.machineStock - state.stock.left[t]);
+      state.stock.tickets[t] = seedTicketPositions(n, state.stock.max[t] - state.stock.left[t]);
       patched = true;
     }
   }
@@ -85,9 +141,13 @@ function machineStock() {
 }
 
 function stockLeft(slot) { return machineStock().left[slot]; }
+function stockMax(slot) { return machineStock().max[slot]; }
 
 // 0-based index of the NEXT pull from this machine this rotation.
-function pullsDone(slot) { return ECON.machineStock - machineStock().left[slot]; }
+function pullsDone(slot) {
+  const s = machineStock();
+  return s.max[slot] - s.left[slot];
+}
 
 function nextPullIsTicket(slot) {
   return machineStock().tickets[slot].includes(pullsDone(slot));

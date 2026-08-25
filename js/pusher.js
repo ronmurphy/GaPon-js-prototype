@@ -60,7 +60,7 @@ function settleShelf(caps, iterations = 14) {
 function simulatePush(shelf, rand = Math.random) {
   // carry `color` through — dropping it made every capsule fall back to the
   // default red the moment the shelf came back from a push
-  const caps = shelf.map(c => ({ x: c.x, y: c.y, gold: c.gold, color: c.color }));
+  const caps = shelf.map(c => ({ x: c.x, y: c.y, gold: c.gold, color: c.color, shape: c.shape }));
   if (!caps.length) return { caps, fell: [], frames: [] };
 
   const frames = [];
@@ -142,16 +142,20 @@ function drawPusher(st, ramY) {
     // before drawing, not after, or it does nothing at all)
     if (c.y > PUSHER.shelfD) ctx.globalAlpha = 0.55;
     ctx.translate(c.x, Math.min(c.y, PUSHER.shelfD + 18));
-    ctx.beginPath();
-    ctx.arc(0, 0, PUSH_R, Math.PI, Math.PI * 2);
-    ctx.fillStyle = c.color || '#ef5350';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(0, 0, PUSH_R, 0, Math.PI);
-    ctx.fillStyle = '#f2f0eb';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(0, 0, PUSH_R, 0, Math.PI * 2);
+    // No ctx.rotate here and none wanted — the shelf has no rotation at all,
+    // which is why cornered shapes are free on this machine.
+    const shape = c.shape || 'round';
+    for (const [half, fill] of [[-1, c.color || '#ef5350'], [1, '#f2f0eb']]) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-PUSH_R - 2, half > 0 ? 0 : -PUSH_R - 2, (PUSH_R + 2) * 2, PUSH_R + 2);
+      ctx.clip();
+      MachineSim.shapePath(ctx, shape, PUSH_R);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.restore();
+    }
+    MachineSim.shapePath(ctx, shape, PUSH_R);
     ctx.strokeStyle = 'rgba(0,0,0,0.3)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
@@ -293,8 +297,19 @@ function renderPusher(host, b) {
     </div>`;
   host.appendChild(card);
   const caps = pusherShelf(b.id);
-  // colour is cosmetic and not saved — capsule colour never hints at rarity
-  for (const c of caps) c.color = CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
+  // Colour and shape are cosmetic and NOT saved — the shelf persists as bare
+  // [x, y] pairs, so anything set at load time is thrown away. They have to be
+  // dressed here, on the way to the screen.
+  //
+  // The shelf is deliberately the one MIXED pile in the game. Everywhere else
+  // shape is the machine's price band (see CAP_SHAPES), so a jumble reads
+  // instantly as "not a price" — and it breaks up the visible grid this shelf
+  // loads in without touching the avalanche rhythm, which comes from ramStep
+  // and the lip, not from shape.
+  for (const c of caps) {
+    c.color = CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)];
+    c.shape = CAP_SHAPE_LIST[Math.floor(Math.random() * CAP_SHAPE_LIST.length)];
+  }
   const st = { card, slot: b.id, col, caps, busy: false,
                ctx: card.querySelector('canvas').getContext('2d') };
   corinthMachines.push(st);

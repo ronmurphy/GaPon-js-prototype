@@ -13,11 +13,23 @@ class MachineSim {
   // `count` mirrors the machine's real remaining stock — the pile IS the
   // stock display, so it never refills on its own. `goldCount` of them are
   // golden FREE PLAY ticket capsules, visible in the dome.
-  constructor(canvas, count = 11, goldCount = 0, withClaw = false) {
+  // `capacity` is what this machine holds when FULL — capsule size follows it,
+  // not `count`. Sizing off what's left made the survivors grow every time the
+  // page reloaded: a Pebble Pon with 15 of its 25 gone came back with capsules
+  // half again as big as the ones it started with. Size is a property of the
+  // machine, not of how empty it is.
+  constructor(canvas, count = 11, goldCount = 0, withClaw = false, capacity = 0, shape = 'round') {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.w = canvas.width;
     this.h = canvas.height;
+    // Capsule size follows the machine's CAPACITY, because machines no longer
+    // all hold ten (see ECON.stockBudget). A fixed radius piled 25 capsules
+    // 16px above the top of the glass. Area per capsule scales as 1/n, so the
+    // radius scales as 1/sqrt(n) — and this is what a stuffed arcade machine
+    // actually looks like: lots of small prizes, or three big ones.
+    this.capR = MachineSim.radiusFor(capacity || count);
+    this.shape = shape;
     this.shakeFrames = 0;
     this.capsules = [];
     // claw machines hang a grabber in the same glass box; shop.js drives it
@@ -25,6 +37,44 @@ class MachineSim {
     for (let i = 0; i < count; i++) this.spawnCapsule(true, i < goldCount);
     activeSims.push(this);
   }
+
+  // Trace a capsule outline of the given shape, radius r, centred on 0,0.
+  // Every shape is inscribed in the same circle, so the physics — which is
+  // purely distance-based on c.r — never has to know which one it is.
+  static shapePath(ctx, shape, r) {
+    ctx.beginPath();
+    if (shape === 'hex') {
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI / 6 + i * Math.PI / 3;      // flat-top
+        const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.closePath();
+    } else if (shape === 'square') {
+      const k = r * 0.82, rad = r * 0.3;              // rounded square
+      if (ctx.roundRect) ctx.roundRect(-k, -k, k * 2, k * 2, rad);
+      else ctx.rect(-k, -k, k * 2, k * 2);
+    } else {
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+    }
+  }
+
+  // How many rotations look identical. A hexagon never has to turn more than
+  // 30 degrees to sit flat; a circle is never wrong, so it is left alone.
+  static shapeFacets(shape) {
+    return shape === 'hex' ? 6 : shape === 'square' ? 4 : 0;
+  }
+
+  static radiusFor(capacity) {
+    return Math.max(8, Math.min(19, 15 * Math.sqrt(10 / Math.max(1, capacity))));
+  }
+
+  // How close the claw has to be to grip. Follows capsule size so the feel
+  // holds whatever the machine is stocked with — at the old fixed r=15 this is
+  // exactly the 22px it has always been. A flat 22 would make the catchable
+  // zone SMALLER than a big capsule in a sparse machine: you'd be sitting
+  // right over one and miss.
+  grabReach() { return (this.capR || 15) + 7; }
 
   // Nearest catchable capsule to a given x, or null. Used by the claw.
   capsuleNear(x, maxDist) {
@@ -43,13 +93,15 @@ class MachineSim {
   }
 
   spawnCapsule(settled, gold = false) {
-    const r = 15;
+    const r = this.capR || 15;
+    const shape = this.shape || 'round';
     this.capsules.push({
       x: r + Math.random() * (this.w - 2 * r),
       y: settled ? this.h - r - Math.random() * 60 : -r,
       vx: (Math.random() - 0.5) * 2,
       vy: 0,
       r,
+      shape,
       gold,
       color: gold ? CAP_GOLD : CAPSULE_COLORS[Math.floor(Math.random() * CAPSULE_COLORS.length)],
       rot: Math.random() * Math.PI * 2,
@@ -100,6 +152,22 @@ class MachineSim {
       c.x += c.vx;
       c.y += c.vy;
       c.rot += c.vx * 0.03;
+      // A circle at any angle looks right, which is why this was never needed.
+      // A hexagon resting at 23 degrees looks like it is floating — and since
+      // collision is circular, its corners visibly overlap its neighbours. So
+      // as a capsule slows, ease it onto its nearest flat face.
+      //
+      // Tested on vx ALONE, deliberately. A capsule resting on other capsules
+      // never settles in vy: gravity keeps accumulating and the separation
+      // pass corrects position but not velocity, so a pile that has not moved
+      // in 600 frames still reads as falling at 3.2. vx is the honest signal —
+      // it is what drives rot in the first place, and it really does reach 0.
+      const facets = MachineSim.shapeFacets(c.shape);
+      if (facets && Math.abs(c.vx) < 0.35) {
+        const step = Math.PI * 2 / facets;
+        const nearest = Math.round(c.rot / step) * step;
+        c.rot += (nearest - c.rot) * 0.18;
+      }
       if (c.x < c.r) { c.x = c.r; c.vx = Math.abs(c.vx) * rest; }
       if (c.x > this.w - c.r) { c.x = this.w - c.r; c.vx = -Math.abs(c.vx) * rest; }
       if (!c.dispensing && c.y > this.h - c.r) {
@@ -148,7 +216,7 @@ class MachineSim {
     ctx.stroke();
     // aiming guide (only while lining up) — same fairness fix as the arcade
     if (cl.aiming) {
-      const target = this.capsuleNear(cl.x, 22);
+      const target = this.capsuleNear(cl.x, this.grabReach());
       ctx.strokeStyle = target ? 'rgba(255,193,7,0.5)' : 'rgba(255,255,255,0.14)';
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 6]);
@@ -192,27 +260,27 @@ class MachineSim {
       ctx.rotate(c.rot);
       // gold ticket capsules glow a little
       if (c.gold) {
-        ctx.beginPath();
-        ctx.arc(0, 0, c.r + 2.5, 0, Math.PI * 2);
+        MachineSim.shapePath(ctx, c.shape || 'round', c.r + 2.5);
         ctx.strokeStyle = 'rgba(255, 193, 7, 0.45)';
         ctx.lineWidth = 3;
         ctx.stroke();
       }
-      // bottom half (white; pale gold on ticket capsules)
-      ctx.beginPath();
-      ctx.arc(0, 0, c.r, 0, Math.PI);
-      ctx.closePath();
-      ctx.fillStyle = c.gold ? '#ffecb3' : '#f2f0eb';
-      ctx.fill();
-      // top half (color)
-      ctx.beginPath();
-      ctx.arc(0, 0, c.r, Math.PI, Math.PI * 2);
-      ctx.closePath();
-      ctx.fillStyle = c.color;
-      ctx.fill();
+      // Both halves are the SAME outline clipped at the seam, so a hexagon or
+      // a rounded square splits exactly the way a sphere does — one path to
+      // get right instead of a bespoke top and bottom per shape.
+      const shape = c.shape || 'round';
+      for (const [half, fill] of [[1, c.gold ? '#ffecb3' : '#f2f0eb'], [-1, c.color]]) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-c.r - 2, half > 0 ? 0 : -c.r - 2, (c.r + 2) * 2, c.r + 2);
+        ctx.clip();
+        MachineSim.shapePath(ctx, shape, c.r);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.restore();
+      }
       // seam + outline
-      ctx.beginPath();
-      ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+      MachineSim.shapePath(ctx, shape, c.r);
       ctx.strokeStyle = 'rgba(0,0,0,0.25)';
       ctx.lineWidth = 1.5;
       ctx.stroke();

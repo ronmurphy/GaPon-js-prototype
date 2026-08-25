@@ -106,8 +106,11 @@ function renderMachines() {
     card.innerHTML = machineMarkup(m, col);
     host.appendChild(card);
     if (m.kind !== 'fuku') {          // the drum has no capsule pile to sim
+      // stockMax, not stockLeft, for the size — a half-empty machine's capsules
+      // must look the same as when it was full.
       machineSims[m.id] = new MachineSim(card.querySelector('canvas'),
-        stockLeft(m.id), goldCapsulesLeft(m.id, m.kind), m.kind === 'claw');
+        stockLeft(m.id), goldCapsulesLeft(m.id, m.kind), m.kind === 'claw',
+        stockMax(m.id), capShapeFor(m.tierId));
     }
     card.classList.toggle('soldout', stockLeft(m.id) <= 0);
     card.addEventListener('click', () => {
@@ -546,14 +549,14 @@ function armClaw(card, m) {
       if (cl.x > W - 24) { cl.x = W - 24; dir = -1; }
     } else if (phase === 'down') {
       cl.y += 3.4;
-      const t = sim.capsuleNear(cl.x, 22);
+      const t = sim.capsuleNear(cl.x, sim.grabReach());
       const floor = t ? t.y - t.r - 4 : sim.h - 26;
       if (cl.y >= floor) { cl.y = floor; phase = 'grip'; timer = 0; }
     } else if (phase === 'grip') {
       timer++;
       cl.open = Math.max(0, 1 - timer / 14);
       if (timer > 18) {
-        const t = sim.capsuleNear(cl.x, 22);
+        const t = sim.capsuleNear(cl.x, sim.grabReach());
         if (!t) {
           sfx.thunk();                                  // closed on nothing
         } else {
@@ -637,7 +640,7 @@ function clawResult(m, card, grabbed) {
     focusState.stage = 'capsule';
     if (gold) showTicketReveal(m);
     else showReveal(item, isNew, m, card, capColor, { fromChute: true, foil, pity: stockLeft(m.id) === 0 });
-  });
+  }, capShapeFor(m.tierId));
 }
 
 // A coin flies from the header counter into the machine's slot. The ritual
@@ -776,14 +779,14 @@ function vend() {
       focusState.stage = 'capsule';
       if (ticket) showTicketReveal(m);
       else showReveal(item, isNew, m, card, capColor, { fromChute: true, foil, pity });
-    });
+    }, capShapeFor(m.tierId));
   }, 950);
 }
 
-function showChuteCapsule(card, color, onOpen) {
+function showChuteCapsule(card, color, onOpen, shape = 'round') {
   const hole = card.querySelector('.chute-hole');
   const cap = document.createElement('div');
-  cap.className = 'chute-cap';
+  cap.className = 'chute-cap cap-' + shape;
   cap.style.setProperty('--cap', color);
   hole.appendChild(cap);
   if (!FX_REDUCED) {

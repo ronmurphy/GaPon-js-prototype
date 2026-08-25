@@ -100,7 +100,7 @@ function showReveal(item, isNew, machine, card, capColor, opts = {}) {
   ov.hidden = false;
   ov.innerHTML = `
     <div class="ov-stage">
-      <div class="capsule" style="--cap:${capColor};--glow:${rar.color}">
+      <div class="capsule cap-${machine ? capShapeFor(machine.tierId) : 'round'}" style="--cap:${capColor};--glow:${rar.color}">
         <div class="cap-top"></div><div class="cap-bottom"></div>
       </div>
       <div class="ov-hint">tap the capsule!</div>
@@ -219,7 +219,7 @@ function showTicketReveal(machine) {
   ov.hidden = false;
   ov.innerHTML = `
     <div class="ov-stage">
-      <div class="capsule gold" style="--cap:#ffc107;--glow:#ffc107">
+      <div class="capsule gold cap-${machine ? capShapeFor(machine.tierId) : 'round'}" style="--cap:#ffc107;--glow:#ffc107">
         <div class="cap-top"></div><div class="cap-bottom"></div>
       </div>
       <div class="ov-hint">tap the capsule!</div>

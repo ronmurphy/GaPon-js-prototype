@@ -16,6 +16,24 @@ const RARITIES = {
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'chase'];
 
+// Capsule SHAPE is the machine's price tag, readable before the coin slot is.
+// People look at the capsules first and the cost second, if at all — so once
+// these are learned, "that's a hex, so it's 25 to play" arrives without
+// reading anything. It stacks with capsule SIZE, which already grades by tier
+// (see ECON.stockBudget), so a Lucky Pon's three fat squares read as premium
+// rather than as nearly-sold-out.
+//
+// Three shapes is the ceiling, not a choice: at r=9.5 in a stuffed Pebble Pon
+// an octagon is indistinguishable from a circle. So this maps price BANDS,
+// and Special Pon shares the square with Lucky — it's gold-accented, Saturday
+// only, and three enormous capsules, so nothing is ambiguous.
+const CAP_SHAPES = { low: 'round', mid: 'hex', high: 'square', special: 'square' };
+const CAP_SHAPE_LIST = ['round', 'hex', 'square'];
+
+function capShapeFor(tierId) {
+  return CAP_SHAPES[tierId] || 'round';
+}
+
 const TIERS = {
   low:  { name: 'Pebble Pon', cost: 10, accent: '#26a69a',
           odds: { common: 0.70, uncommon: 0.24, rare: 0.05, chase: 0.01 } },
@@ -132,9 +150,29 @@ const ECON = {
   setBonus: 150,        // claim once per completed collection
   swapCost: 3,          // spare copies traded for one sticker of the same tier
                         // (foil odds live on RARITIES, keyed by rarity)
-  machineStock: 10,     // real capsules per machine per rotation — the dome
-                        // empties as you pull, and a drained machine sells
-                        // out until the next restock
+  // Capsules per machine per rotation — the dome empties as you pull, and a
+  // drained machine sells out until the next restock.
+  //
+  // NOT a flat count: every machine holds the same COINS' worth of capsules,
+  // so the LAST capsule — the pity sticker, guaranteed to be one you're
+  // missing — costs the same wherever you buy it. See stockFor() in game.js.
+  //
+  // This is the rule real arcades run on: the 50p machine is stuffed, and the
+  // one with three prizes in it is the one you can't win. Stock size IS the
+  // price of the guarantee. With a flat 10 everywhere, emptying a Pebble Pon
+  // bought a guaranteed missing sticker for 100 coins against Lucky Pon's 500,
+  // making a whole set 4.3x cheaper to finish on the cheapest machine — the
+  // fifth time flat per-pull rewards had handed the game to the 10-coin
+  // machine, and by far the largest.
+  stockBudget: 250,     // → Pebble 25, Prize 10, Lucky 5
+  stockSpecial: 3,      // Saturday machine, pinned. At 1 EVERY pull would be
+                        // the pity capsule and its odds table (no commons,
+                        // best chase rate in the shop) would never once apply
+                        // — it would stop being a gachapon and start being a
+                        // vending machine, and the cheapest guarantee in the
+                        // game at that.
+  stockFuku: 10,        // the drum is guaranteed-new by design and already
+                        // priced for it; normalising it would charge twice
 };
 
 // Stamp rally card. A stamp needs ALL THREE tracks filled, not any one of

@@ -838,6 +838,22 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   animation: capglow 1.2s ease-in-out infinite;
 }
 
+/* the capsule in the chute must be the one that just fell out of the dome */
+/* Same rule as the reveal: the inset ring and highlight are drawn round and
+   the clip cannot reach them, which is exactly the ghost circle you could see
+   inside the hexagon. No outer shadow either — a clipped box-shadow is simply
+   gone — and the capglow brightness pulse is left alone so `prefers-reduced-
+   motion` still switches it off. */
+.chute-cap.cap-hex {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
+  box-shadow: none;
+  background:
+    radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 44%),
+    linear-gradient(180deg, var(--cap, #ef5350) 50%, #f2f0eb 50%);
+}
+.chute-cap.cap-square { border-radius: 26%; }
+
 @keyframes capglow { 50% { filter: brightness(1.3); } }
 
 .mach-feet {
@@ -1174,6 +1190,32 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   border-radius: 0 0 65px 65px;
   box-shadow: inset -10px -12px 20px rgba(0,0,0,0.15);
 }
+
+/* Shape is the machine's price band — see CAP_SHAPES in js/data.js. The two
+   halves are clipped from the SAME outline so a hexagon splits exactly where
+   a sphere does, and the open animation needs no per-shape tuning. */
+/* box-shadow follows the BORDER-BOX, never the clip-path — so a clipped
+   capsule keeps painting the round one's lighting underneath it and you can
+   still make out the circle. Rebuild the highlight as a background layer,
+   which the clip DOES cut. */
+.cap-hex .cap-top {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 93.3% 50%, 93.3% 100%, 6.7% 100%, 6.7% 50%);
+  box-shadow: none;
+  background:
+    radial-gradient(120% 90% at 78% 90%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 60%),
+    var(--cap, #ef5350);
+}
+.cap-hex .cap-bottom {
+  border-radius: 0;
+  clip-path: polygon(6.7% 0%, 93.3% 0%, 93.3% 50%, 50% 100%, 6.7% 50%);
+  box-shadow: none;
+  background:
+    radial-gradient(120% 90% at 74% 12%, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0) 62%),
+    #f2f0eb;
+}
+.cap-square .cap-top    { border-radius: 24px 24px 0 0; }
+.cap-square .cap-bottom { border-radius: 0 0 24px 24px; }
 
 .capsule.glow { filter: drop-shadow(0 0 18px var(--glow)); }
 .capsule.glow-big { filter: drop-shadow(0 0 34px var(--glow)) drop-shadow(0 0 60px var(--glow)); }
