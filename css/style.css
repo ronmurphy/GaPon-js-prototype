@@ -2336,7 +2336,14 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5), transparent 68%);
 }
 
+/* A cabinet's silhouette is what makes it a cabinet rather than a coloured
+   card: the marquee overhangs, the control deck juts out, and the base is
+   narrower than both. Done with widths rather than a clip-path so nothing
+   clips the live text these panels carry. */
 .cab-marquee {
+  position: relative;
+  z-index: 2;
+  margin: 0 -5px;                     /* overhangs the body on both sides */
   background: linear-gradient(180deg, color-mix(in srgb, var(--cabc) 85%, #fff), color-mix(in srgb, var(--cabc) 62%, #000));
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
@@ -2344,15 +2351,22 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   font-size: 0.82rem;
   text-align: center;
   padding: 6px 4px;
-  border-radius: 10px 10px 0 0;
+  border-radius: 10px 10px 3px 3px;
   border: 2px solid rgba(0, 0, 0, 0.3);
   border-bottom: none;
-  box-shadow: 0 0 16px color-mix(in srgb, var(--cabc) 45%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--cabc) 45%, transparent),
+              0 3px 6px rgba(0, 0, 0, 0.5);   /* its own shadow onto the body */
 }
 
 .cab-body {
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.10), transparent 20%, rgba(0, 0, 0, 0.25) 90%),
+    /* spill from the lit marquee — a marquee that glows outward but leaves the
+       cabinet beneath it unlit reads as a sticker, not a light */
+    linear-gradient(180deg, color-mix(in srgb, var(--cabc) 60%, transparent), transparent 26%),
+    /* side bevel: a lit left edge and a shaded right one give the flat panel
+       some thickness */
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 2px, rgba(255, 255, 255, 0.06) 2px 7%,
+                    transparent 22%, rgba(0, 0, 0, 0.3) 93%, rgba(0, 0, 0, 0.45) 100%),
     linear-gradient(180deg, color-mix(in srgb, var(--cabc) 42%, #191233), color-mix(in srgb, var(--cabc) 24%, #100b22));
   border: 2px solid rgba(0, 0, 0, 0.35);
   border-top: none;
@@ -2374,7 +2388,13 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   background:
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
     radial-gradient(120% 120% at 50% 30%, #101b2e, #05070f);
-  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.85), 0 0 10px color-mix(in srgb, var(--cabc) 25%, transparent);
+  box-shadow:
+    inset 0 0 16px rgba(0, 0, 0, 0.85),
+    /* bezel: a moulded ring around the glass, lit on top and shadowed below */
+    0 0 0 3px #0d0a1c,
+    0 -1px 0 4px rgba(255, 255, 255, 0.10),
+    0 2px 0 4px rgba(0, 0, 0, 0.45),
+    0 0 10px color-mix(in srgb, var(--cabc) 25%, transparent);
 }
 
 .cab-ic { font-size: 34px; color: var(--cabc); filter: drop-shadow(0 0 8px var(--cabc)); }
@@ -2402,15 +2422,41 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .cab-deck {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  /* Every arcade game here is one player, so the stick and buttons are ONE
+     pair of hands — centred with a hand's span between them. `space-between`
+     pinned them to opposite ends of a 190px panel, which reads as a two-player
+     deck with the second set missing. */
+  justify-content: center;
+  gap: 40px;
   height: 38px;
-  padding: 0 10px 5px;
+  /* -20px, not -8px: this sits INSIDE .cab-body, whose content box is already
+     24px narrower than the cabinet (2px border + 10px padding a side). To jut
+     8px past the cabinet's actual edge the margin has to clear that first. */
+  margin: 0 -20px;
+  padding: 0 20px 5px;
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(0, 0, 0, 0.22));
+  /* OPAQUE, and darker than the cabinet. The old rgba wash let the body's
+     paint show straight through, so the panel looked like a pane of glass
+     rather than a surface you put your hands on. Real decks are black or
+     machine-tinted; this keeps --cabc so the game's identity colour survives,
+     then falls to near-black at the front edge. */
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--cabc) 38%, #1a1533) 0 2px,
+      color-mix(in srgb, var(--cabc) 26%, #14102a) 2px 45%,
+      color-mix(in srgb, var(--cabc) 10%, #07050f));
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.16),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.4);
 }
 
 .cab-stick {
   position: relative;
+  /* The button cluster is 37px wide and the shaft only 7px, so centring the
+     pair's bounding box leaves the stick 15px further from the middle than
+     the buttons. Half the width difference, added on the left, puts the two
+     control CENTRES symmetric about the deck. */
+  margin-left: 15px;
   width: 7px;
   height: 18px;
   border-radius: 4px;
@@ -2458,11 +2504,14 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .cab-pay .coin-ic { font-size: 13px; }
 
+/* The base is the narrowest part — it is what stops the whole thing reading
+   as one flat slab. */
 .cab-kick {
-  height: 14px;
-  margin: 0 6px;
-  background: linear-gradient(180deg, #16112c, #0b0819);
-  border-radius: 0 0 6px 6px;
+  height: 17px;
+  margin: 0 15px;
+  background: linear-gradient(180deg, #221a40, #100c22 55%, #07050f);
+  border-radius: 0 0 5px 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 /* --- CRT overlay (the game plays "on the cabinet screen") --- */
