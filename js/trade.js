@@ -455,34 +455,90 @@ async function doRedeem(raw, sender) {
 // not at launch. A name only starts mattering when you're about to trade or
 // swap codes, and asking before any of that is a signup wall in disguise.
 // Skippable, changeable, no validation: it's a nickname, not an account.
-function maybeAskName(host) {
-  if (!NET.ready || state.playerName || state.nameAsked) return;
-  state.nameAsked = true;      // asked once; the *from* box is always there
-  saveGame();
-  const row = document.createElement('div');
-  row.className = 'ask-name';
-  row.innerHTML = `
-    <p class="tp-tip">${SHOPKEEPER.emoji} <b>${escHTML(keeperPick('askName'))}</b></p>
+//
+// TWO fixes here, Aug 26 2026, after David played for weeks without ever
+// realising the name could be changed:
+//
+//  1. This used to set `nameAsked = true` the moment the row was DISPLAYED,
+//     before the player touched anything. Glance past a small inline input
+//     among the rest of the Trading Post and it was marked answered forever —
+//     a prompt that consumed itself on sight. The flag is now only set when
+//     somebody actively declines, which is why it is also renamed: every old
+//     save carries a stale `nameAsked`, and the rename IS the migration.
+//
+//  2. The box was empty. Asking someone to invent a name at the exact moment
+//     they came here to do something else is work, and work gets skipped. It
+//     arrives filled in now, so the ask is "is this you?" rather than "think
+//     of something" — with a reroll for anyone who wants to browse.
+// The name editor itself, shared by the first-time ask and the rename button.
+// Classes rather than ids, because two of these can exist at once.
+function nameRowHTML(prefill) {
+  return `
     <div class="friend-add">
-      <input id="ask-name-in" maxlength="14" placeholder="your name" autocomplete="off">
-      <button class="btn small" id="ask-name-ok">That's me</button>
+      <input class="name-in" maxlength="14" autocomplete="off" spellcheck="false"
+             value="${escHTML(prefill)}">
+      <button class="btn small ghost name-roll" title="suggest another">🎲</button>
+      <button class="btn small name-ok">That's me</button>
     </div>`;
-  const anchor = host.querySelector('.trade-post .tp-redeem');
-  if (!anchor) return;
-  anchor.parentNode.insertBefore(row, anchor);
-  const input = row.querySelector('#ask-name-in');
-  row.querySelector('#ask-name-ok').addEventListener('click', () => {
+}
+
+function wireNameRow(scope, onSet) {
+  const input = scope.querySelector('.name-in');
+  scope.querySelector('.name-roll').addEventListener('click', () => {
+    input.value = randomNickname();
+    sfx.tick();
+  });
+  const confirm = () => {
     const name = input.value.trim().slice(0, 14);
-    if (!name) { row.remove(); return; }      // left blank = fine, stay Collector
+    // Emptied the box? Offer another rather than accepting a blank name.
+    if (!name) { input.value = randomNickname(); input.focus(); return; }
     state.playerName = name;
     saveGame();
     if (typeof netSetName === 'function') netSetName(name);
     sfx.chime();
+    onSet(name);
+  };
+  scope.querySelector('.name-ok').addEventListener('click', confirm);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') confirm(); });
+}
+
+// Changing your mind later. Lives on the friend-code card because that card is
+// already "who you are to other people" — the person reading it is exactly the
+// person who might want a different name on it.
+function startRename(host) {
+  const line = host.querySelector('.fc-name');
+  if (!line) return;
+  line.innerHTML = nameRowHTML(state.playerName || randomNickname());
+  wireNameRow(line, name => {
+    toast(`You're ${escHTML(name)} now.`, 'good');
+    renderMarket();
+  });
+  const input = line.querySelector('.name-in');
+  input.focus();
+  input.select();
+}
+
+function maybeAskName(host) {
+  if (!NET.ready || state.playerName || state.nameDeclined) return;
+  const row = document.createElement('div');
+  row.className = 'ask-name';
+  row.innerHTML = `
+    <p class="tp-tip">${SHOPKEEPER.emoji} <b>${escHTML(keeperPick('askName'))}</b></p>
+    ${nameRowHTML(randomNickname())}
+    <button class="ask-name-no" id="ask-name-no">I'd rather stay Collector</button>`;
+  const anchor = host.querySelector('.trade-post .tp-redeem');
+  if (!anchor) return;
+  anchor.parentNode.insertBefore(row, anchor);
+  wireNameRow(row, name => {
     toast(`Nice to meet you, ${escHTML(name)}!`, 'good');
     renderMarket();
   });
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') row.querySelector('#ask-name-ok').click();
+
+  row.querySelector('#ask-name-no').addEventListener('click', () => {
+    // The ONLY thing that stops Poko asking again. Deliberate, not accidental.
+    state.nameDeclined = true;
+    saveGame();
+    row.remove();
   });
 }
 

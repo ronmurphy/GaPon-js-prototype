@@ -3018,7 +3018,32 @@ footer {
   font-size: 0.8rem;
 }
 
+.foot-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .foot-btns { display: flex; gap: 14px; }
+
+/* Warm, quiet, and as far from "reset save" as the footer allows. */
+.kofi {
+  color: var(--ink-dim);
+  text-decoration: underline;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.kofi:hover { color: #ff8a65; }
+
+/* Renaming yourself, on the card that already says who you are to everyone
+   else. Quiet by default — most people set a name once. */
+.fc-name { font-size: 0.74rem; color: var(--ink-dim); margin-top: 6px; }
+.fc-name b { color: var(--ink); }
+.fc-rename {
+  font: inherit;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold);
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 footer button {
   color: var(--ink-dim);
@@ -3574,6 +3599,22 @@ footer button {
   text-transform: uppercase;
   color: var(--ink-dim);
 }
+
+/* The decline. Deliberately quiet and deliberately present — without a way to
+   say no, a prompt that keeps coming back is nagging rather than asking. */
+.ask-name-no {
+  display: block;
+  margin: 6px 0 0 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.ask-name-no:hover { color: var(--ink); }
 
 .cloud-when {
   font-size: 0.72rem;

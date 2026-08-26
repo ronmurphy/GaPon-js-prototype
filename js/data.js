@@ -16,6 +16,25 @@ const RARITIES = {
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'chase'];
 
+// Nickname suggestions. A blank box asking for your name is work, and work at
+// the exact moment someone is trying to do something else is what gets skipped
+// — David played for weeks without realising the name was changeable. A filled
+// box asks for approval instead, which is a much smaller thing to ask.
+//
+// Drawn from the game's own vocabulary so the suggestion reads as part of
+// GaPon rather than a random username generator. Pairs are capped at 14 chars
+// to match the input's maxlength.
+//
+// NOT unique, and deliberately not: identity is the friend code, and the
+// server only ever answers "what name goes with this code?". Two Lucky Tanukis
+// break nothing.
+const NICK_ADJ = ['Lucky', 'Golden', 'Foil', 'Shiny', 'Sleepy', 'Speedy', 'Cosmic',
+                  'Sunny', 'Mellow', 'Peppy', 'Tiny', 'Grand', 'Neon', 'Cosy',
+                  'Sly', 'Merry', 'Bold', 'Swift'];
+const NICK_NOUN = ['Tanuki', 'Capsule', 'Marble', 'Crank', 'Chaser', 'Sticker',
+                   'Pon', 'Fox', 'Cat', 'Comet', 'Pebble', 'Drum', 'Token',
+                   'Leaf', 'Star', 'Bloom', 'Cub', 'Moth'];
+
 // Capsule SHAPE is the machine's price tag, readable before the coin slot is.
 // People look at the capsules first and the cost second, if at all — so once
 // these are learned, "that's a hex, so it's 25 to play" arrives without

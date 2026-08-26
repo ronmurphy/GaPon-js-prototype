@@ -56,6 +56,7 @@ async function netInit() {
     NET.ready = true;
     await netSyncWants();                      // push any wants set while offline
     await netPruneClaimedTrades();             // forget capsules already opened
+    netRefreshFriendNames();                   // pick up anyone who renamed
     await netCheckInbox({ announce: true });    // "a capsule is waiting for you"
     netCheckMatches({ announce: true });        // "you're holding 3 they need"
     netRefreshUI();
@@ -442,6 +443,34 @@ async function netFlushCloud() {
   updateCloudLine();
 }
 
+// Friend names are cached in the save from when each was added, so a friend
+// who renames themselves would otherwise show their old name on your list
+// forever. One query at launch for all of them — names change rarely, so this
+// does not belong on a timer.
+async function netRefreshFriendNames() {
+  if (!NET.ready) return;
+  const fs = friendList().filter(f => f.id);
+  if (!fs.length) return;
+  try {
+    const { data, error } = await NET.client
+      .from('players').select('id, display_name').in('id', fs.map(f => f.id));
+    if (error || !data) return;
+    let changed = false;
+    for (const row of data) {
+      const f = fs.find(x => x.id === row.id);
+      if (f && row.display_name && row.display_name !== f.name) {
+        f.name = row.display_name;
+        changed = true;
+      }
+    }
+    if (changed) {
+      saveGame();
+      const mkt = document.querySelector('#tab-market');
+      if (mkt && !mkt.hidden) renderMarket();
+    }
+  } catch (e) {}
+}
+
 // ---------- the other direction ----------
 //
 // Nothing downloads on its own, ever. Cloud restore REPLACES, and a background
@@ -638,6 +667,9 @@ function netStatusHTML() {
         <button class="btn small" id="fc-share">Share</button>
       </div>
       <p class="fc-note">give this to a friend so they can send you capsules.</p>
+      <p class="fc-name">capsules go out signed
+        <b>${escHTML(state.playerName || 'Collector')}</b>
+        <button class="fc-rename" id="fc-rename">change</button></p>
     </div>`;
 }
 
@@ -653,6 +685,9 @@ function friendInviteText() {
 function wireNetStatus(host) {
   const refresh = host.querySelector('#net-refresh');
   if (refresh) refresh.addEventListener('click', netRefreshNow);
+
+  const rename = host.querySelector('#fc-rename');
+  if (rename) rename.addEventListener('click', () => startRename(host));
 
   const codeBtn = host.querySelector('#fc-copy');
   if (codeBtn) codeBtn.addEventListener('click', () => {
@@ -836,6 +871,17 @@ function openFriendPanel(friend) {
     const seenEl = ov.querySelector('#fp-seen');
     const wantsEl = ov.querySelector('#fp-wants');
     if (!seenEl || !wantsEl) return;          // panel closed while we waited
+    // The live name comes back with this request anyway. Friend entries cache
+    // the name from the moment they were added, so without adopting it here a
+    // friend who renames themselves stays permanently misnamed on your list.
+    if (detail && detail.name && detail.name !== friend.name) {
+      friend.name = detail.name;
+      saveGame();
+      const nameEl = ov.querySelector('.fp-name');
+      if (nameEl) nameEl.textContent = detail.name;
+      const mkt = document.querySelector('#tab-market');
+      if (mkt && !mkt.hidden) renderMarket();      // and the chip behind the panel
+    }
     seenEl.textContent = (detail && lastSeenText(detail.seen)) || '';
     const items = (detail && detail.items) || [];
     if (!items.length) {

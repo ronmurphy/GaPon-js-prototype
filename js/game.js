@@ -464,6 +464,16 @@ function rollPityItem(machine) {
   return unowned[unowned.length - 1];
 }
 
+// A suggested nickname, always short enough for the 14-char box.
+function randomNickname() {
+  for (let i = 0; i < 30; i++) {
+    const n = NICK_ADJ[Math.floor(Math.random() * NICK_ADJ.length)] + ' ' +
+              NICK_NOUN[Math.floor(Math.random() * NICK_NOUN.length)];
+    if (n.length <= 14) return n;
+  }
+  return 'Lucky Pon';        // every pair over 14 chars is a data mistake
+}
+
 // ---- inventory helpers ----
 
 // Foils live in their own map rather than as a flag inside `inv`, which buys
