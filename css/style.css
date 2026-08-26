@@ -1616,15 +1616,21 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 }
 .props-on .dec-window .bars { display: none; }   /* the frame draws its own */
 
-/* The counter art is square but its box is 132x86, so it is 9-SLICED rather
-   than scaled: corners and the moulded edges stay at their drawn size and only
-   the flat middle stretches. That is what border-image exists for, and it
-   means the same file works at any counter width. */
+/* 9-SLICED, not scaled. The counter is drawn 242x99 (ratio 2.44) and its box
+   is 132x86 (1.53), so something has to give — and it must not be the wood top
+   or the mouldings. The slice values are measured off the art: the wood band
+   ends at y=39, the base begins at y=78, and the side mouldings sit 32px in on
+   both edges. Only the flat centre panel stretches.
+   NB the canvas ratio of the uncropped file (1.51) looked like a perfect match
+   for this box — it was not. That was 71px of transparent padding, not
+   counter. Measure the OBJECT, never the canvas. */
 .props-on .keeper-counter {
   background: none;
   box-shadow: none;              /* the art carries its own edge shading */
-  border: 34px solid transparent;
-  border-image: var(--prop-counter) 34 fill stretch;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 34px 17px 18px 17px;
+  border-image: var(--prop-counter) 39 32 21 32 fill stretch;
 }
 
 /* 116px read as skinny beside a 218px machine — a door should be WIDER than a
