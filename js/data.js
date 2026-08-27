@@ -401,6 +401,23 @@ const COLLECTIONS = [
       { id: 'wx_rainbow', name: 'DOUBLE RAINBOW', icon: 'looks',        rarity: 'chase' },
     ],
   },
+  {
+    id: 'cats', name: 'Cat Cafe', color: '#a1887f', artDir: 'CatCafePngs',
+    items: [
+      { id: 'ct_paw',     name: 'Bean Toes',      icon: 'pets',             rarity: 'common' },
+      { id: 'ct_milk',    name: 'Milk Moustache', icon: 'local_drink',      rarity: 'common' },
+      { id: 'ct_box',     name: 'If I Fits',      icon: 'inventory_2',      rarity: 'common' },
+      { id: 'ct_mouse',   name: 'Squeaky Friend', icon: 'toys',             rarity: 'common' },
+      { id: 'ct_window',  name: 'Window Watch',   icon: 'window',           rarity: 'common' },
+      { id: 'ct_nap',     name: 'Sunbeam Nap',    icon: 'bedtime',          rarity: 'common' },
+      { id: 'ct_latte',   name: 'Latte Art',      icon: 'local_cafe',       rarity: 'uncommon' },
+      { id: 'ct_loaf',    name: 'Perfect Loaf',   icon: 'bakery_dining',    rarity: 'uncommon' },
+      { id: 'ct_kitten',  name: 'Tiny Menace',    icon: 'child_care',       rarity: 'uncommon' },
+      { id: 'ct_tuxedo',  name: 'House Manager',  icon: 'styler',           rarity: 'rare' },
+      { id: 'ct_zoom',    name: '3AM Zoomies',    icon: 'bolt',             rarity: 'rare' },
+      { id: 'ct_maneki',  name: 'LUCKY CAT',      icon: 'star',             rarity: 'chase' },
+    ],
+  },
 ];
 
 // ---- monthly rotation ----
@@ -435,7 +452,7 @@ const COLLECTIONS = [
 // this is ever mangled.
 const ROTATION = [
   'space', 'critters', 'snacks', 'music', 'ocean',
-  'garden', 'retro', 'roadtrip', 'sports', 'weather',
+  'garden', 'retro', 'roadtrip', 'sports', 'cats',
 ];
 
 const ITEMS_BY_ID = {};

@@ -101,7 +101,19 @@ function corinthOpen() {
   document.querySelector('#parlour').hidden = false;
   document.querySelector('#parlour-tip').hidden = false;
   renderParlour();
+  parlourTip();
   sfx.thunk();
+}
+
+// Nothing else in the game explains why last season's set is in here. The tip
+// line is already per-visit, so it is the cheapest place to say it.
+function parlourTip() {
+  const el = document.querySelector('#parlour-tip');
+  if (!el) return;
+  const backlog = corinthBoards().some(b => b.collection && !isInRotation(b.collection.id));
+  el.textContent = backlog
+    ? "the back room keeps last season's sets in stock"
+    : '25 coins · aim three balls · the edges pay best';
 }
 
 function corinthClose() {
@@ -116,6 +128,19 @@ function corinthClose() {
 // seeded off the period like the shop floor, so everyone sees the same room
 // and it changes at restock. Always at least one of each, so a visit is
 // never all of one thing.
+// Sets that have LEFT the shop floor come here first.
+//
+// Rotation used to be pure subtraction: a set stopped appearing and the only
+// clue was a badge in the binder. Sorting the out-of-rotation ones to the front
+// of this pool turns that into a move — it is not gone, it is through the door
+// — and gives the back room a reason to exist that is not a chore. (A fourth
+// stamp-card track to force visits was considered and rejected.)
+//
+// SORTED, not filtered, and that matters today: with only one set out of
+// rotation a strict filter would put it on all three machines, which is worse
+// than the random room it replaces. Priority-ordering degrades gracefully now
+// and becomes a whole back-catalogue room on its own once three or more sets
+// have rotated out, with no threshold to tune.
 function corinthBoards() {
   const rng = mulberry32(hashString('corinth:' + currentPeriod()));
   const pool = COLLECTIONS.slice();
@@ -123,6 +148,12 @@ function corinthBoards() {
     const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
+  // stable partition — the shuffle above still decides the order within each
+  // group, so the room changes at restock exactly as it always did
+  const out = pool.filter(c => !isInRotation(c.id));
+  const inn = pool.filter(c => isInRotation(c.id));
+  pool.length = 0;
+  pool.push(...out, ...inn);
   const kinds = [0, 1, 2].map(() => rng() < 0.5 ? 'push' : 'board');
   if (!kinds.includes('board')) kinds[Math.floor(rng() * 3)] = 'board';
   if (!kinds.includes('push')) kinds[Math.floor(rng() * 3)] = 'push';

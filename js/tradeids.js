@@ -160,4 +160,20 @@ const TRADE_ID_LEDGER = [
   'wx_storm',        // 117
   'wx_thunder',      // 118
   'wx_wind',         // 119
+
+  // cat cafe — appended Aug 27 2026. APPEND ONLY: a trade code encodes the
+  // INDEX into this list, so inserting or re-sorting silently re-points every
+  // unopened capsule in the wild.
+  'ct_box',          // 120
+  'ct_kitten',       // 121
+  'ct_latte',        // 122
+  'ct_loaf',         // 123
+  'ct_maneki',       // 124
+  'ct_milk',         // 125
+  'ct_mouse',        // 126
+  'ct_nap',          // 127
+  'ct_paw',          // 128
+  'ct_tuxedo',       // 129
+  'ct_window',       // 130
+  'ct_zoom',         // 131
 ];
