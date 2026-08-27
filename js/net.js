@@ -58,6 +58,7 @@ async function netInit() {
     await netPruneClaimedTrades();             // forget capsules already opened
     netRefreshFriendNames();                   // pick up anyone who renamed
     netAdoptOwnTrades();                       // capsules minted on another device
+    netOfferInvite();                          // did they arrive on someone's link?
     await netCheckInbox({ announce: true });    // "a capsule is waiting for you"
     netCheckMatches({ announce: true });        // "you're holding 3 they need"
     netRefreshUI();
@@ -755,7 +756,72 @@ function netStatusHTML() {
 // message exists to deliver.
 function friendInviteText() {
   const url = location.href.split('#')[0].split('?')[0];
-  return `Add me on GaPon! My friend code is ${NET.friendCode} — ${url}`;
+  // The code goes in TWICE on purpose: once as characters, once inside the
+  // link. Some share targets keep the text and drop the link, some do the
+  // reverse — so each half has to work on its own. Tapping the link adds the
+  // friend for you; retyping six characters still works if it was stripped.
+  return `Add me on GaPon! My friend code is ${NET.friendCode} — ${url}?add=${NET.friendCode}`;
+}
+
+// ---------- invite links ----------
+
+function netPendingInvite() {
+  try {
+    const code = (new URLSearchParams(location.search).get('add') || '').trim().toUpperCase();
+    return /^[A-Z0-9]{6}$/.test(code) ? code : '';
+  } catch (e) { return ''; }
+}
+
+// Strip it immediately. A refresh must not re-ask, and the code should not sit
+// in the address bar to be shared onward by accident.
+function netClearInviteParam() {
+  try {
+    const u = new URL(location.href);
+    u.searchParams.delete('add');
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  } catch (e) {}
+}
+
+// Someone opened a friend's invite link. Poko asks — adding a friend is small,
+// but it is still theirs to decide, and an invite that adds itself silently is
+// indistinguishable from a bug.
+async function netOfferInvite() {
+  const code = netPendingInvite();
+  if (!code || !NET.ready) return;
+  netClearInviteParam();
+  if (code === NET.friendCode) { toast("That's your own invite link!", 'warn'); return; }
+  const already = friendList().find(f => f.code === code);
+  if (already) { toast(`${escHTML(already.name)} is already on your friends list.`, 'good'); return; }
+
+  // Look them up BEFORE asking, so Poko can use their name rather than reading
+  // six characters at somebody.
+  let name = 'A collector';
+  try {
+    const { data } = await NET.client
+      .from('players').select('display_name').eq('friend_code', code).maybeSingle();
+    if (!data) { toast("That invite link doesn't match anyone.", 'warn'); return; }
+    if (data.display_name) name = data.display_name;
+  } catch (e) { return; }
+
+  const add = async () => {
+    const res = await netAddFriend(code);
+    if (res.err) { toast(res.err, 'warn'); return; }
+    sfx.chime();
+    toast(`${escHTML(res.name)} added — you can send each other capsules now!`, 'good', 5000);
+    const mkt = document.querySelector('#tab-market');
+    if (mkt && !mkt.hidden) renderMarket();
+  };
+
+  const asked = typeof keeperAsk === 'function' && keeperAsk(
+    `${name} invited you! Add them as a friend?`,
+    { yes: 'Add them', no: 'Not now', mood: 'gift', onYes: add });
+
+  // Keeper off screen: the param is already gone, so the invite must not
+  // vanish with it. Hand the code back in a form they can still use.
+  if (!asked) {
+    toast(`${escHTML(name)} invited you — their friend code is ${code}. Add it in the Market.`,
+          'good', 7000);
+  }
 }
 
 function wireNetStatus(host) {
