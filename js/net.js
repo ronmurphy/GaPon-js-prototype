@@ -94,11 +94,7 @@ async function netEnsurePlayer() {
     .from('players').select('friend_code, display_name').eq('id', NET.playerId).maybeSingle();
   if (data) {
     NET.friendCode = data.friend_code;
-    if (state.playerName && state.playerName !== data.display_name) await netSetName(state.playerName);
-    else if (!state.playerName && data.display_name && data.display_name !== 'Collector') {
-      state.playerName = data.display_name;
-      saveGame();
-    }
+    await netSyncName(data.display_name);
     // Touch the row on every boot so `updated_at` means LAST SEEN. It's the
     // only retention signal that exists — nothing else about a player is
     // stored server-side, deliberately — and it costs one write per launch.
@@ -116,13 +112,55 @@ async function netEnsurePlayer() {
   if (made) NET.friendCode = made.friend_code;
 }
 
+// Returns whether the server actually took it. That matters: a rename made
+// offline must stay marked unsynced so the next boot pushes it.
 async function netSetName(name) {
-  if (!NET.client || !NET.playerId) return;
+  if (!NET.client || !NET.playerId) return false;
+  const clean = name.slice(0, 14);
   try {
-    await NET.client.from('players')
-      .update({ display_name: name.slice(0, 14), updated_at: new Date().toISOString() })
+    const { error } = await NET.client.from('players')
+      .update({ display_name: clean, updated_at: new Date().toISOString() })
       .eq('id', NET.playerId);
-  } catch (e) {}
+    if (error) return false;
+    state.nameSynced = clean;
+    saveGame();
+    return true;
+  } catch (e) { return false; }
+}
+
+// Which copy of the nickname wins at launch.
+//
+// This used to be "local always wins", which was correct when a device WAS the
+// player. Now every device maps to one players row and one display_name — so a
+// PC booting with an old local copy would push its stale name back over a
+// rename made on the phone an hour earlier, undoing it for everyone who sees
+// you. The name ping-ponged on whichever device launched last.
+//
+// state.nameSynced is the name this device last AGREED with the server about.
+// If playerName has moved away from it, the change was made here (possibly
+// offline) and gets pushed. Otherwise the server holds the newer copy.
+async function netSyncName(serverName) {
+  const local = state.playerName || '';
+  const usable = serverName && serverName !== 'Collector' ? serverName : '';
+
+  if (state.nameSynced === undefined) {
+    // Upgrading from before this existed. Nothing recorded what was pushed, so
+    // trust the server: its write is always immediate, while a local save can
+    // be an old restore that never knew about a later rename.
+    if (usable && usable !== local) state.playerName = usable;
+    state.nameSynced = state.playerName || '';
+    saveGame();
+    return;
+  }
+  if (local && local !== state.nameSynced) {   // renamed on THIS device
+    await netSetName(local);                   // sets nameSynced only on success
+    return;
+  }
+  if (usable && usable !== local) {            // renamed somewhere else
+    state.playerName = usable;
+    state.nameSynced = usable;
+    saveGame();
+  }
 }
 
 // Display names are typed by other players, so they never go into markup raw.
