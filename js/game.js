@@ -31,7 +31,11 @@ function defaultState() {
     trades: [],         // outgoing trade capsules: { code, itemId, at }
     redeemed: [],       // trade codes already opened on this device
     playerName: '',     // name printed on trade cards
-    nameAsked: false,   // Poko asks once, at the Trading Post
+    nameDeclined: false, // they chose to stay "Collector"; only an explicit no
+    // nameSynced is deliberately NOT declared: `undefined` means "this device
+    // never agreed a name with the server", which is what tells netSyncName to
+    // trust the server on first boot after an upgrade. A default would erase
+    // that distinction. See netSyncName in js/net.js.
     hasMigrated: false, // a collection accepts one merge (see mergeSave)
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
     wallBg: 'plum',     // sticker wall wallpaper id

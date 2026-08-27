@@ -57,6 +57,7 @@ async function netInit() {
     await netSyncWants();                      // push any wants set while offline
     await netPruneClaimedTrades();             // forget capsules already opened
     netRefreshFriendNames();                   // pick up anyone who renamed
+    netAdoptOwnTrades();                       // capsules minted on another device
     await netCheckInbox({ announce: true });    // "a capsule is waiting for you"
     netCheckMatches({ announce: true });        // "you're holding 3 they need"
     netRefreshUI();
@@ -502,6 +503,43 @@ async function netRefreshFriendNames() {
       }
     }
     if (changed) {
+      saveGame();
+      const mkt = document.querySelector('#tab-market');
+      if (mkt && !mkt.hidden) renderMarket();
+    }
+  } catch (e) {}
+}
+
+// Outgoing capsules live in the save, so one minted on the phone was invisible
+// on the PC and could not be taken back from there. Same invariant as the name
+// and the wants list: a device is no longer a player. The server already knows
+// every capsule you have out — adopt the ones this device has not seen.
+//
+// `foil` is read back out of the CODE, never from the row: the code is what
+// decides what the capsule actually contains, and trusting a column here would
+// be the one place that rule is not obeyed.
+async function netAdoptOwnTrades() {
+  if (!NET.ready) return;
+  try {
+    const { data, error } = await NET.client
+      .from('trades').select('code, item_id')
+      .eq('from_id', NET.playerId).is('claimed_by', null);
+    if (error || !data) return;
+    if (!state.trades) state.trades = [];
+    const known = new Set(state.trades.map(t => t.code));
+    let added = 0;
+    for (const row of data) {
+      if (known.has(row.code) || !ITEMS_BY_ID[row.item_id]) continue;
+      const parsed = typeof parseTradeCode === 'function' ? parseTradeCode(row.code) : null;
+      state.trades.push({
+        code: row.code,
+        itemId: row.item_id,
+        at: todayStr(),
+        foil: !!(parsed && parsed.foil),
+      });
+      added++;
+    }
+    if (added) {
       saveGame();
       const mkt = document.querySelector('#tab-market');
       if (mkt && !mkt.hidden) renderMarket();
@@ -973,16 +1011,69 @@ function toggleWant(itemId) {
   }
   saveGame();
   renderBinderPage();
-  netSyncWants();
+  netWant(itemId, i < 0);      // i<0 means it was just ADDED
 }
 
+// Publish this device's wants WITHOUT destroying the rest of the player's.
+//
+// This used to delete every row for the player and re-insert the local list,
+// which was correct when a device WAS the player. `wants` is keyed by
+// player_id, and every device a player owns now shares one — so starring three
+// stickers on the phone and then opening the PC deleted all three and
+// published the PC's stale list instead. It failed silently: nothing looks
+// wrong locally, friends simply stop seeing what you are hunting.
+//
+// So boot-time sync MERGES. Wants are additive by nature — hunting something
+// on two devices is not a conflict — and pruneWants() drops anything you have
+// since acquired, so the merged list self-cleans rather than growing forever.
+// Explicit un-starring is handled surgically by netUnwant() instead, so a
+// deliberate removal is never resurrected by the next merge.
 async function netSyncWants() {
   if (!NET.ready) return;
   pruneWants();          // never publish a want you've already filled
   try {
-    await NET.client.from('wants').delete().eq('player_id', NET.playerId);
-    const rows = (state.wants || []).map(id => ({ player_id: NET.playerId, item_id: id }));
-    if (rows.length) await NET.client.from('wants').insert(rows);
+    const { data } = await NET.client
+      .from('wants').select('item_id').eq('player_id', NET.playerId);
+    const server = (data || []).map(r => r.item_id).filter(id => ITEMS_BY_ID[id]);
+    const merged = [...new Set([...(state.wants || []), ...server])]
+      .filter(id => !hasItem(id))            // same rule as pruneWants
+      .slice(0, WANTS_MAX);
+
+    const before = (state.wants || []).slice().sort().join();
+    if (merged.slice().sort().join() !== before) {
+      state.wants = merged;
+      saveGame();
+      if (!$('#tab-album').hidden) renderBinderPage();
+    }
+    // Only write the rows the server is actually missing.
+    const missing = merged.filter(id => !server.includes(id));
+    if (missing.length) {
+      await NET.client.from('wants')
+        .insert(missing.map(id => ({ player_id: NET.playerId, item_id: id })));
+    }
+    // And drop anything the server holds that is no longer wanted anywhere —
+    // acquired since, or over the cap.
+    const stale = server.filter(id => !merged.includes(id));
+    if (stale.length) {
+      await NET.client.from('wants')
+        .delete().eq('player_id', NET.playerId).in('item_id', stale);
+    }
+  } catch (e) {}
+}
+
+// One want, added or removed on purpose. Surgical so that un-starring survives
+// the next merge — a full re-publish cannot express "I deliberately stopped
+// wanting this".
+async function netWant(itemId, wanted) {
+  if (!NET.ready) return;
+  try {
+    if (wanted) {
+      await NET.client.from('wants')
+        .insert({ player_id: NET.playerId, item_id: itemId });
+    } else {
+      await NET.client.from('wants')
+        .delete().eq('player_id', NET.playerId).eq('item_id', itemId);
+    }
   } catch (e) {}
 }
 
