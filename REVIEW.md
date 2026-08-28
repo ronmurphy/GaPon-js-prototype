@@ -26,6 +26,21 @@ new capability, old code with no way to find out.
 **When adding a capability, write down which invariant it just broke.** That
 list is what makes the next audit cheap.
 
+### Named trap: **flags set on DELIVERY, not on receipt**
+Bitten three times, and it is invisible in testing because the code is doing
+exactly what it says.
+
+| where | what happened |
+|---|---|
+| `nameAsked` (js/trade.js) | set the moment the prompt was *displayed*. David played for weeks never knowing the name was changeable — one glance past a small inline row marked it answered forever. |
+| `wantsTipSeen` (js/shopkeeper.js:328) | set before the lines are shown — and off the shop floor `keeperSay` degrades to **toasts**, so the wants tutorial was two messages that appeared and vanished over the binder while Poko was not on screen. The original testers were "taught" and none of them learned. |
+| `nameDeclined` | the fix in both cases: only an explicit answer closes the prompt. |
+
+**Rule: a flag may only record what the player DID, never what the game showed
+them.** If nothing distinguishes "seen and dismissed" from "never noticed", the
+flag is wrong. And check where the message actually lands — a tutorial that
+becomes a toast on a tab the speaker is not on has already failed.
+
 ---
 
 ## Invariant audit — 26 Aug 2026
