@@ -398,11 +398,29 @@ function renderWall() {
   wallSel = -1;
   wallDrag = null;
 
+  // Every sticker you own, and which sets they came from. The tray has always
+  // been owned-only, so this list is the size of your COLLECTION, not the game
+  // — which means it gets worse the better you do. At two new sets a month a
+  // completionist would be scrolling ~276 cells within six months. Brittany
+  // hit it first because she uses the booth most.
   const owned = [];
+  const bySet = [];
   for (const col of COLLECTIONS) {
-    for (const it of col.items) if (hasItem(it.id)) owned.push(it);
+    const mine = col.items.filter(it => hasItem(it.id));
+    if (mine.length) bySet.push({ col, mine });
+    owned.push(...mine);
   }
-  // warm the canvas image cache so placed stickers export as art, not glyphs
+  // Sets you own nothing from get no chip — a filter that offers empty
+  // drawers is worse than no filter.
+  const setIds = bySet.map(b => b.col.id);
+  if (state.wallSet && state.wallSet !== 'all' && !setIds.includes(state.wallSet)) {
+    state.wallSet = 'all';        // that set was given away since you last looked
+  }
+  const pick = state.wallSet || 'all';
+  const shown = pick === 'all' ? owned : (bySet.find(b => b.col.id === pick) || { mine: [] }).mine;
+  // warm the canvas image cache so placed stickers export as art, not glyphs.
+  // ALL of them, not just the visible ones — what's already on the photo has
+  // to export as art whatever the tray is filtered to.
   for (const it of owned) { const s = itemArtSrc(it); if (s) artImage(s); }
 
   host.innerHTML = `
@@ -447,16 +465,25 @@ function renderWall() {
       <button class="btn" id="wall-save"><span class="msr">download</span> Save PNG</button>
       <button class="btn ghost" id="wall-clear" ${wallItems().length ? '' : 'disabled'}>Clear wall</button>
     </div>
+    ${bySet.length > 1 ? `
+    <div class="wall-sets" id="wall-sets">
+      <button class="ws-chip${pick === 'all' ? ' on' : ''}" data-set="all">All
+        <i>${owned.length}</i></button>
+      ${bySet.map(b => `
+        <button class="ws-chip${pick === b.col.id ? ' on' : ''}" data-set="${b.col.id}"
+                style="--setc:${b.col.color}">${escHTML(b.col.name)}
+          <i>${b.mine.length}</i></button>`).join('')}
+    </div>` : ''}
     <div class="wall-tray">
-      ${owned.length
-        ? owned.map(it => {
-            const col = COLLECTIONS.find(c => c.id === it.collection);
-            return `<div class="cell wall-pick" data-add="${it.id}" title="${it.name}"
-                         style="--rar:${RARITIES[it.rarity].color}">
+      ${shown.length
+        ? shown.map(it => `
+            <div class="cell wall-pick" data-add="${it.id}" title="${it.name}"
+                 style="--rar:${RARITIES[it.rarity].color}">
               ${stickerFace(it)}
-            </div>`;
-          }).join('')
-        : '<p class="empty">No stickers yet — go pull some capsules!</p>'}
+            </div>`).join('')
+        : `<p class="empty">${owned.length
+            ? 'Nothing from that set yet.'
+            : 'No stickers yet — go pull some capsules!'}</p>`}
     </div>`;
 
   wallCanvas = $('#wall-canvas');
@@ -471,6 +498,17 @@ function renderWall() {
     renderWall();
     toast('Photo removed.', 'good');
   });
+
+  // Switching sets only changes what the TRAY offers. Anything already placed
+  // lives in state.wall and is untouched, so you can build a collage across
+  // every set you own.
+  host.querySelectorAll('.ws-chip').forEach(btn =>
+    btn.addEventListener('click', () => {
+      state.wallSet = btn.dataset.set;
+      saveGame();
+      sfx.tick();
+      renderWall();
+    }));
 
   host.querySelectorAll('.bg-swatch').forEach(btn => {
     const b = btn.dataset.bg === 'photo'

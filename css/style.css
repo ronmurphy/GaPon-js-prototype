@@ -2886,6 +2886,51 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   margin: 14px 0 18px;
 }
 
+/* Set filter for the booth tray. A horizontal scroller because the number of
+   sets only ever grows — the shop floor, arcade and parlour all scroll the
+   same way, so the gesture is already learned. */
+.wall-sets {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ws-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 5px 11px;
+  border-radius: 999px;
+  color: var(--ink-dim);
+  background: var(--card);
+  border: 1px solid transparent;
+  border-left: 3px solid var(--setc, var(--ink-dim));
+}
+
+.ws-chip i {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+}
+
+.ws-chip:hover { color: var(--ink); }
+
+.ws-chip.on {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--setc, var(--gold)) 22%, var(--card));
+  border-color: color-mix(in srgb, var(--setc, var(--gold)) 55%, transparent);
+}
+
 .wall-tray {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));

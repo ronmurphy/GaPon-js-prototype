@@ -97,6 +97,20 @@ not a subtraction. It is not gone, it is through the door.
 Also unaffected by rotation: existing trade codes still redeem, the binder keeps
 the page and your stickers, and wants still work for it.
 
+## What a new set pushes on
+The game is built around there always being another set, so every UI sized for
+ten needs re-checking as the library grows. Four have already been hit:
+
+| surface | limit | state |
+|---|---|---|
+| binder side tabs | ~17 sets (desktop, 693px binder) | fine at 11; group navigation planned at ~14 |
+| `ROTATION` pool | pool size divides how often a set appears — 5 of 10 stocked each half-day | keep it at **10**, one in one out |
+| the parlour | 3 machines, out-of-rotation sets sorted to the front | self-scaling, no threshold |
+| booth sticker tray | grows with your COLLECTION, not the game — 276 cells at 23 sets | set-filter chips, added 27 Aug 2026 |
+
+**When adding a set, walk that list.** Each one was found by a tester rather
+than by us.
+
 ## 5. Check before you push
 - `node --check js/data.js js/tradeids.js`
 - Load the page: the binder should show N+1 pages, art on every new pocket

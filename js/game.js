@@ -39,6 +39,7 @@ function defaultState() {
     hasMigrated: false, // a collection accepts one merge (see mergeSave)
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
     wallBg: 'plum',     // sticker wall wallpaper id
+    wallSet: 'all',     // which set the booth's sticker tray is filtered to
   };
 }
 
