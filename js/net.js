@@ -36,20 +36,60 @@ function loadSupabaseLib() {
 }
 
 // Called after boot. Nothing waits on it.
+//
+// This used to run ONCE and never again: a blip at the moment the page loaded
+// left NET.ready false for the entire life of that page, so trading, cloud
+// saves and friend matching were silently absent until somebody happened to
+// reload. On phones — suspended tabs waking into bad signal, a lift, a train —
+// that is common, and it fails invisibly. Brad hit it, rebooted his phone, and
+// the reboot appeared to fix Supabase when all it did was force a fresh load.
+//
+// So a failed boot now schedules a retry, and the browser telling us the
+// network came back is a free, instant one.
+let netBooting = false;
+let netTries = 0;
+let netRetryTimer = null;
+const NET_RETRY_MAX = 6;        // 5s, 10s, 20s, 40s, 80s, 160s, then give up
+
 async function netInit() {
-  try {
-    const lib = await loadSupabaseLib();
-    if (!lib) return;
+  if (NET.ready || netBooting) return;
+  netBooting = true;
+  let ok = false;
+  try { ok = await netBoot(); } catch (e) { ok = false; }
+  netBooting = false;
+  if (ok) { netTries = 0; return; }
+  NET.ready = false;            // any surprise at all: stay offline, stay working
+  netScheduleRetry();
+}
+
+function netScheduleRetry() {
+  if (netTries >= NET_RETRY_MAX) return;   // stop nagging a server that isn't there
+  const wait = 5000 * Math.pow(2, netTries);
+  netTries++;
+  clearTimeout(netRetryTimer);
+  netRetryTimer = setTimeout(netInit, wait);
+}
+
+// The browser knows before we do. A returning connection resets the backoff,
+// because this is new information rather than another failed guess.
+window.addEventListener('online', () => { netTries = 0; netInit(); });
+
+async function netBoot() {
+  const lib = await loadSupabaseLib();
+  if (!lib) return false;
+  if (!NET.client) {
     NET.client = lib.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true },
     });
+  }
+  {
     let { data: { session } } = await NET.client.auth.getSession();
     if (!session) {
       const { data, error } = await NET.client.auth.signInAnonymously();
-      if (error) return;
+      if (error) return false;
       session = data.session;
     }
-    if (!session?.user) return;
+    if (!session?.user) return false;
     NET.authId = session.user.id;
     NET.playerId = await netResolvePlayer(NET.authId);
     await netEnsurePlayer();
@@ -66,8 +106,7 @@ async function netInit() {
     // seen the room is the kind of thing people dismiss reflexively — and a
     // reflexive no would burn this copy's one chance to be offered.
     setTimeout(netOfferCloudRestore, 2600);
-  } catch (e) {
-    NET.ready = false;      // any surprise at all: stay offline, stay working
+    return true;
   }
 }
 
@@ -697,8 +736,11 @@ async function netRefreshNow() {
 // closed outright can still take an unsaved change with it. The quiet timer is
 // what actually does the work; this just shortens the window.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) netFlushCloud();
-  else netMaybeCheck();
+  if (document.hidden) { netFlushCloud(); return; }
+  // Coming back is the other moment worth retrying: a phone that was asleep in
+  // a dead spot is very often online again by the time you look at it.
+  if (!NET.ready) { netTries = 0; netInit(); }
+  netMaybeCheck();
 });
 
 function inboxHTML() {
