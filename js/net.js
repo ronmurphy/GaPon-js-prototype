@@ -106,6 +106,10 @@ async function netBoot() {
     // seen the room is the kind of thing people dismiss reflexively — and a
     // reflexive no would burn this copy's one chance to be offered.
     setTimeout(netOfferCloudRestore, 2600);
+    // Queued behind it — keeperAsk shares one queue, so whichever applies gets
+    // its turn rather than one stomping the other. Guarded because this lives
+    // in main.js, and net.js should not fall over if it is absent.
+    if (typeof maybeOfferCloudSave === 'function') setTimeout(maybeOfferCloudSave, 3200);
     return true;
   }
 }

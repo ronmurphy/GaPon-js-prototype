@@ -481,13 +481,82 @@ function cloudBackupHTML() {
         somewhere else. Close this and press <b>restore</b> to keep that copy, or
         press <b>Update online save</b> to keep this device's collection instead.</p>` : ''}
       <div id="sm-code-wrap" ${known ? '' : 'hidden'}>
-        <span class="cloud-label">your recovery code</span>
-        <button class="cloud-code" id="sm-code" title="tap to copy">${escHTML(prettyRecoveryCode(known))}</button>
-        <p class="cloud-warn">Not a friend code. Anyone with this can load your
-          collection onto their device — keep it to yourself, and write it down:
-          <b>lose it with no working device and the save is gone for good.</b></p>
+        ${recoveryCodeHTML(known)}
       </div>
     </div>`;
+}
+
+// The code and its warning, in ONE place. It is shown from the Backup modal and
+// from Poko's offer, and the warning is safety-critical — two copies of this
+// wording is two chances for one of them to get softened.
+function recoveryCodeHTML(code) {
+  return `
+    <span class="cloud-label">your recovery code</span>
+    <button class="cloud-code" id="sm-code" title="tap to copy">${escHTML(prettyRecoveryCode(code))}</button>
+    <p class="cloud-warn">Not a friend code. Anyone with this can load your
+      collection onto their device — keep it to yourself, and write it down:
+      <b>lose it with no working device and the save is gone for good.</b></p>`;
+}
+
+// Poko offers to keep a copy online.
+//
+// Deliberately NOT triggered by "a second device appeared" — we cannot see
+// one. Two devices belonging to the same person are two unlinked anonymous
+// players until cloud saves link them, which is the very thing being offered.
+// So the trigger is VALUE: you have a collection worth losing and no copy of
+// it. Brittany has been hand-carrying 3,000-character backup codes between an
+// iPhone and a Mac because nothing ever told her there was a better way.
+const CLOUD_NUDGE_PULLS = 30;
+const CLOUD_NUDGE_DAYS = 3;
+
+function maybeOfferCloudSave() {
+  if (!NET.ready || !cryptoReady()) return;
+  if (state.cloudOffered || storedRecoveryCode()) return;
+  if ((state.totalPulls || 0) < CLOUD_NUDGE_PULLS) return;
+  if ((state.days || []).length < CLOUD_NUDGE_DAYS) return;
+
+  const asked = keeperAsk(
+    'Your collection only lives on this device. Want me to keep a copy online, ' +
+    'so you can pick it up on your phone too?',
+    {
+      yes: 'Yes please', no: 'Not now', mood: 'gift',
+      onYes: doOfferedCloudSave,
+      // Only an explicit answer closes this. Showing it is not answering it —
+      // see the "flags set on delivery" trap in REVIEW.md.
+      onNo: () => { state.cloudOffered = true; saveGame(); },
+    });
+  if (!asked) return;          // keeper off screen: ask again another day
+}
+
+async function doOfferedCloudSave() {
+  state.cloudOffered = true;
+  saveGame();
+  toast('Saving your collection…', '', 2600);
+  const res = await netUploadSave();
+  if (res.err || res.conflict) {
+    toast(res.err || "couldn't save online just now — try Backup later", 'warn', 5000);
+    return;
+  }
+  sfx.chime();
+  cloudBlip('ok');
+  const ov = $('#overlay');
+  ov.hidden = false;
+  ov.innerHTML = `
+    <div class="ov-stage share-stage">
+      <h3 class="sm-title">Saved online ✓</h3>
+      <div class="cloud-box">${recoveryCodeHTML(res.code)}</div>
+      <p class="cloud-lead">On your other device, tap <b>restore</b> and type
+        those twelve characters.</p>
+      <button class="btn" id="cn-done">Got it</button>
+    </div>`;
+  ov.querySelector('#sm-code').addEventListener('click', () => {
+    navigator.clipboard?.writeText(cleanRecoveryCode(res.code))
+      .then(() => toast('Recovery code copied — keep it somewhere safe', 'good', 4000))
+      .catch(() => toast('Copy blocked — write it down instead', 'warn'));
+  });
+  ov.querySelector('#cn-done').addEventListener('click', () => {
+    ov.hidden = true; ov.innerHTML = '';
+  });
 }
 
 function wireCloudBackup(ov) {

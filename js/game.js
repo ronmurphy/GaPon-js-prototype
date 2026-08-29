@@ -40,6 +40,7 @@ function defaultState() {
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
     wallBg: 'plum',     // sticker wall wallpaper id
     wallSet: 'all',     // which set the booth's sticker tray is filtered to
+    cloudOffered: false, // Poko offered to keep a copy online; only an ANSWER sets it
   };
 }
 
