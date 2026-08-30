@@ -709,6 +709,21 @@ function applyCloudSave(plain, updatedAt, code) {
   return true;
 }
 
+// Says where this collection actually lives. Brad was still pressing the cloud
+// button by hand after every session — a habit formed before auto-sync existed
+// — which means the game was not saying loudly enough that it is automatic now.
+function updateSettingsNote() {
+  const el = $('#set-cloud');
+  if (!el) return;
+  if (typeof storedRecoveryCode === 'function' && storedRecoveryCode()) {
+    const when = typeof cloudWhenText === 'function' ? cloudWhenText() : '';
+    el.textContent = 'Saved online automatically — no need to press anything. '
+      + (when ? when.replace('online copy:', 'Last copy') + '.' : '');
+  } else {
+    el.textContent = 'This save lives in this browser only.';
+  }
+}
+
 function updateArtToggle() {
   $('#toggle-art').textContent = ART.enabled ? 'stickers: art' : 'stickers: glyphs';
 }
@@ -758,6 +773,23 @@ function boot() {
 
   applyTheme();
   initProps();      // illustrated scenery, or CSS if PROPS.dir is null
+  // ---- settings ----
+  const setPanel = $('#settings');
+  const closeSettings = () => { setPanel.hidden = true; };
+  $('#open-settings').addEventListener('click', () => {
+    setPanel.hidden = false;
+    updateSettingsNote();
+  });
+  $('#set-close').addEventListener('click', closeSettings);
+  // Clicking the dimmed backdrop closes; clicking the card must not.
+  setPanel.addEventListener('click', e => { if (e.target === setPanel) closeSettings(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !setPanel.hidden) closeSettings();
+  });
+  // Backup and restore open their own overlays — get out of their way.
+  $('#export-save').addEventListener('click', closeSettings);
+  $('#import-save').addEventListener('click', closeSettings);
+
   $('#toggle-theme').addEventListener('click', () => {
     cycleTheme();
     sfx.tick();

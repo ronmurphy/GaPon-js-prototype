@@ -592,11 +592,11 @@ function openStampCard() {
         </div>
         <p class="stamp-note">${full
           ? `Card full! ${STAMP.reward} coins waiting.${over ? ` (+${over} stamp${over > 1 ? 's' : ''} already on the next card)` : ''}`
-          : `${STAMP.cardSize} stamps fills the card — ${STAMP.reward} coins. Cards done: ${s.cards}`}</p>
+          : `${STAMP.cardSize} stamps fills the card — ${STAMP.reward} coins and ${STAMP.rewardTokens} arcade tokens. Cards done: ${s.cards}`}</p>
       </div>
       <div class="r-btns">
         <button class="btn ghost" id="stamp-close">Close</button>
-        ${full ? `<button class="btn" id="stamp-redeem">${coinIcon()} Redeem ${STAMP.reward}</button>` : ''}
+        ${full ? `<button class="btn" id="stamp-redeem">${coinIcon()} Redeem ${STAMP.reward} + ${STAMP.rewardTokens} 🎟</button>` : ''}
       </div>
     </div>`;
   ov.querySelector('#stamp-close').addEventListener('click', () => {
@@ -611,7 +611,16 @@ function openStampCard() {
     confetti(24);
     updateHeader();
     updateKeeperBadge();
-    toast(`Stamp card complete! +${got} coins`, 'good');
+    toast(`Stamp card complete! +${got.coins} coins`
+      + (got.tokens ? ` and ${got.tokens} arcade token${got.tokens > 1 ? 's' : ''}!` : ''),
+      'good', 5000);
+    // Said once, because a token is a new kind of thing and the arcade is the
+    // room people forget exists.
+    if (got.tokens && !state.tokenTipSeen) {
+      keeperTell(`Those tokens are extra arcade plays — they stack on top of your ` +
+                 `${ARCADE.playsPerRotation} a rotation, and they keep until you use them.`,
+                 { mood: 'stamp', onDone: () => { state.tokenTipSeen = true; saveGame(); } });
+    }
     openStampCard();          // fresh card, with any overflow already on it
   });
 }

@@ -205,6 +205,19 @@ const STAMP = {
   perPlays: 3,      // arcade games needed
   cardSize: 5,      // stamps to fill a card
   reward: 75,       // coins on redeem
+  // ...plus arcade tokens. Michelle and Chris wanted a reason to go back to the
+  // arcade; this is the version that works, because it closes a loop rather
+  // than bolting on an incentive: a card needs arcade plays to fill, so it pays
+  // out in arcade plays. A card takes about five days, so this is ~0.4 tokens a
+  // day against a baseline of six — special without moving the economy.
+  //
+  // Earlier ideas were rejected for good reasons, recorded so they are not
+  // re-tried: paying golden tickets in tokens FLATTENS the tiers (a ticket is
+  // 2x machine cost, so 100 coins on a Lucky Pon against ~16 for two tokens),
+  // and paying dupe sales in tokens makes the game's recovery mechanism
+  // skill-gated — punishing exactly the players who need it most.
+  rewardTokens: 2,
+  tokenBank: 6,     // capped so nobody hoards a month of them and then farms
 };
 
 // Arcade: capped plays per half-day rotation so minigames stay a snack,

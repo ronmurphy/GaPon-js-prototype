@@ -43,6 +43,8 @@ function defaultState() {
     wall: [],           // placed stickers: { id, x, y, rot, s } (x/y normalized 0–1)
     wallBg: 'plum',     // sticker wall wallpaper id
     wallSet: 'all',     // which set the booth's sticker tray is filtered to
+    tokens: 0,          // bonus arcade plays from stamp cards; survive restock
+    tokenTipSeen: false, // Poko explains what a token is, once
     cloudOffered: false, // Poko offered to keep a copy online; only an ANSWER sets it
   };
 }
@@ -200,13 +202,31 @@ function arcadeState() {
   return state.arcade;
 }
 
-function arcadePlaysLeft() {
-  return Math.max(0, ARCADE.playsPerRotation - arcadeState().used);
+// Bonus tokens live OUTSIDE the rotation counter, so a wipe at restock cannot
+// take away something that was earned rather than granted.
+function bonusTokens() {
+  return Math.max(0, state.tokens || 0);
 }
 
+function grantTokens(n) {
+  state.tokens = Math.min(STAMP.tokenBank, bonusTokens() + n);
+  saveGame();
+  return state.tokens;
+}
+
+function arcadePlaysLeft() {
+  return Math.max(0, ARCADE.playsPerRotation - arcadeState().used) + bonusTokens();
+}
+
+// The rotation's free plays are spent FIRST — they expire at restock, bonus
+// tokens do not. Spending the perishable one first is always right.
 function useArcadePlay() {
   if (arcadePlaysLeft() <= 0) return false;
-  arcadeState().used++;
+  if (arcadeState().used < ARCADE.playsPerRotation) {
+    arcadeState().used++;
+  } else {
+    state.tokens = bonusTokens() - 1;
+  }
   saveGame();
   return true;
 }
@@ -679,12 +699,15 @@ function stampProgress(kind) {
   return earned;
 }
 
+// Returns { coins, tokens } — tokens is what was actually ADDED, which can be
+// less than STAMP.rewardTokens if the bank was already near its cap.
 function redeemStampCard() {
-  if (!stampCardFull()) return 0;
+  if (!stampCardFull()) return null;
   stampState().cards++;
   state.coins += STAMP.reward;
-  saveGame();
-  return STAMP.reward;
+  const before = bonusTokens();
+  grantTokens(STAMP.rewardTokens);          // grantTokens saves
+  return { coins: STAMP.reward, tokens: bonusTokens() - before };
 }
 
 // ---- dupe swap ----

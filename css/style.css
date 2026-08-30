@@ -4185,3 +4185,110 @@ footer button {
   /* keep the tell, drop the pulse */
   .just-shown { animation: none; box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.5); }
 }
+
+
+/* ---------- settings ---------- */
+/* David's idea: the footer had four buttons and a Ko-fi link, and `reset save`
+   sat two along from `backup`. This was only safe to do once Poko explained
+   backup and restore out loud — burying a feature people already could not
+   find would have made that worse, not better. A gear is a conventional
+   affordance, which is why it does not have the same problem as tapping a
+   tanuki or an empty sleeve. */
+.set-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 4, 20, 0.7);
+  backdrop-filter: blur(3px);
+}
+
+.set-card {
+  width: min(400px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: var(--bg2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+}
+
+.set-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+.set-title .msr { color: var(--gold); }
+
+.set-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.set-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.set-row { display: flex; gap: 14px; flex-wrap: wrap; }
+
+.set-note {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+/* Destructive actions get their own box and their own colour — the whole
+   point of moving them off a bar shared with "backup". */
+.set-group.danger {
+  background: rgba(255, 138, 101, 0.09);
+  border: 1px solid rgba(255, 138, 101, 0.3);
+}
+.set-group.danger .set-label { color: #ff8a65; }
+.set-group.danger button { color: #ff8a65; }
+
+.set-card button {
+  font: inherit;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+.set-card button.btn { text-decoration: none; align-self: stretch; }
+.set-card button:hover { color: var(--gold); }
+.set-group.danger button:hover { color: #ff5722; }
+
+
+/* Very narrow phones. The header is the one row that cannot scroll or wrap
+   gracefully, and it gains a chip whenever a fortune is held — which is
+   exactly when it overflowed. Moving the theme flag into Settings bought most
+   of the room back; this buys the rest. */
+@media (max-width: 400px) {
+  header { gap: 6px; padding: 10px 10px 6px; }
+  .brand { font-size: 1.15rem; letter-spacing: 0; }
+  .hchip { padding: 4px 8px; font-size: 0.82rem; gap: 4px; }
+  .hchip .msr { font-size: 17px; }
+  .icon-chip { padding: 4px 7px; }
+  .fortune-chip { font-size: 0.8rem; }
+}

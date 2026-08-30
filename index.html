@@ -36,7 +36,7 @@
     <span class="hchip streak-chip"><span class="msr">local_fire_department</span><span id="streak-count">0</span></span>
     <button class="hchip icon-chip" id="toggle-sound" title="sound on/off"><span class="msr">volume_up</span></button>
     <span class="hchip fortune-chip" id="fortune-chip" hidden></span>
-    <button class="hchip icon-chip flag-chip" id="toggle-theme" title="room style">🇺🇸</button>
+    <button class="hchip icon-chip" id="open-settings" title="settings"><span class="msr">settings</span></button>
   </header>
 
   <nav class="tabs">
@@ -145,13 +145,46 @@
       <a class="kofi" href="https://ko-fi.com/unclebeastly"
          target="_blank" rel="noopener noreferrer">☕ Ko-fi</a>
     </span>
-    <span class="foot-btns">
-      <button id="toggle-art">stickers: art</button>
-      <button id="export-save">backup</button>
-      <button id="import-save">restore</button>
-      <button id="reset-save">reset save</button>
-    </span>
   </footer>
+
+  <!-- Settings. The buttons keep their ids and live here permanently rather
+       than being rendered on open, so every listener wired at boot in main.js
+       keeps working untouched. `reset save` finally gets to sit somewhere it
+       cannot be mistaken for `backup`. -->
+  <div id="settings" class="set-wrap" hidden>
+    <div class="set-card">
+      <h3 class="set-title"><span class="msr">settings</span> Settings</h3>
+
+      <section class="set-group">
+        <span class="set-label">Look</span>
+        <div class="set-row">
+          <button id="toggle-art">stickers: art</button>
+          <!-- Moved out of the header: with a fortune held, that row overflowed
+               every phone under ~430px. A room style is set once; muting is
+               done in a hurry, which is why sound stayed up there. -->
+          <button class="flag-chip" id="toggle-theme" title="room style">🇺🇸</button>
+        </div>
+      </section>
+
+      <section class="set-group">
+        <span class="set-label">Your collection</span>
+        <p class="set-note" id="set-cloud">This save lives in this browser.</p>
+        <div class="set-row">
+          <button id="export-save">backup</button>
+          <button id="import-save">restore</button>
+        </div>
+      </section>
+
+      <section class="set-group danger">
+        <span class="set-label">Careful</span>
+        <button id="reset-save">reset save</button>
+        <p class="set-note">Wipes this browser's collection. There is no undo
+          unless you have a backup.</p>
+      </section>
+
+      <button class="btn" id="set-close">Done</button>
+    </div>
+  </div>
 
   <script src="js/data.js"></script>
   <script src="js/tradeids.js"></script>
