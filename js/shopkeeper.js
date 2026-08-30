@@ -84,6 +84,12 @@ const KEEPER_LINES = {
   wantsTip2: [
     "Once you've swapped friend codes, anyone holding a spare of it gets told. That's how the good trades start.",
   ],
+  wantsTip3: [
+    `Only ${WANTS_MAX} at a time, mind — it's a shortlist, not a wish list.`,
+  ],
+  wantsTip4: [
+    "And tapping a sticker you DO own offers to send it to a friend. Only your doubles, though — I'd never ask you to give up your last one.",
+  ],
   broke: ['Coins running low? Sell your doubles at the market.'],
 };
 
@@ -166,6 +172,124 @@ function keeperSayAll(lines, ms = 5200) {
   lines.forEach((l, i) => setTimeout(() => keeperSay(l, ms), i * (hold + 500)));
 }
 
+// ---------- the dialogue panel ----------
+//
+// Teaching and questions go here; ambient chatter stays in the speech bubble.
+// The split is not stylistic. The bubble lives inside the shop scene, so
+// anything said from the album or arcade fell back to toasts — which is how
+// the wants tutorial managed to run for weeks without a single tester learning
+// what a want was. This panel is fixed to the viewport and works everywhere.
+
+let kpQueue = [];        // lines left in the run currently on screen
+let kpPending = [];      // whole runs waiting their turn
+let kpAsk = null;
+let kpOnDone = null;
+
+function keeperPanel() { return document.querySelector('#keeper-panel'); }
+
+// Show a run of lines, optionally ending in a question.
+//   keeperTell('one line')
+//   keeperTell(['several', 'lines'], { mood: 'wants', onDone })
+//   keeperTell('question?', { ask: { yes, no, onYes, onNo } })
+function keeperTell(lines, opts = {}) {
+  const panel = keeperPanel();
+  if (!panel) return false;
+  const run = {
+    lines: (Array.isArray(lines) ? lines : [lines])
+      .map(l => (typeof l === 'string' ? { text: l, mood: opts.mood } : l)),
+    ask: opts.ask || null,
+    onDone: opts.onDone || null,
+  };
+  if (!run.lines.length) return false;
+  // QUEUED, not dropped. Two things wanting to speak at once is normal — the
+  // album fires a stamp message and the wants tutorial on the same visit — and
+  // whichever lost that race used to be gone for good, with its "seen" flag
+  // already spent.
+  if (!panel.hidden) { kpPending.push(run); return true; }
+  kpStart(run);
+  return true;
+}
+
+function kpStart(run) {
+  const panel = keeperPanel();
+  kpQueue = run.lines;
+  kpAsk = run.ask;
+  kpOnDone = run.onDone;
+  panel.hidden = false;
+  kpNext();
+}
+
+function kpNext() {
+  const panel = keeperPanel();
+  const line = kpQueue.shift();
+  if (!line) { kpFinish(); return; }
+
+  const mood = line.mood || 'welcome';
+  keeperSetPose(mood);
+  panel.querySelector('#kp-art').innerHTML = keeperFaceHTML('kp-pose', mood);
+  panel.querySelector('#kp-name').textContent = SHOPKEEPER.name;
+  panel.querySelector('#kp-text').textContent = line.text;
+
+  const acts = panel.querySelector('#kp-acts');
+  acts.innerHTML = '';
+  const last = kpQueue.length === 0;
+  // The question only appears on the LAST line, so nobody is asked to decide
+  // something before they have read why.
+  if (last && kpAsk) {
+    panel.classList.add('asking');
+    panel.classList.remove('more');
+    kpButton(acts, kpAsk.yes || 'Yes please', 'yes', kpAsk.onYes);
+    kpButton(acts, kpAsk.no || 'Not now', '', kpAsk.onNo);
+  } else {
+    panel.classList.remove('asking');
+    panel.classList.toggle('more', !last);
+    if (last) kpButton(acts, 'Got it', 'yes', null);
+  }
+}
+
+function kpButton(host, label, cls, fn) {
+  const b = document.createElement('button');
+  b.className = 'kp-btn' + (cls ? ' ' + cls : '');
+  b.textContent = label;
+  b.addEventListener('click', e => {
+    e.stopPropagation();          // the panel's own click advances the line
+    // kpFinish owns onDone. Firing it here too made it run twice on any run
+    // that ended with a plain "Got it".
+    kpFinish();
+    if (fn) fn();
+  });
+  host.appendChild(b);
+}
+
+function kpFinish() {
+  const panel = keeperPanel();
+  const done = kpOnDone;
+  kpQueue = []; kpAsk = null; kpOnDone = null;
+  if (!panel) return;
+  panel.hidden = true;
+  panel.classList.remove('asking', 'more');
+  panel.querySelector('#kp-acts').innerHTML = '';
+  keeperSetPose('welcome');
+  if (done) done();               // marks this run read, whatever comes next
+  const next = kpPending.shift();
+  if (next) kpStart(next);
+}
+
+let kpWired = false;
+
+function initKeeperPanel() {
+  const panel = keeperPanel();
+  // initShopkeeper() runs on every shop render; the panel is wired once.
+  if (!panel || kpWired) return;
+  kpWired = true;
+  panel.addEventListener('click', () => {
+    if (kpAsk && !kpQueue.length) return;   // a question is answered, not tapped past
+    kpNext();
+  });
+  const skip = panel.querySelector('#kp-skip');
+  if (skip) skip.addEventListener('click', e => { e.stopPropagation(); kpFinish(); });
+}
+
 // A yes/no from Poko. Goes through the SAME queue as everything else — an ask
 // that jumped the line would wipe the daily greeting mid-sentence, and one
 // that fired early would arrive before the player has seen the room.
@@ -174,10 +298,10 @@ function keeperSayAll(lines, ms = 5200) {
 // purpose: a toast can't hold buttons, and a question with nowhere to answer
 // is worse than no question.
 function keeperAsk(text, opts = {}) {
-  if (!keeperOnScreen()) return false;
-  kbQueue.push({ text, ms: 0, mood: opts.mood || null, ask: opts });
-  if (!kbShowing) keeperNext();
-  return true;
+  // Now goes through the panel, so it no longer matters which tab you are on.
+  // Callers still handle a false return — they were written when this could
+  // only work on the shop floor, and defensive is cheap.
+  return keeperTell(text, { mood: opts.mood || 'welcome', ask: opts });
 }
 
 function keeperShowAsk(bubble, ask) {
@@ -258,6 +382,7 @@ function keeperReact(key, extra = '') {
 // ---------- setup ----------
 
 function initShopkeeper() {
+  initKeeperPanel();          // lives outside the shop, so wire it first
   const keeper = document.querySelector('#shopkeeper');
   const bubble = document.querySelector('#keeper-bubble');
   if (!keeper || !bubble) return;
@@ -302,12 +427,12 @@ function keeperGreet(firstRun, daily) {
 function keeperTutorial() {
   state.tutorialSeen = true;
   saveGame();
-  keeperSayAll([
-    keeperPick('greetFirst'),
-    'Tap a machine to step up to it, then drop a coin in the slot.',
-    'Turn the crank — drag it round, or just hold it — and out pops a capsule!',
-    "Stickers go in your Album. Doubles can be sold at the Market for coins.",
-    'Machines restock twice a day, so come back often. Tap me any time!',
+  keeperTell([
+    { text: keeperPick('greetFirst'), mood: 'greet' },
+    { text: 'Tap a machine to step up to it, then drop a coin in the slot.', mood: 'welcome' },
+    { text: 'Turn the crank — drag it round, or just hold it — and out pops a capsule!', mood: 'welcome' },
+    { text: 'Stickers go in your Album. Doubles can be sold at the Market for coins.', mood: 'wants' },
+    { text: 'Machines restock twice a day, so come back often. Tap me any time!', mood: 'greet' },
   ]);
 }
 
@@ -317,17 +442,101 @@ function keeperTutorial() {
 // The hollow star fixes the affordance; this explains the part a star can't:
 // that friends holding a spare are told about it.
 //
-// Held back until there's something to point at — a binder with no gaps has
-// no empty sleeves to tap, and a brand-new player has nothing else either.
+// Held back only if there is nothing to point at — a completed binder has no
+// empty sleeves to tap.
+//
+// It used to also require three owned stickers, on the theory that a new
+// player had nothing to want yet. That was written when this was two toasts
+// and firing early felt like noise; a dismissible panel changes the maths, and
+// somebody staring at a page of empty sleeves is looking at precisely the
+// thing being explained. Firing late is the more expensive mistake here —
+// testers do not go exploring, so a tip they never trigger is a tip that does
+// not exist.
 function maybeExplainWants() {
   if (state.wantsTipSeen) return;
   if ((state.wants || []).length) { state.wantsTipSeen = true; saveGame(); return; }
-  const owned = COLLECTIONS.reduce((n, c) => n + collectionProgress(c), 0);
   const gaps = COLLECTIONS.some(c => c.items.some(it => !hasItem(it.id)));
-  if (owned < 3 || !gaps) return;
-  state.wantsTipSeen = true;
-  saveGame();
-  keeperSayAll([keeperPick('wantsTip'), keeperPick('wantsTip2')], 6000);
+  if (!gaps) return;
+  // Fires from the ALBUM tab, where the speech bubble does not exist — which is
+  // exactly why this used to become two toasts nobody read.
+  //
+  // The flag is set in onDone, NOT here. Setting it up front is the trap this
+  // whole feature exists because of, and it caught this function a second time:
+  // the stamp message opened the panel first, this one was refused, and the
+  // tutorial was marked seen without ever appearing.
+  keeperTell([
+    { text: keeperPick('wantsTip'), mood: 'wants' },
+    { text: keeperPick('wantsTip2'), mood: 'wants' },
+    { text: keeperPick('wantsTip3'), mood: 'wants' },
+    { text: keeperPick('wantsTip4'), mood: 'gift' },
+  ], { onDone: () => { state.wantsTipSeen = true; saveGame(); } });
+}
+
+// First visit to the Trading Post.
+//
+// The last line is the important one. A friend code is meant to be handed
+// round; a recovery code loads your entire collection onto someone else's
+// device. They are both "codes you can copy" in a game that encourages
+// sharing, and nothing else in the UI tells you they are different kinds of
+// thing. Better Poko says it once than somebody learns it the hard way.
+function maybeExplainMarket() {
+  if (state.tipMarketSeen) return;
+  keeperTell([
+    { text: 'This is the Trading Post. That six-character friend code at the top is yours.',
+      mood: 'gift' },
+    { text: 'Give it to a friend and they can send you capsules — tap it to copy, ' +
+            'or hit Share to send a link that adds you automatically.', mood: 'gift' },
+    { text: "Doubles you don't want can be sold here for coins, too.", mood: 'wants' },
+    { text: 'One thing though: your FRIEND code is safe to share. The recovery code ' +
+            'under Backup is not — that one loads your whole collection onto ' +
+            "someone else's device. Keep that one to yourself.", mood: 'wants' },
+  ], { onDone: () => {
+    state.tipMarketSeen = true;
+    saveGame();
+    maybeSuggestName();          // queues behind, so it reads as one conversation
+  } });
+}
+
+// Right after the Trading Post tour, and only if they are still "Collector".
+//
+// Poko does not take the name here — the box with a suggestion already in it is
+// sitting on the page, and pointing at a control teaches where it is. Saying it
+// out loud is the part the box cannot do: that this name is what friends see on
+// the capsules you send, which is why it is worth changing.
+function maybeSuggestName() {
+  if (state.playerName || state.nameDeclined) return;
+  keeperTell(
+    "One more thing — you're 'Collector' to everyone right now. Here's a name " +
+    'picked out for you: take it, type your own, or hit the dice for another. ' +
+    'It goes on every capsule you send.',
+    { mood: 'wants', onDone: revealNameBox });
+}
+
+// Don't just point at it — put it in front of them. Poko closing on "here's a
+// name picked out for you" and the player then having to FIND the box is the
+// same discoverability failure this whole feature exists to fix.
+function revealNameBox() {
+  const input = document.querySelector('.ask-name .name-in');
+  if (!input) return;
+  const row = input.closest('.ask-name') || input;
+  row.scrollIntoView({ block: 'center', behavior: FX_REDUCED ? 'auto' : 'smooth' });
+  row.classList.add('just-shown');
+  // A timer, not animationend — a backgrounded tab must not strand the ring.
+  setTimeout(() => row.classList.remove('just-shown'), 2600);
+  input.focus();
+  input.select();
+}
+
+// First visit to the arcade. Also the cheapest place to mention the stamp card,
+// which Glenn played for weeks without ever discovering.
+function maybeExplainArcade() {
+  if (state.tipArcadeSeen) return;
+  keeperTell([
+    { text: `You get ${ARCADE.playsPerRotation} tokens a rotation. They refill ` +
+            'when the machines restock — twice a day.', mood: 'welcome' },
+    { text: 'Every game pays coins, win or lose. And playing counts toward your ' +
+            'stamp card — tap me any time to see it.', mood: 'stamp' },
+  ], { onDone: () => { state.tipArcadeSeen = true; saveGame(); } });
 }
 
 // ---------- stamp rally card ----------
@@ -450,8 +659,8 @@ function noteStamp(kind, count = 1) {
     sfx.chime();
     if (stampCardFull()) keeperReact('cardFull');
     else if (stampState().earned === 1) {
-      keeperSay(`Your first stamp! Fill ${STAMP.cardSize} and I'll swap the card for ` +
-        `${STAMP.reward} coins — tap me any time to see it.`, 6400);
+      keeperTell(`Your first stamp! Fill ${STAMP.cardSize} and I'll swap the card for ` +
+        `${STAMP.reward} coins — tap me any time to see it.`, { mood: 'stamp' });
     } else keeperReact('stamp');
     return;
   }
@@ -467,7 +676,8 @@ function noteStamp(kind, count = 1) {
   if (filled) {
     const label = kind === 'pull' ? 'Capsule pulls' : kind === 'play' ? 'Arcade games' : 'Album visit';
     sfx.tick();
-    keeperSay(`${label} done on your stamp card! Still need ${stampNeeds().join(' and ')}.`, 5600, 'stamp');
+    keeperTell(`${label} done on your stamp card! Still need ${stampNeeds().join(' and ')}.`,
+               { mood: 'stamp' });
     return;
   }
   // That track was already finished, so this play couldn't move the card at

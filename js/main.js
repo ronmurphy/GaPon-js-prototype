@@ -79,12 +79,15 @@ function showTab(name) {
   }
   fxTabIn($('#tab-' + name));
   if (name === 'album') {
-    noteStamp('binder');       // a stamp once a day just for stopping by
     renderAlbum();
+    // Tutorial BEFORE the stamp: both may want to speak on a first visit, and
+    // learning what the binder is for matters more than being told you earned
+    // a stamp in it. They queue either way now, this just sets the order.
     maybeExplainWants();
+    noteStamp('binder');       // a stamp once a day just for stopping by
   }
-  if (name === 'market') { renderMarket(); netMaybeCheck(); }
-  if (name === 'arcade') renderArcade();
+  if (name === 'market') { renderMarket(); netMaybeCheck(); maybeExplainMarket(); }
+  if (name === 'arcade') { renderArcade(); maybeExplainArcade(); }
   if (name === 'wall') renderWall();
 }
 
@@ -515,17 +518,30 @@ function maybeOfferCloudSave() {
   if ((state.totalPulls || 0) < CLOUD_NUDGE_PULLS) return;
   if ((state.days || []).length < CLOUD_NUDGE_DAYS) return;
 
-  const asked = keeperAsk(
-    'Your collection only lives on this device. Want me to keep a copy online, ' +
-    'so you can pick it up on your phone too?',
-    {
-      yes: 'Yes please', no: 'Not now', mood: 'gift',
+  // Explains BOTH ways of keeping a save before asking about one of them. This
+  // is the only moment the game has the player's attention on the subject, and
+  // the footer's "backup"/"restore" buttons say nothing about what they do or
+  // how they differ. The question lands on the last line, so nobody is asked to
+  // decide before they know what the choice is.
+  keeperTell([
+    { text: 'Your collection only lives on this device. If you clear your ' +
+            'browser, it goes with it.', mood: 'wants' },
+    { text: 'Two ways to keep it safe. Backup, in the footer, gives you a very ' +
+            'long code to paste in yourself — works with no connection at all.',
+      mood: 'wants' },
+    { text: "Or I can hold an encrypted copy online. That one's twelve " +
+            'characters instead of three thousand, and it lets you pick the ' +
+            'same collection up on another device.', mood: 'gift' },
+    { text: 'Shall I set the online one up for you?', mood: 'gift' },
+  ], {
+    ask: {
+      yes: 'Yes please', no: 'Not now',
       onYes: doOfferedCloudSave,
       // Only an explicit answer closes this. Showing it is not answering it —
       // see the "flags set on delivery" trap in REVIEW.md.
       onNo: () => { state.cloudOffered = true; saveGame(); },
-    });
-  if (!asked) return;          // keeper off screen: ask again another day
+    },
+  });
 }
 
 async function doOfferedCloudSave() {

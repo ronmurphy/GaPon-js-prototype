@@ -27,7 +27,10 @@ function defaultState() {
     // so overflow past a full card is never lost, it lands on the next one
     stamps: { earned: 0, cards: 0, pulls: 0, plays: 0, binderDay: null, binderDone: false },
     tutorialSeen: false,
-    wantsTipSeen: false, // Poko explains the wants list once, at the binder
+    tutorialVersion: 0,   // see TUTORIAL_VERSION — bumping it re-runs every tip
+    wantsTipSeen: false,  // Poko explains the wants list once, at the binder
+    tipMarketSeen: false, // ...friend codes vs the recovery code, at the Market
+    tipArcadeSeen: false, // ...tokens and the stamp card, at the arcade
     trades: [],         // outgoing trade capsules: { code, itemId, at }
     redeemed: [],       // trade codes already opened on this device
     playerName: '',     // name printed on trade cards
@@ -217,6 +220,29 @@ function saveGame() {
   if (typeof netMarkDirty === 'function') netMarkDirty();
 }
 
+// Bump this and every player sees the whole tour again, once.
+//
+// The point is not the tutorial, it is being able to say "Poko explained that"
+// and know it is true. Seven testers were grandfathered past features that were
+// never announced to them — wants, renaming, cloud saves, the stamp card — and
+// each one came back as "I had no idea". A version here turns that from an
+// assumption into a fact.
+//
+// Only the TIPS reset. Decisions do not: `nameDeclined` and `cloudOffered`
+// record that somebody was asked and said no, and re-asking a settled question
+// is nagging, not teaching.
+const TUTORIAL_VERSION = 2;
+
+function migrateTutorials() {
+  if (state.tutorialVersion === TUTORIAL_VERSION) return;
+  state.tutorialVersion = TUTORIAL_VERSION;
+  state.tutorialSeen = false;
+  state.wantsTipSeen = false;
+  state.tipMarketSeen = false;
+  state.tipArcadeSeen = false;
+  saveGame();
+}
+
 // Whether a save was already on disk at boot. That's direct evidence storage
 // persists in this browser, which is what the in-app-browser warning checks
 // before nagging anyone (see js/webview.js).
@@ -231,6 +257,7 @@ function loadGame() {
   } catch (e) {
     state = defaultState();
   }
+  migrateTutorials();
 }
 
 function resetGame() {

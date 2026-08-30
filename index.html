@@ -119,6 +119,22 @@
     </div>
   </div>
   <div id="overlay" hidden></div>
+
+  <!-- Poko's dialogue panel. Lives OUTSIDE any tab on purpose: teaching used to
+       go through keeperSay, which falls back to toasts wherever the shopkeeper
+       isn't on screen — so the wants tutorial was two messages that appeared
+       and vanished over the binder while Poko was in another room. This works
+       on every tab, which is the whole point of it. -->
+  <div id="keeper-panel" class="kp" hidden>
+    <div class="kp-art" id="kp-art"></div>
+    <div class="kp-body">
+      <span class="kp-name" id="kp-name"></span>
+      <p class="kp-text" id="kp-text"></p>
+      <div class="kp-acts" id="kp-acts"></div>
+    </div>
+    <button class="kp-skip" id="kp-skip" aria-label="skip">skip</button>
+  </div>
+
   <div id="toasts"></div>
 
   <footer>

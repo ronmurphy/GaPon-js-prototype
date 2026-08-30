@@ -4031,3 +4031,157 @@ footer button {
 }
 
 .tr-to select:focus { outline: none; border-color: var(--gold); }
+
+
+/* ---------- Poko's dialogue panel ---------- */
+/* A visual-novel box rather than a speech bubble, for one structural reason:
+   the bubble only exists inside the shop scene, so every tutorial fired from
+   the album or arcade degraded into toasts that vanished before they were
+   read. This is fixed to the viewport and works on every tab.
+   AMBIENT chatter still uses the bubble — a panel interrupts by nature, and
+   Poko reacting to a lucky pull must stay ignorable. */
+.kp {
+  position: fixed;
+  left: 0;
+  right: 0;
+  /* Lifted off the viewport floor. The page content is much shorter than a
+     desktop window, so a panel glued to the bottom edge sits marooned in empty
+     space far below the shop. This brings it up under the content without
+     covering it — deliberately NOT dead-centre, which would hide the very
+     machines it is talking about. Flush to the bottom on phones, where the
+     content already fills the screen. */
+  bottom: clamp(12px, 13vh, 150px);
+  z-index: 60;                   /* above the footer, which it covers while up */
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 14px 16px 16px;
+  background: linear-gradient(180deg, rgba(28, 19, 54, 0.97), rgba(18, 12, 36, 0.99));
+  border: 2px solid var(--gold);
+  border-radius: 16px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+/* Poko at full size — eight painted poses that until now only ever appeared
+   as a 22px face in the corner of a bubble. */
+.kp-art {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 112px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: -16px;          /* he leans out of the panel */
+}
+.kp-art .keeper-img { width: 96px; height: auto; }
+.kp-art .keeper-emoji { font-size: 64px; }
+
+.kp-body { flex: 1; min-width: 0; }
+
+.kp-name {
+  display: inline-block;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  color: #2a1e45;
+  background: var(--gold);
+  border-radius: 6px;
+  padding: 2px 10px;
+  margin-bottom: 6px;
+}
+
+.kp-text {
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0;
+  min-height: 2.8em;             /* no jump between a short line and a long one */
+}
+
+.kp-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.kp-acts:empty { display: none; }
+
+.kp-btn {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+}
+.kp-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.kp-btn.yes { background: var(--gold); color: #2a1e45; }
+.kp-btn.yes:hover { background: #ffd54f; }
+.kp-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* "tap to continue" — only while there is more to read */
+.kp.more::after {
+  content: '▾';
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  color: var(--gold);
+  font-size: 0.9rem;
+  animation: pulse 1s ease-in-out infinite;
+}
+.kp.asking { cursor: default; }
+.kp.asking::after { content: none; }
+
+.kp-skip {
+  position: absolute;
+  right: 14px;
+  top: 10px;
+  font: inherit;
+  font-size: 0.7rem;
+  border: 0;
+  background: none;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.kp-skip:hover { color: var(--ink); }
+.kp.asking .kp-skip { display: none; }   /* a question is answered, not skipped */
+
+@media (max-width: 520px) {
+  /* Same floating card, just smaller. It used to sit flush to the bottom edge
+     here on the assumption a phone's content fills the screen — it often does
+     not, and the inconsistency between sizes was more jarring than the space
+     it saved. `bottom` stays proportional, so a short viewport lifts it less. */
+  .kp {
+    gap: 10px;
+    padding: 12px 12px 14px;
+    margin: 0 10px;
+  }
+  .kp-art { width: 72px; height: 86px; }
+  .kp-art .keeper-img { width: 72px; }
+  .kp-text { font-size: 0.86rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kp.more::after { animation: none; }
+}
+
+
+/* Poko has just said "here's a name picked out for you" — this makes sure the
+   box he means is the thing you are looking at. */
+.just-shown {
+  border-radius: 12px;
+  animation: justshown 2.4s ease-out 1;
+}
+
+@keyframes justshown {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 213, 79, 0); }
+  15%      { box-shadow: 0 0 0 4px rgba(255, 213, 79, 0.55); }
+  55%      { box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* keep the tell, drop the pulse */
+  .just-shown { animation: none; box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.5); }
+}
