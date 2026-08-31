@@ -74,6 +74,9 @@ function renderArcade() {
   const host = $('#tab-arcade');
   host.innerHTML = `
     <div class="aroom">
+      <button class="room-exit" id="arcade-exit">
+        <span class="msr">door_back</span> back to the shop
+      </button>
       <div class="aroom-sign"></div>
       <div class="aroom-tokens" title="${left}/${max} tokens">
         ${Array.from({ length: max }, (_, i) =>
@@ -104,6 +107,11 @@ function renderArcade() {
     <p class="shop-tip">${left
       ? 'tap a cabinet to drop a token in'
       : 'out of tokens — more at the next restock!'}</p>`;
+
+  // Wired here, not in main.js's boot, because this markup is rebuilt on every
+  // renderArcade() — a listener bound once at startup would be thrown away.
+  const exit = host.querySelector('#arcade-exit');
+  if (exit) exit.addEventListener('click', () => showTab('machines'));
 
   host.querySelectorAll('.cab').forEach(cab =>
     cab.addEventListener('click', () => {

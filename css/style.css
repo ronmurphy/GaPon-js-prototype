@@ -1676,7 +1676,11 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   pointer-events: none;
 }
 
-.parlour-exit {
+/* The way out of a room. Shared by the parlour and the arcade — both are
+   entered through a door in the shop, so both need a door back. The arcade
+   went without one for a long time only because it predates rooms: everything
+   was a tab, and the tab bar was the way out. */
+.room-exit {
   position: absolute;
   top: 12px;
   left: 12px;
@@ -1695,8 +1699,8 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   cursor: pointer;
 }
 
-.parlour-exit .msr { font-size: 15px; }
-.parlour-exit:hover { background: rgba(0, 0, 0, 0.65); }
+.room-exit .msr { font-size: 15px; }
+.room-exit:hover { background: rgba(0, 0, 0, 0.65); }
 
 .parlour-scroll { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; }
 .parlour-scroll::-webkit-scrollbar { height: 8px; }
