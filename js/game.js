@@ -193,6 +193,15 @@ function useStock(slot) {
   return true;
 }
 
+// Close a machine for the rest of the rotation. Only the fukubiki uses this:
+// once it has nothing left to give, the other nine marbles would each be a
+// crank turn for a refund, so it hangs up the SOLD OUT sign instead.
+function emptyStock(slot) {
+  const s = machineStock();
+  s.left[slot] = 0;
+  saveGame();
+}
+
 // Lazily resets the play counter when the half-day period rolls over.
 function arcadeState() {
   const period = currentPeriod();
@@ -777,6 +786,10 @@ function saveShelf(slot, caps) {
 // Draw a marble. If you already own everything of that rarity, the drum is
 // kind about it and bumps you to a rarity you can still use.
 function drawMarble() {
+  // Nothing left in the whole album to give? Bail BEFORE the fortune is spent.
+  // An omikuji is one a day, and burning it on a draw that cannot produce a
+  // sticker takes it for nothing.
+  if (!FUKU.marbles.some(mb => swapTargets(mb.rarity).length)) return null;
   // a held fortune weights the good marbles — an omikuji should be felt at
   // every machine that decides a rarity, not just the ones rolling odds
   const f = heldFortune();

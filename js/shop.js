@@ -419,13 +419,22 @@ function vendFuku(m, card) {
   setTimeout(() => {
     card.querySelector('.drum-body').classList.remove('spinning');
     if (!marble) {
-      // nothing left in the whole album to give — pay out instead
-      const consolation = Math.round(m.tier.cost * 1.5);
-      state.coins += consolation;
+      // Nothing left in the whole album to give, so the shop declines the sale
+      // and hands the coins straight back — a REFUND, not a reward. It paid 1.5x
+      // once, which meant the one player who can reach this path (they own every
+      // sticker, so their coins already have nowhere to go) was also the only
+      // one earning a passive income. That is the exact pile the prize counter
+      // exists to drain; a faucet feeding it would turn buying into waiting.
+      state.coins += m.tier.cost;
+      // Empty the drum too. At a flat refund the other marbles are all zero-net
+      // cranks, so hang up the SOLD OUT sign the machines already have rather
+      // than let someone turn it nine more times for nothing.
+      emptyStock(m.id);
       saveGame();
       updateHeader();
-      sfx.fanfare();
-      toast(`You own every sticker! The shop hands back ${consolation} coins.`, 'good');
+      shopSyncProgress();
+      sfx.coin();
+      toast(`You own every sticker! Poko won't take your money — here's your ${m.tier.cost} back.`, 'good');
       pulling = false;
       shopUnfocus();
       return;
