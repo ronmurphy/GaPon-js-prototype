@@ -557,18 +557,25 @@ function maybeOfferCloudSave({ fromSet = false } = {}) {
 
   // Explains BOTH ways of keeping a save before asking about one of them. This
   // is the only moment the game has the player's attention on the subject, and
-  // the footer's "backup"/"restore" buttons say nothing about what they do or
+  // the gear's "backup"/"restore" buttons say nothing about what they do or
   // how they differ. The question lands on the last line, so nobody is asked to
   // decide before they know what the choice is.
   keeperTell([
-    { text: 'Your collection only lives on this device. If you clear your ' +
-            'browser, it goes with it.', mood: 'wants' },
-    { text: 'Two ways to keep it safe. Backup, in the footer, gives you a very ' +
+    // Reworded Aug 30 after David explained why he'd passed: the payoff clause
+    // used to be "pick it up on ANOTHER DEVICE", and he has one phone and no
+    // laptop, so he correctly heard "not for me" — then supplied the reason it
+    // was for him anyway: "useful for when I get a new phone". Everybody
+    // replaces a phone; not everybody owns a second device. Lead with the
+    // universal case, keep the other as a bonus.
+    { text: 'Your collection only lives on this phone. Clear your browser or ' +
+            'lose the handset and it goes with it.', mood: 'wants' },
+    { text: 'Two ways to keep it safe. Backup, under the gear, gives you a very ' +
             'long code to paste in yourself — works with no connection at all.',
       mood: 'wants' },
-    { text: "Or I can hold an encrypted copy online. That one's twelve " +
-            'characters instead of three thousand, and it lets you pick the ' +
-            'same collection up on another device.', mood: 'gift' },
+    { text: "Or I can hold an encrypted copy online. Then when you get a new " +
+            "phone, it's twelve characters to bring your whole collection " +
+            'across — and it works between two devices at once, if you have them.',
+      mood: 'gift' },
     { text: 'Shall I set the online one up for you?', mood: 'gift' },
   ], {
     ask: {

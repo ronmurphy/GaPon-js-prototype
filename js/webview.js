@@ -109,7 +109,7 @@ function showWebViewWarning() {
       ? 'Backup copied — paste it into restore in your real browser'
       : 'Link copied — paste it into your browser', 'good', 5000);
     navigator.clipboard?.writeText(text).then(ok,
-      () => toast('Copy blocked — use backup in the footer instead', 'warn'));
+      () => toast('Copy blocked — use backup under the gear instead', 'warn'));
   });
   bar.querySelector('#wv-close').addEventListener('click', () => {
     // remembered in the webview's own storage, which does persist. Only THIS
