@@ -45,7 +45,8 @@ function defaultState() {
     wallSet: 'all',     // which set the booth's sticker tray is filtered to
     tokens: 0,          // bonus arcade plays from stamp cards; survive restock
     tokenTipSeen: false, // Poko explains what a token is, once
-    cloudOffered: false, // Poko offered to keep a copy online; only an ANSWER sets it
+    cloudAsks: 0,        // times Poko has offered a cloud save; only an ANSWER counts
+    cloudDeclinedFinal: false,  // said yes, or said no often enough to mean it
   };
 }
 
@@ -248,7 +249,7 @@ function saveGame() {
 // each one came back as "I had no idea". A version here turns that from an
 // assumption into a fact.
 //
-// Only the TIPS reset. Decisions do not: `nameDeclined` and `cloudOffered`
+// Only the TIPS reset. Decisions do not: `nameDeclined` and the cloud-save
 // record that somebody was asked and said no, and re-asking a settled question
 // is nagging, not teaching.
 const TUTORIAL_VERSION = 2;

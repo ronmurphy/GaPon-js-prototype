@@ -149,6 +149,8 @@ function renderBinderPage() {
       confetti(30);
       updateHeader();
       renderBinderPage();
+      // ...and only after the fanfare, ask whether they'd like this kept safe.
+      offerCloudSaveAfterSet();
     }
   });
 }

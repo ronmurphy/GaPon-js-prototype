@@ -511,12 +511,49 @@ function recoveryCodeHTML(code) {
 // iPhone and a Mac because nothing ever told her there was a better way.
 const CLOUD_NUDGE_PULLS = 30;
 const CLOUD_NUDGE_DAYS = 3;
+// Asked at most this many times, ever, then never again.
+//
+// It used to be a single permanent no, which was the wrong shape for what is
+// being offered: the value of a cloud save GROWS, but the question was only
+// asked once, on day three, when the collection is small and "you could lose
+// this" barely registers. Brad himself did not want one until he had two full
+// sets — and that is exactly when the two-devices problem found him.
+//
+// So: once early, then again on each of the first few completed sets, which is
+// when a collection stops being a pile of stickers and starts being something
+// you would be upset to lose. Say no that many times and it really is a no.
+const CLOUD_ASK_LIMIT = 4;
 
-function maybeOfferCloudSave() {
-  if (!NET.ready || !cryptoReady()) return;
-  if (state.cloudOffered || storedRecoveryCode()) return;
-  if ((state.totalPulls || 0) < CLOUD_NUDGE_PULLS) return;
-  if ((state.days || []).length < CLOUD_NUDGE_DAYS) return;
+function cloudAsksMade() { return state.cloudAsks || 0; }
+
+function cloudOfferAvailable() {
+  if (!NET.ready || !cryptoReady()) return false;
+  if (storedRecoveryCode()) return false;          // already has one
+  if (state.cloudDeclinedFinal) return false;      // ran out of asks
+  return cloudAsksMade() < CLOUD_ASK_LIMIT;
+}
+
+// Poko asks again once a set is finished. Deliberately NOT during the confetti:
+// a completed set is the payoff the whole game builds toward, and a prompt
+// landing inside it cheapens the moment. The panel queues, so this simply
+// follows the celebration.
+function offerCloudSaveAfterSet() {
+  if (!cloudOfferAvailable()) return;
+  if (cloudAsksMade() === 0) return;   // the early ask hasn't happened yet; let it
+  setTimeout(() => maybeOfferCloudSave({ fromSet: true }), 1800);
+}
+
+// `fromSet` is the whole gate for the later asks. Without it there was none at
+// all after the first — so having said "not now" once, you would be asked again
+// on every single launch. Asks 2 and beyond come ONLY from finishing a set,
+// which is what makes them a milestone rather than nagging.
+function maybeOfferCloudSave({ fromSet = false } = {}) {
+  if (!cloudOfferAvailable()) return;
+  if (!fromSet) {
+    if (cloudAsksMade() > 0) return;         // boot only ever makes the first ask
+    if ((state.totalPulls || 0) < CLOUD_NUDGE_PULLS) return;
+    if ((state.days || []).length < CLOUD_NUDGE_DAYS) return;
+  }
 
   // Explains BOTH ways of keeping a save before asking about one of them. This
   // is the only moment the game has the player's attention on the subject, and
@@ -537,15 +574,19 @@ function maybeOfferCloudSave() {
     ask: {
       yes: 'Yes please', no: 'Not now',
       onYes: doOfferedCloudSave,
-      // Only an explicit answer closes this. Showing it is not answering it —
-      // see the "flags set on delivery" trap in REVIEW.md.
-      onNo: () => { state.cloudOffered = true; saveGame(); },
+      // Only an explicit answer counts. Showing it is not answering it — see
+      // the "flags set on delivery" trap in REVIEW.md.
+      onNo: () => {
+        state.cloudAsks = cloudAsksMade() + 1;
+        if (state.cloudAsks >= CLOUD_ASK_LIMIT) state.cloudDeclinedFinal = true;
+        saveGame();
+      },
     },
   });
 }
 
 async function doOfferedCloudSave() {
-  state.cloudOffered = true;
+  state.cloudDeclinedFinal = true;      // said yes; never ask again either way
   saveGame();
   toast('Saving your collection…', '', 2600);
   const res = await netUploadSave();
