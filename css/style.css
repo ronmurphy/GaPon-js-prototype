@@ -4478,13 +4478,51 @@ footer button {
 
 .cos-shelf {
   width: 100%;
-  overflow-y: auto;
-  max-height: 46vh;
-  -webkit-overflow-scrolling: touch;
   background: var(--card);
   border-radius: 14px;
   padding: 10px;
   text-align: left;
+}
+
+/* The tab column doesn't scroll; only the list does. Scrolling the navigation
+   away from under your thumb is how you lose your place in a shop. */
+.cos-body { display: flex; gap: 8px; align-items: flex-start; }
+
+.cos-tabs {
+  flex: 0 0 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cos-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+.cos-tab:hover { background: var(--card2); }
+.cos-tab:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.cos-tab.on { background: var(--card2); color: var(--ink); font-weight: 700; }
+.cos-tab.on .cos-sw { box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.35), 0 0 0 2px var(--gold); }
+.cos-tab .cos-sw { width: 22px; height: 22px; border-radius: 6px; }
+
+.cos-list {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  max-height: 46vh;
+  -webkit-overflow-scrolling: touch;
 }
 
 .cos-shelf-head {
@@ -4568,7 +4606,9 @@ footer button {
 }
 
 @media (max-width: 400px) {
-  .cos-shelf { max-height: 40vh; }
+  .cos-list { max-height: 40vh; }
+  .cos-tabs { flex-basis: 62px; }
+  .cos-tab { font-size: 0.62rem; }
   .cos-text small { display: none; }   /* the name and price carry it */
 }
 

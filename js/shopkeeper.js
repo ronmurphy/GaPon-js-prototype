@@ -608,8 +608,34 @@ function cosRowHTML(item, slot, equippedId) {
     </button>`;
 }
 
-function cosShelfHTML() {
+// Which slot the shelf is showing. Deliberately NOT in the save: it is where
+// you happen to be looking, not something about your collection.
+let cosTab = null;
+
+function cosTabId() {
+  const ids = COSMETICS.slots.map(s => s.id);
+  return ids.includes(cosTab) ? cosTab : ids[0];
+}
+
+// The tab strip doubles as a summary of what you're wearing — filtering
+// otherwise means never seeing your walls and your floor at the same time
+// again, and that's the thing that makes mixing fun in the first place.
+function cosTabsHTML() {
+  const active = cosTabId();
   return COSMETICS.slots.map(slot => {
+    // sets are never "on", so their tab shows the neutral chip
+    const id = slot.id === 'look' ? null : cosEquipped(slot.id);
+    return `
+      <button class="cos-tab${slot.id === active ? ' on' : ''}" data-cos-tab="${slot.id}">
+        ${cosSwatchHTML(id ? COS_BY_ID[id] : null)}
+        <span>${slot.name}</span>
+      </button>`;
+  }).join('');
+}
+
+function cosShelfHTML() {
+  const active = cosTabId();
+  return COSMETICS.slots.filter(slot => slot.id === active).map(slot => {
     const equipped = cosEquipped(slot.id);
     // Themes always have one on, so they get no "none" row; a wall or floor
     // can go back to the room's own paint, which has to be as easy to pick as
@@ -672,7 +698,10 @@ function openStampCard() {
           <span>Prize shelf</span>
           <span class="cos-purse">${coinIcon()} ${state.coins}</span>
         </div>
-        ${cosShelfHTML()}
+        <div class="cos-body">
+          <div class="cos-tabs">${cosTabsHTML()}</div>
+          <div class="cos-list">${cosShelfHTML()}</div>
+        </div>
       </div>
       <div class="r-btns">
         <button class="btn ghost" id="stamp-close">Close</button>
@@ -683,6 +712,11 @@ function openStampCard() {
     ov.innerHTML = '';
   });
   // ---- prize shelf ----
+  ov.querySelectorAll('[data-cos-tab]').forEach(btn => btn.addEventListener('click', () => {
+    cosTab = btn.dataset.cosTab;
+    sfx.tick();
+    refreshCounter();     // a full redraw also puts the list back at the top
+  }));
   ov.querySelectorAll('[data-cos]').forEach(btn => btn.addEventListener('click', () => {
     const id = btn.dataset.cos, slot = btn.dataset.slot;
     if (!id) { equipCosmetic(null, slot); sfx.tick(); return refreshCounter(); }
