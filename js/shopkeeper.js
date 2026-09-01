@@ -594,9 +594,12 @@ function cosRowHTML(item, slot, equippedId) {
   const afford = state.coins >= item.price;
   const cls = ['cos-row', on ? 'on' : '', owned ? 'owned' : 'locked',
                (!owned && !afford) ? 'poor' : ''].filter(Boolean).join(' ');
-  const right = owned
-    ? `<span class="cos-tick">${on ? '✓' : ''}</span>`
-    : `<span class="cos-price">${coinIcon()} ${item.price}</span>`;
+  // A set has no "on" state to show — it fills your slots and steps back — so
+  // an owned one offers to do that again rather than claiming to be worn.
+  const right = !owned
+    ? `<span class="cos-price">${coinIcon()} ${item.price}</span>`
+    : item.sets ? '<span class="cos-use">use</span>'
+    : `<span class="cos-tick">${on ? '✓' : ''}</span>`;
   return `
     <button class="${cls}" data-cos="${item.id}" data-slot="${slot}">
       ${cosSwatchHTML(item)}
@@ -611,7 +614,9 @@ function cosShelfHTML() {
     // Themes always have one on, so they get no "none" row; a wall or floor
     // can go back to the room's own paint, which has to be as easy to pick as
     // anything bought — a toggle you can't turn off isn't a toggle.
-    const none = slot.id === 'theme' ? '' : `
+    // Neither the themes nor the sets get a "none": one theme is always on, and
+    // a set was never on in the first place.
+    const none = (slot.id === 'theme' || slot.id === 'look') ? '' : `
       <button class="cos-row owned${equipped ? '' : ' on'}" data-cos="" data-slot="${slot.id}">
         ${cosSwatchHTML(null)}
         <span class="cos-text"><b>As it comes</b><small>the room's own colours</small></span>
@@ -682,6 +687,8 @@ function openStampCard() {
     const id = btn.dataset.cos, slot = btn.dataset.slot;
     if (!id) { equipCosmetic(null, slot); sfx.tick(); return refreshCounter(); }
     if (cosOwned(id)) {
+      const item0 = COS_BY_ID[id];
+      if (item0 && item0.sets) { applyLook(id); sfx.chime(); return refreshCounter(); }
       if (cosEquipped(slot) === id && slot !== 'theme') return;   // already on
       equipCosmetic(id);
       sfx.tick();
@@ -698,7 +705,7 @@ function openStampCard() {
     cosArmRow(btn, () => {
       if (!buyCosmetic(id)) return;
       sfx.chime();      // the 'new thing' sound, same as a sticker you don't have
-      confetti(14);
+      confetti(item.sets ? 24 : 14);
       updateHeader();
       toast(`${item.name} — it's yours. Have a look around.`, 'good');
       refreshCounter();

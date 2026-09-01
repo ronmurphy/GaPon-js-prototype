@@ -61,6 +61,39 @@
      stage, so: wide boards, and the spotlight pooling where the player stands. */
   --par-floor-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 96px);
   --par-floor-b: radial-gradient(420px 120px at 50% 100%, rgba(255, 214, 130, 0.10), transparent 72%);
+
+  /* Wall texture, same two-slot scheme as the floor. Walls needed padding that
+     floors didn't: every room has exactly two floor layers, but wall layers run
+     one (the shop's stripes) to two (the game center's shoji lattice), so the
+     unused slot carries `none`. That is a real, empty background layer — it
+     paints nothing and costs nothing, and it keeps one wall texture item able
+     to replace whatever any room happened to have.
+
+     What is NOT in here: the ceiling shadows, the arcade's neon wash and the
+     game center's fluorescent tubes. Those are the room's LIGHT, not its
+     surface — a wallpaper that switched the lights off would be a bug, not a
+     purchase. */
+  --shop-wall-a: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 30px, transparent 30px 60px);
+  --shop-wall-b: none;
+
+  --arc-wall-a: none;
+  --arc-wall-b: none;
+
+  --par-wall-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.22) 0 14px, rgba(255, 255, 255, 0.05) 14px 30px);
+  --par-wall-b: none;
+
+  --wall-h: 66%;
+
+  /* Signage. Two tokens per sign — the lettering and the glow — because the
+     arcade's neon is deliberately two hues (#ff5c94 letters inside an #ff4081
+     halo) and collapsing them to one flattens the neon effect.
+
+     `color-mix(in srgb, X 90%, transparent)` is exactly rgba(X, 0.9), so these
+     compute identically to the literals they replaced. The cabinet marquees
+     are deliberately NOT included: --cabc is each game's own colour and is how
+     you tell the machines apart across the room. */
+  --arc-sign: #ff5c94;  --arc-glow: #ff4081;  --arc-glow-in: #ff4081;
+  --par-sign: #ffd54f;  --par-glow: #ffc107;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -257,6 +290,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .shop-scroll::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 4px; }
 
 .shop-scene {
+  --wall-h: 66%;
   --floor-h: 30%;   /* planks start 70% down */
   display: flex;
   align-items: flex-end;
@@ -268,8 +302,9 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   background:
     /* ceiling shadow */
     linear-gradient(180deg, rgba(10, 5, 26, 0.55), transparent 13%) top/100% 100% no-repeat,
-    /* wallpaper stripes (wall only) */
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 30px, transparent 30px 60px) top/100% 66% no-repeat,
+    /* wall texture — replaceable; the ceiling shadow above is light, not surface */
+    var(--cos-wall-a, var(--shop-wall-a)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-b, var(--shop-wall-b)) top/100% var(--wall-h) no-repeat,
     /* floor texture — a bought floor replaces both layers */
     var(--cos-floor-a, var(--shop-floor-a)) bottom/100% var(--floor-h) no-repeat,
     var(--cos-floor-b, var(--shop-floor-b)) bottom/100% var(--floor-h) no-repeat,
@@ -1488,6 +1523,9 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
    <body> without knowing which theme is on, so shoji panelling in a bought
    palette composes instead of one of them winning. */
 .theme-jp {
+  --arc-sign: #7ce0ff;  --arc-glow: #40c4ff;  --arc-glow-in: #7ce0ff;
+  --par-sign: #fff3c4;  --par-glow: #ffc107;
+
   --shop-wall-1: #5c4a63;  --shop-wall-2: #4d3d55;  --shop-base: #2f2438;
   --shop-floor-1: #7a5c46; --shop-floor-2: #5d4636;
 
@@ -1506,17 +1544,21 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   /* a pachinko hall floor is polished tile under a lot of light, not stage boards */
   --par-floor-a: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 64px);
   --par-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 42%);
+
+  --shop-wall-a: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 74px);
+  --shop-wall-b: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 58px);
+
+  --par-wall-a: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 40px, transparent 40px 80px);
+  --par-wall-b: none;
 }
 
 /* the sign text is CSS so the toggle needs no re-render */
 .aroom-sign::before { content: 'ARCADE'; }
 .theme-jp .aroom-sign::before { content: 'ゲームセンター'; letter-spacing: 3px; }
 
+/* the colours come from .theme-jp's tokens; only the fit differs */
 .theme-jp .aroom-sign {
-  color: #7ce0ff;
-  border-color: rgba(124, 224, 255, 0.6);
-  text-shadow: 0 0 6px rgba(124, 224, 255, 0.9), 0 0 20px rgba(64, 196, 255, 0.6);
-  box-shadow: 0 0 18px rgba(64, 196, 255, 0.35), inset 0 0 14px rgba(64, 196, 255, 0.18);
+  border-color: color-mix(in srgb, var(--sign) 60%, transparent);
   font-size: 0.9rem;
   padding: 5px 16px;
 }
@@ -1530,6 +1572,8 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     repeating-linear-gradient(90deg,
       rgba(255, 255, 255, 0.30) 0 76px, rgba(255, 255, 255, 0) 76px 210px) top/100% 26px no-repeat,
     linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 26%) top/100% 100% no-repeat,
+    var(--cos-wall-a, var(--arc-wall-a)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-b, var(--arc-wall-b)) top/100% var(--wall-h) no-repeat,
     /* pale diamond carpet, unless a floor is bought */
     var(--cos-floor-a, var(--arc-floor-a)) bottom/100% var(--floor-h) no-repeat,
     var(--cos-floor-b, var(--arc-floor-b)) bottom/100% var(--floor-h) no-repeat,
@@ -1553,11 +1597,9 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .theme-jp .shop-scene {
   background:
     linear-gradient(180deg, rgba(10, 5, 26, 0.42), transparent 13%) top/100% 100% no-repeat,
-    /* shoji lattice */
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 74px)
-      top/100% 66% no-repeat,
-    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 58px)
-      top/100% 66% no-repeat,
+    /* shoji lattice, unless a wall texture is bought */
+    var(--cos-wall-a, var(--shop-wall-a)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-b, var(--shop-wall-b)) top/100% var(--wall-h) no-repeat,
     var(--cos-floor-a, var(--shop-floor-a)) bottom/100% var(--floor-h) no-repeat,
     var(--cos-floor-b, var(--shop-floor-b)) bottom/100% var(--floor-h) no-repeat,
     linear-gradient(180deg,
@@ -1760,10 +1802,13 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   font-size: 0.92rem;
   padding: 5px 18px;
   border-radius: 10px;
-  color: #ffd54f;
-  border: 2px solid rgba(255, 213, 79, 0.5);
-  text-shadow: 0 0 8px rgba(255, 193, 7, 0.8);
-  box-shadow: 0 0 18px rgba(255, 193, 7, 0.28), inset 0 0 14px rgba(255, 193, 7, 0.15);
+  --sign: var(--cos-sign, var(--par-sign));
+  --glow: var(--cos-glow, var(--cos-sign, var(--par-glow)));
+  color: var(--sign);
+  border: 2px solid color-mix(in srgb, var(--sign) 50%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--glow) 80%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--glow) 28%, transparent),
+              inset 0 0 14px color-mix(in srgb, var(--glow) 15%, transparent);
   pointer-events: none;
 }
 
@@ -1798,6 +1843,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .parlour-scroll::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 4px; }
 
 .parlour-scene {
+  --wall-h: 62%;
   --floor-h: 38%;   /* stage floor starts 62% down */
   display: flex;
   align-items: flex-end;
@@ -1809,8 +1855,8 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   /* US: a game-show stage — swagged curtain and a warm spotlight */
   background:
     radial-gradient(300px 200px at 50% 0%, rgba(255, 214, 130, 0.16), transparent 70%),
-    repeating-linear-gradient(90deg,
-      rgba(0, 0, 0, 0.22) 0 14px, rgba(255, 255, 255, 0.05) 14px 30px) top/100% 62% no-repeat,
+    var(--cos-wall-a, var(--par-wall-a)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-b, var(--par-wall-b)) top/100% var(--wall-h) no-repeat,
     var(--cos-floor-a, var(--par-floor-a)) bottom/100% var(--floor-h) no-repeat,
     var(--cos-floor-b, var(--par-floor-b)) bottom/100% var(--floor-h) no-repeat,
     linear-gradient(180deg,
@@ -1822,12 +1868,13 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 /* JP: a pachinko parlour — bright, chrome, red and gold */
 .theme-jp .parlour-scene {
+  --wall-h: 64%;    /* its wall runs a touch lower than the American stage */
   background:
     repeating-linear-gradient(90deg,
       rgba(255, 255, 255, 0.7) 0 60px, transparent 60px 170px) top/100% 4px no-repeat,
     radial-gradient(320px 220px at 50% 0%, rgba(255, 235, 190, 0.22), transparent 70%),
-    repeating-linear-gradient(90deg,
-      rgba(255, 255, 255, 0.06) 0 40px, transparent 40px 80px) top/100% 64% no-repeat,
+    var(--cos-wall-a, var(--par-wall-a)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-b, var(--par-wall-b)) top/100% var(--wall-h) no-repeat,
     var(--cos-floor-a, var(--par-floor-a)) bottom/100% var(--floor-h) no-repeat,
     var(--cos-floor-b, var(--par-floor-b)) bottom/100% var(--floor-h) no-repeat,
     linear-gradient(180deg,
@@ -1837,7 +1884,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
       var(--cos-floor-2, var(--par-floor-2)) 100%);
 }
 
-.theme-jp .parlour-sign { color: #fff3c4; border-color: rgba(255, 243, 196, 0.65); }
+.theme-jp .parlour-sign { border-color: color-mix(in srgb, var(--sign) 65%, transparent); }
 
 .corinth {
   position: relative;
@@ -2358,6 +2405,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .aroom-scroll::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 4px; }
 
 .aroom-scene {
+  --wall-h: 74%;
   --floor-h: 26%;   /* carpet starts 74% down */
   display: flex;
   align-items: flex-end;
@@ -2371,6 +2419,9 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 16%) top/100% 100% no-repeat,
     /* neon wash on the wall */
     radial-gradient(320px 200px at 50% 0%, rgba(255, 64, 129, 0.10), transparent 70%) top/100% 74% no-repeat,
+    /* the arcade has no wallpaper of its own — these are empty until one is bought */
+    var(--cos-wall-a, var(--arc-wall-a)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-b, var(--arc-wall-b)) top/100% var(--wall-h) no-repeat,
     /* classic arcade carpet: crossing neon flecks, unless a floor is bought */
     var(--cos-floor-a, var(--arc-floor-a)) bottom/100% var(--floor-h) no-repeat,
     var(--cos-floor-b, var(--arc-floor-b)) bottom/100% var(--floor-h) no-repeat,
@@ -2392,11 +2443,18 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   font-size: 1rem;
   letter-spacing: 7px;
   padding: 5px 18px 5px 25px;   /* extra left pad balances letter-spacing */
-  color: #ff5c94;
-  text-shadow: 0 0 6px rgba(255, 64, 129, 0.9), 0 0 20px rgba(255, 64, 129, 0.6);
-  border: 2px solid rgba(255, 64, 129, 0.55);
+  --sign: var(--cos-sign, var(--arc-sign));
+  --glow: var(--cos-glow, var(--cos-sign, var(--arc-glow)));
+  /* the halo closest to the tube: pink in the American arcade, the letter's own
+     blue in the game center — the two themes genuinely differed here */
+  --glow-in: var(--cos-glow, var(--cos-sign, var(--arc-glow-in)));
+  color: var(--sign);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--glow-in) 90%, transparent),
+               0 0 20px color-mix(in srgb, var(--glow) 60%, transparent);
+  border: 2px solid color-mix(in srgb, var(--glow) 55%, transparent);
   border-radius: 12px;
-  box-shadow: 0 0 18px rgba(255, 64, 129, 0.35), inset 0 0 14px rgba(255, 64, 129, 0.18);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--glow) 35%, transparent),
+              inset 0 0 14px color-mix(in srgb, var(--glow) 18%, transparent);
   pointer-events: none;
   animation: neonflicker 7s linear infinite;
 }
@@ -4512,4 +4570,17 @@ footer button {
 @media (max-width: 400px) {
   .cos-shelf { max-height: 40vh; }
   .cos-text small { display: none; }   /* the name and price carry it */
+}
+
+/* A set offers an action rather than reporting a state, so it reads as a verb
+   and not as a tick that would have to lie the moment you changed one slot. */
+.cos-use {
+  flex: 0 0 auto;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 999px;
+  padding: 3px 9px;
 }

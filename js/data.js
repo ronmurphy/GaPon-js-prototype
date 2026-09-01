@@ -222,9 +222,12 @@ const ECON = {
 const COSMETICS = {
   slots: [
     { id: 'theme',    name: 'Look',          note: 'the whole building' },
-    { id: 'walls',    name: 'Walls',         note: 'every room' },
+    { id: 'look',     name: 'Sets',          note: 'fills every slot at once' },
+    { id: 'walls',    name: 'Wall colour',   note: 'every room' },
+    { id: 'wallpat',  name: 'Wall surface',  note: 'paper, panels, brick' },
     { id: 'floor',    name: 'Floor colour',  note: 'every room' },
     { id: 'floorpat', name: 'Floor surface', note: 'replaces the carpet' },
+    { id: 'sign',     name: 'Signage',       note: 'the lit signs' },
   ],
   // Colour and surface are separate slots because they are separate promises.
   // A palette recolours what the room already has — in the arcade that means
@@ -278,6 +281,85 @@ const COSMETICS = {
       blurb: 'Square tiles, scrubbed clean.',  price: 400, swatch: ['#9aa0ad', '#6d7280'] },
     { id: 'p-polish',  slot: 'floorpat', name: 'Polished',
       blurb: 'No texture at all — just shine.', price: 300, swatch: ['#d8d4e6', '#a49dbd'] },
+
+    { id: 'q-stripe',  slot: 'wallpat', name: 'Papered',
+      blurb: 'The shop\'s own quiet stripe.',   price: 0,   swatch: ['#5b4a75', '#4a3c60'] },
+    { id: 'q-shoji',   slot: 'wallpat', name: 'Shoji Lattice',
+      blurb: 'Paper screens, from the ゲーセン.', price: 0,  swatch: ['#8d7f9c', '#6f6480'] },
+    { id: 'q-curtain', slot: 'wallpat', name: 'Stage Curtain',
+      blurb: 'Heavy velvet folds.',             price: 0,   swatch: ['#3a2436', '#2a1a28'] },
+    { id: 'q-panel',   slot: 'wallpat', name: 'Wood Panelling',
+      blurb: 'Tongue and groove, waist high.',  price: 350, swatch: ['#6b533f', '#4f3d2f'] },
+    { id: 'q-brick',   slot: 'wallpat', name: 'Painted Brick',
+      blurb: 'Courses under thick paint.',      price: 350, swatch: ['#6d5a5a', '#514343'] },
+
+    // The cheap rung of the ladder. A sign is a small change and should cost
+    // like one — without something at this price the counter is only ever
+    // rewarding after a long save-up, and a normal evening's play buys nothing.
+    { id: 's-neon',    slot: 'sign', name: 'Neon Pink',
+      blurb: 'The arcade\'s own tubes.',        price: 0,   swatch: ['#ff5c94', '#ff4081'] },
+    { id: 's-ice',     slot: 'sign', name: 'Ice Blue',
+      blurb: 'Cool, from the game center.',     price: 0,   swatch: ['#7ce0ff', '#40c4ff'] },
+    { id: 's-gold',    slot: 'sign', name: 'Marquee Gold',
+      blurb: 'The parlour\'s warm bulbs.',      price: 0,   swatch: ['#ffd54f', '#ffc107'] },
+    { id: 's-lime',    slot: 'sign', name: 'Lime',
+      blurb: 'Loud, and it knows it.',          price: 150, swatch: ['#b2ff59', '#76ff03'] },
+    { id: 's-ember',   slot: 'sign', name: 'Ember',
+      blurb: 'Warm orange, late evening.',      price: 150, swatch: ['#ffab6b', '#ff7043'] },
+
+    // ---- sets ----
+    // A set is a preset, not a garment: buying one fills your slots with its
+    // parts and hands you the parts outright. There is deliberately no
+    // "equipped set", because the moment you changed its floor the shelf would
+    // have to claim you were wearing something you no longer were.
+    //
+    // A third THEME was the other way to do this, and it was the wrong one:
+    // the two themes carry language (メダル, コリントゲーム, the ゲームセンター
+    // sign), which is what makes them themes rather than paint. A third would
+    // either invent a language or duplicate the American one — at which point
+    // it is exactly this, for far more work.
+    //
+    // Parts are `bundled`: price 0 because they have no individual price, and
+    // never free — cosOwned refuses the price-0 shortcut for them.
+    { id: 'lk-showa', slot: 'look', name: 'Showa Yokochō', price: 450,
+      blurb: 'A back-alley shopping street after dark.', swatch: ['#5a2a2e', '#4a3527'],
+      sets: { walls: 'lk-showa-w', wallpat: 'lk-showa-q',
+              floor: 'lk-showa-f', floorpat: 'lk-showa-p', sign: 's-gold' } },
+    { id: 'lk-pier',  slot: 'look', name: 'Seaside Amusements', price: 450,
+      blurb: 'A pier arcade, salt-bleached and cheerful.', swatch: ['#7fa8a0', '#8f8474'],
+      sets: { walls: 'lk-pier-w', wallpat: 'lk-pier-q',
+              floor: 'lk-pier-f', floorpat: 'lk-pier-p', sign: 's-ice' } },
+    { id: 'lk-snow',  slot: 'look', name: 'Winter Fair', price: 450,
+      blurb: 'Frost, pale timber and cold light.', swatch: ['#44607e', '#9aa7b5'],
+      sets: { walls: 'lk-snow-w', wallpat: 'lk-snow-q',
+              floor: 'lk-snow-f', floorpat: 'lk-snow-p', sign: 's-ice' } },
+
+    { id: 'lk-showa-w', slot: 'walls',    name: 'Lantern Walls',  bundled: true, price: 0,
+      blurb: 'From Showa Yokochō.',   swatch: ['#5a2a2e', '#4a2226'] },
+    { id: 'lk-showa-q', slot: 'wallpat',  name: 'Timber Battens', bundled: true, price: 0,
+      blurb: 'From Showa Yokochō.',   swatch: ['#4a2226', '#38191c'] },
+    { id: 'lk-showa-f', slot: 'floor',    name: 'Alley Umber',    bundled: true, price: 0,
+      blurb: 'From Showa Yokochō.',   swatch: ['#4a3527', '#382818'] },
+    { id: 'lk-showa-p', slot: 'floorpat', name: 'Worn Planks',    bundled: true, price: 0,
+      blurb: 'From Showa Yokochō.',   swatch: ['#5c452f', '#3d2c1d'] },
+
+    { id: 'lk-pier-w',  slot: 'walls',    name: 'Bleached Mint',  bundled: true, price: 0,
+      blurb: 'From Seaside Amusements.', swatch: ['#7fa8a0', '#6d938c'] },
+    { id: 'lk-pier-q',  slot: 'wallpat',  name: 'Beach Hut',      bundled: true, price: 0,
+      blurb: 'From Seaside Amusements.', swatch: ['#6d938c', '#557a73'] },
+    { id: 'lk-pier-f',  slot: 'floor',    name: 'Driftwood',      bundled: true, price: 0,
+      blurb: 'From Seaside Amusements.', swatch: ['#8f8474', '#6f6659'] },
+    { id: 'lk-pier-p',  slot: 'floorpat', name: 'Board Gaps',     bundled: true, price: 0,
+      blurb: 'From Seaside Amusements.', swatch: ['#7d735f', '#5b5344'] },
+
+    { id: 'lk-snow-w',  slot: 'walls',    name: 'Frost Blue',     bundled: true, price: 0,
+      blurb: 'From Winter Fair.',     swatch: ['#44607e', '#3a5169'] },
+    { id: 'lk-snow-q',  slot: 'wallpat',  name: 'Snow Drift',     bundled: true, price: 0,
+      blurb: 'From Winter Fair.',     swatch: ['#5b7896', '#43607c'] },
+    { id: 'lk-snow-f',  slot: 'floor',    name: 'Pale Timber',    bundled: true, price: 0,
+      blurb: 'From Winter Fair.',     swatch: ['#9aa7b5', '#7c8794'] },
+    { id: 'lk-snow-p',  slot: 'floorpat', name: 'Swept Ice',      bundled: true, price: 0,
+      blurb: 'From Winter Fair.',     swatch: ['#c3ced9', '#93a0ad'] },
   ],
 };
 

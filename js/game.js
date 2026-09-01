@@ -797,6 +797,10 @@ function saveShelf(slot, caps) {
 function cosOwned(id) {
   const it = COS_BY_ID[id];
   if (!it) return false;
+  // `bundled` parts come with a look and are never free on their own, so the
+  // price-0 shortcut must not reach them — they carry price 0 only because
+  // they have no individual price.
+  if (it.bundled) return (state.cos.owned || []).includes(id);
   return it.price === 0 || (state.cos.owned || []).includes(id);
 }
 
@@ -805,8 +809,10 @@ function cosEquipped(slot) {
   return id && cosOwned(id) ? id : null;
 }
 
+// A look's parts stay out of the slot lists until you own the look — otherwise
+// the shelf shows a dozen rows you can't buy and can't explain.
 function cosItems(slot) {
-  return COSMETICS.items.filter(i => i.slot === slot);
+  return COSMETICS.items.filter(i => i.slot === slot && (!i.bundled || cosOwned(i.id)));
 }
 
 // Every slot except the theme is worn as a `cos-<id>` class on <body>. Derived
@@ -814,17 +820,42 @@ function cosItems(slot) {
 // other lists updated in step — that drift is how a new slot ends up buyable
 // but invisible.
 function cosPaintSlots() {
-  return COSMETICS.slots.map(s => s.id).filter(id => id !== 'theme');
+  return COSMETICS.slots.map(s => s.id).filter(id => id !== 'theme' && id !== 'look');
+}
+
+// A look is NOT equipment. It is a purchase that fills your slots and then
+// gets out of the way, so there is no such thing as "wearing a look while
+// having changed its floor" — a state that could only ever disagree with what
+// the list says is on. Buying one grants its parts outright; after that they
+// are ordinary items you can mix with anything else.
+function applyLook(id) {
+  const look = COS_BY_ID[id];
+  if (!look || !look.sets || !cosOwned(id)) return false;
+  for (const [slot, partId] of Object.entries(look.sets)) {
+    if (cosOwned(partId)) state.cos.on[slot] = partId;
+  }
+  applyCosmetics();
+  saveGame();
+  return true;
 }
 
 function buyCosmetic(id) {
   const it = COS_BY_ID[id];
   if (!it || cosOwned(id)) return false;
+  if (it.bundled) return false;      // only ever arrives with its look
   if (state.coins < it.price) return false;
   state.coins -= it.price;
   state.cos.owned.push(id);
-  equipCosmetic(id);          // buying it is also choosing it; nobody buys a
-  saveGame();                 // wallpaper to leave it in a drawer
+  if (it.sets) {
+    // the parts come with it, and they are yours to reuse separately afterwards
+    for (const partId of Object.values(it.sets)) {
+      if (COS_BY_ID[partId] && !state.cos.owned.includes(partId)) state.cos.owned.push(partId);
+    }
+    applyLook(id);
+  } else {
+    equipCosmetic(id);        // buying it is also choosing it; nobody buys a
+  }                           // wallpaper to leave it in a drawer
+  saveGame();
   return true;
 }
 

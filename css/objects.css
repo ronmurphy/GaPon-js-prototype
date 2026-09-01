@@ -87,3 +87,94 @@
   --cos-floor-a: none;
   --cos-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.13), transparent 46%);
 }
+
+/* ---------- signage ----------
+   One accent for the ARCADE sign and the parlour sign. Setting --cos-sign
+   alone carries the glow with it; --cos-glow is there for the two-hue neon
+   effect, where the halo is a different colour from the lettering.
+
+   The cabinet marquees are deliberately untouched: --cabc is each game's own
+   colour and is how you pick Whack-a-Pon out of a row of six at a glance. */
+
+.cos-s-gold  { --cos-sign: #ffd54f; --cos-glow: #ffc107; }
+.cos-s-neon  { --cos-sign: #ff5c94; --cos-glow: #ff4081; }
+.cos-s-ice   { --cos-sign: #7ce0ff; --cos-glow: #40c4ff; }
+.cos-s-lime  { --cos-sign: #b2ff59; }   /* one token; the halo follows */
+.cos-s-ember { --cos-sign: #ffab6b; --cos-glow: #ff7043; }
+
+/* ---------- walls: texture ----------
+   Same two-slot scheme as floors. Both tokens must be set — leaving one out
+   lets the room's own second layer show through underneath, which on the game
+   center's shoji lattice looks like a rendering fault rather than a choice. */
+
+/* the shop's own wallpaper, available everywhere */
+.cos-q-stripe {
+  --cos-wall-a: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 30px, transparent 30px 60px);
+  --cos-wall-b: none;
+}
+/* the game center's shoji lattice */
+.cos-q-shoji {
+  --cos-wall-a: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 74px);
+  --cos-wall-b: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 58px);
+}
+/* the parlour's stage curtain */
+.cos-q-curtain {
+  --cos-wall-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.22) 0 14px, rgba(255, 255, 255, 0.05) 14px 30px);
+  --cos-wall-b: none;
+}
+
+.cos-q-panel {
+  --cos-wall-a: repeating-linear-gradient(90deg,
+    rgba(0, 0, 0, 0.22) 0 3px, rgba(255, 255, 255, 0.05) 3px 6px, transparent 6px 58px);
+  --cos-wall-b: linear-gradient(180deg, transparent 62%, rgba(0, 0, 0, 0.18));
+}
+.cos-q-brick {
+  --cos-wall-a: repeating-linear-gradient(180deg,
+    rgba(0, 0, 0, 0.20) 0 2px, transparent 2px 22px);
+  --cos-wall-b: repeating-linear-gradient(90deg,
+    rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 52px);
+}
+
+/* ---------- set parts ----------
+   These arrive with a set and are ordinary items afterwards, so they follow
+   exactly the same token rules as everything above. Nothing here knows it
+   belongs to a set — that lives in the catalogue, not the paint. */
+
+.cos-lk-showa-w { --cos-wall-1: #5a2a2e; --cos-wall-2: #4a2226; --cos-base: #2e1518; }
+.cos-lk-showa-q {
+  --cos-wall-a: repeating-linear-gradient(90deg,
+    rgba(0, 0, 0, 0.30) 0 4px, rgba(255, 196, 140, 0.05) 4px 9px, transparent 9px 46px);
+  --cos-wall-b: linear-gradient(180deg, rgba(255, 176, 100, 0.07), transparent 40%);
+}
+.cos-lk-showa-f { --cos-floor-1: #4a3527; --cos-floor-2: #382818; }
+.cos-lk-showa-p {
+  --cos-floor-a: repeating-linear-gradient(90deg,
+    rgba(0, 0, 0, 0.30) 0 3px, transparent 3px 88px);
+  --cos-floor-b: repeating-linear-gradient(90deg,
+    rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 22px);
+}
+
+.cos-lk-pier-w { --cos-wall-1: #7fa8a0; --cos-wall-2: #6d938c; --cos-base: #47605c; }
+.cos-lk-pier-q {
+  --cos-wall-a: repeating-linear-gradient(90deg,
+    rgba(0, 0, 0, 0.16) 0 3px, rgba(255, 255, 255, 0.10) 3px 7px, transparent 7px 40px);
+  --cos-wall-b: none;
+}
+.cos-lk-pier-f { --cos-floor-1: #8f8474; --cos-floor-2: #6f6659; }
+.cos-lk-pier-p {
+  --cos-floor-a: repeating-linear-gradient(90deg,
+    rgba(0, 0, 0, 0.34) 0 2px, transparent 2px 34px);
+  --cos-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 30%);
+}
+
+.cos-lk-snow-w { --cos-wall-1: #44607e; --cos-wall-2: #3a5169; --cos-base: #24354a; }
+.cos-lk-snow-q {
+  --cos-wall-a: repeating-linear-gradient(180deg,
+    rgba(255, 255, 255, 0.07) 0 2px, transparent 2px 26px);
+  --cos-wall-b: linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 30%);
+}
+.cos-lk-snow-f { --cos-floor-1: #9aa7b5; --cos-floor-2: #7c8794; }
+.cos-lk-snow-p {
+  --cos-floor-a: none;
+  --cos-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.20), transparent 55%);
+}
