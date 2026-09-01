@@ -4624,3 +4624,24 @@ footer button {
   border-radius: 999px;
   padding: 3px 9px;
 }
+
+/* Banked tokens sit beside the rotation's pips rather than extending them.
+   tokenBank is 6, so a single row could reach nine dots — too many to count at
+   a glance and far too wide for a phone. The 🎟 matches the stamp card's own
+   redeem button, which is where they came from. */
+.tok-bank {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 3px;
+  padding: 1px 7px 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gold) 22%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--gold) 55%, transparent);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  white-space: nowrap;
+}

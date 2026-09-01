@@ -69,8 +69,15 @@ function renderArcade() {
   if (arcadeRaf) { cancelAnimationFrame(arcadeRaf); arcadeRaf = null; }
   clearArcadeTimers();
   closeCrt();
-  const left = arcadePlaysLeft();
+  const left = arcadePlaysLeft();                 // everything you can play with
   const max = ARCADE.playsPerRotation;
+  // The two are counted apart on screen because they behave differently: the
+  // rotation's plays are wiped at the next restock, bank tokens keep. Drawing
+  // them as one row of pips capped at `max` was a bug — five plays rendered as
+  // three dots, and spending the first two changed nothing on screen, so a
+  // stamp-card reward was invisible when earned, held AND spent.
+  const rot = Math.max(0, max - arcadeState().used);
+  const bank = bonusTokens();
   const host = $('#tab-arcade');
   host.innerHTML = `
     <div class="aroom">
@@ -78,9 +85,11 @@ function renderArcade() {
         <span class="msr">door_back</span> back to the shop
       </button>
       <div class="aroom-sign"></div>
-      <div class="aroom-tokens" title="${left}/${max} tokens">
+      <div class="aroom-tokens" title="${rot} of ${max} free plays this rotation${
+        bank ? ` · ${bank} token${bank > 1 ? 's' : ''} banked` : ''}">
         ${Array.from({ length: max }, (_, i) =>
-          `<i class="tok${i < left ? '' : ' spent'}"></i>`).join('')}
+          `<i class="tok${i < rot ? '' : ' spent'}"></i>`).join('')}
+        ${bank ? `<span class="tok-bank">🎟 ×${bank}</span>` : ''}
       </div>
       <div class="aroom-scroll">
         <div class="aroom-scene">
