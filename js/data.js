@@ -194,6 +194,95 @@ const ECON = {
                         // priced for it; normalising it would charge twice
 };
 
+// Cosmetics — Poko's prize counter.
+//
+// The problem these solve: all four coin sinks are machine pulls, so a player
+// who owns a set stops having anywhere to spend. This is the sink that isn't
+// a pull, and it is deliberately DEAD-END money — cosmetics only, never buffs.
+// A buff sink doesn't absorb surplus, it launders it: coins become better odds
+// become more stickers, and you're back where you started.
+//
+// SLOTS, not a flat list. Two wallpapers can't both be on, so each slot holds
+// exactly one choice and slots never touch each other's CSS tokens (see
+// css/objects.css). That's what lets "the list is the on/off" work with no
+// hidden precedence: what's ticked is what you see.
+//
+// The themes are in here at price 0, owned by everyone from the first launch.
+// Three reasons: the counter is never an empty shop full of locked things, the
+// toggle teaches itself on something the player already has, and it advertises
+// the whole category to people who'd otherwise never find it. They were free
+// in the gear menu and stay free — charging for something players already had
+// is a takeaway, and the JP theme isn't only paint anyway: it swaps machine
+// names into Japanese (see corinth.js, pusher.js), and language shouldn't sit
+// behind a price.
+//
+// NOTHING here may repaint a surface that carries information. Capsule shape
+// is the price band and gold is a golden ticket; both were just taught, and a
+// cosmetic that overrides them would be selling the player confusion.
+const COSMETICS = {
+  slots: [
+    { id: 'theme',    name: 'Look',          note: 'the whole building' },
+    { id: 'walls',    name: 'Walls',         note: 'every room' },
+    { id: 'floor',    name: 'Floor colour',  note: 'every room' },
+    { id: 'floorpat', name: 'Floor surface', note: 'replaces the carpet' },
+  ],
+  // Colour and surface are separate slots because they are separate promises.
+  // A palette recolours what the room already has — in the arcade that means
+  // oak-toned CARPET, which is fine as a colour and was a lie when the item
+  // was called "Oak Boards". A surface is what actually replaces the carpet,
+  // and it costs about twice as much because it changes about twice as much.
+  //
+  // `swatch` is [top, bottom] for the preview chip. `price: 0` means owned
+  // from the start: the two themes, plus one palette per slot lifted straight
+  // out of each theme. Those cost nothing to give away, roughly triple what a
+  // new player can play with on day one, and teach the slots better than any
+  // label — mixing the game center's pale walls with the American arcade's
+  // carpet is an obviously deliberate act.
+  items: [
+    { id: 'us',        slot: 'theme', name: 'American Arcade',
+      blurb: 'Dark room, neon carpet.',        price: 0, swatch: ['#46335f', '#634c41'] },
+    { id: 'jp',        slot: 'theme', name: 'Game Center',
+      blurb: 'Bright halls, shoji panelling.', price: 0, swatch: ['#e8eef7', '#7a5c46'] },
+
+    { id: 'w-plum',    slot: 'walls', name: 'Arcade Plum',
+      blurb: 'The shop as it always was.',     price: 0,   swatch: ['#46335f', '#3d2c55'] },
+    { id: 'w-pale',    slot: 'walls', name: 'Hall Pale',
+      blurb: 'Fluorescent, from the ゲーセン.',  price: 0,   swatch: ['#e8eef7', '#dbe4f2'] },
+    { id: 'w-lantern', slot: 'walls', name: 'Lantern Red',
+      blurb: 'Borrowed from the parlour.',     price: 0,   swatch: ['#b3202b', '#8e1a23'] },
+    { id: 'w-sakura',  slot: 'walls', name: 'Sakura Plaster',
+      blurb: 'Dusty pink, like late blossom.', price: 250, swatch: ['#6e4257', '#5c374a'] },
+    { id: 'w-mint',    slot: 'walls', name: 'Mint Parlour',
+      blurb: 'Cool green, very 1950s.',        price: 250, swatch: ['#2f5a52', '#274b45'] },
+    { id: 'w-ink',     slot: 'walls', name: 'Ink Blue',
+      blurb: 'Deep and quiet.',                price: 250, swatch: ['#24365c', '#1e2d4d'] },
+
+    { id: 'f-timber',  slot: 'floor', name: 'Shop Timber',
+      blurb: 'The floorboards you know.',      price: 0,   swatch: ['#634c41', '#4c3a33'] },
+    { id: 'f-midnight',slot: 'floor', name: 'Midnight',
+      blurb: 'The arcade\'s near-black.',       price: 0,   swatch: ['#0d0a1e', '#131026'] },
+    { id: 'f-stage',   slot: 'floor', name: 'Stage Maroon',
+      blurb: 'Straight off the parlour floor.', price: 0,  swatch: ['#1f0a17', '#2a1220'] },
+    { id: 'f-oak',     slot: 'floor', name: 'Oak',
+      blurb: 'Warm, well-walked timber.',      price: 200, swatch: ['#8a6440', '#6b4d31'] },
+    { id: 'f-tatami',  slot: 'floor', name: 'Tatami',
+      blurb: 'Woven rush, soft underfoot.',    price: 200, swatch: ['#9a9459', '#7d7847'] },
+    { id: 'f-slate',   slot: 'floor', name: 'Slate',
+      blurb: 'Scuffed grey, honest.',          price: 200, swatch: ['#4a4a52', '#35353c'] },
+
+    { id: 'p-neon',    slot: 'floorpat', name: 'Neon Carpet',
+      blurb: 'Arcade flecks, in every room.',  price: 0,   swatch: ['#00e5ff', '#ff4081'] },
+    { id: 'p-boards',  slot: 'floorpat', name: 'Plank Boards',
+      blurb: 'Real timber seams. No carpet.',  price: 400, swatch: ['#7a5c46', '#5d4636'] },
+    { id: 'p-tile',    slot: 'floorpat', name: 'Tile Grid',
+      blurb: 'Square tiles, scrubbed clean.',  price: 400, swatch: ['#9aa0ad', '#6d7280'] },
+    { id: 'p-polish',  slot: 'floorpat', name: 'Polished',
+      blurb: 'No texture at all — just shine.', price: 300, swatch: ['#d8d4e6', '#a49dbd'] },
+  ],
+};
+
+const COS_BY_ID = Object.fromEntries(COSMETICS.items.map(i => [i.id, i]));
+
 // Stamp rally card. A stamp needs ALL THREE tracks filled, not any one of
 // them — otherwise stamps-per-pull don't scale with pull cost and the card
 // quietly pays 5× better for spamming the cheap machine. The counters never

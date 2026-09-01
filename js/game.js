@@ -47,6 +47,15 @@ function defaultState() {
     tokenTipSeen: false, // Poko explains what a token is, once
     cloudAsks: 0,        // times Poko has offered a cloud save; only an ANSWER counts
     cloudDeclinedFinal: false,  // said yes, or said no often enough to mean it
+    // Cosmetics. `owned` lists PURCHASES only — price-0 items (the two themes)
+    // are owned by everyone and are never written here. `on` is one equipped
+    // item per slot, or null for the room's own colours.
+    // `theme` is deliberately ABSENT, not 'us'. loadGame merges this over a
+    // stored save (Object.assign(defaultState(), saved)), so an upgrading
+    // player's cos block is never missing — it arrives from here. Naming a
+    // theme here would mean migrateCosmetics found a filled slot and skipped
+    // the localStorage fold-in, silently resetting every game-center player.
+    cos: { owned: [], on: {} },
   };
 }
 
@@ -779,6 +788,98 @@ function pusherShelf(slot) {
 function saveShelf(slot, caps) {
   state.shelves.by[slot] = caps.map(c => [Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10]);
   saveGame();
+}
+
+// ---- cosmetics ----
+
+// Price-0 items ship owned, so a fresh save can equip a theme without ever
+// having bought anything. Everything else has to appear in state.cos.owned.
+function cosOwned(id) {
+  const it = COS_BY_ID[id];
+  if (!it) return false;
+  return it.price === 0 || (state.cos.owned || []).includes(id);
+}
+
+function cosEquipped(slot) {
+  const id = (state.cos.on || {})[slot];
+  return id && cosOwned(id) ? id : null;
+}
+
+function cosItems(slot) {
+  return COSMETICS.items.filter(i => i.slot === slot);
+}
+
+// Every slot except the theme is worn as a `cos-<id>` class on <body>. Derived
+// rather than listed, so adding a slot to the catalogue doesn't need three
+// other lists updated in step — that drift is how a new slot ends up buyable
+// but invisible.
+function cosPaintSlots() {
+  return COSMETICS.slots.map(s => s.id).filter(id => id !== 'theme');
+}
+
+function buyCosmetic(id) {
+  const it = COS_BY_ID[id];
+  if (!it || cosOwned(id)) return false;
+  if (state.coins < it.price) return false;
+  state.coins -= it.price;
+  state.cos.owned.push(id);
+  equipCosmetic(id);          // buying it is also choosing it; nobody buys a
+  saveGame();                 // wallpaper to leave it in a drawer
+  return true;
+}
+
+// Equip, or pass null to go back to the room's own colours.
+function equipCosmetic(id, slot) {
+  if (id == null) {
+    if (!slot) return false;
+    state.cos.on[slot] = null;
+  } else {
+    const it = COS_BY_ID[id];
+    if (!it || !cosOwned(id)) return false;
+    state.cos.on[it.slot] = id;
+  }
+  applyCosmetics();
+  saveGame();
+  return true;
+}
+
+// Paint the body from the equipped set. Ownership is re-checked here and not
+// only at the click: a save that arrived from another device (or an older
+// build whose catalogue has since changed) must not be able to wear something
+// it never bought.
+function applyCosmetics() {
+  const body = document.body;
+  [...body.classList].forEach(c => { if (c.startsWith('cos-')) body.classList.remove(c); });
+  for (const slot of cosPaintSlots()) {
+    const id = cosEquipped(slot);
+    if (id) body.classList.add('cos-' + id);
+  }
+  const theme = cosEquipped('theme') || 'us';
+  if (typeof THEME === 'object') { THEME.id = theme; applyTheme(); }
+}
+
+// Older saves predate the counter, and the theme used to live in localStorage
+// on its own (see js/theme.js). Fold that choice in rather than silently
+// resetting everyone who preferred the game center to the American arcade.
+function migrateCosmetics() {
+  // Deliberately an EMPTY `on`. Pre-filling theme:'us' here would look harmless
+  // and would silently reset every existing game-center player to the American
+  // arcade, because the localStorage fold-in below only fires on a blank slot.
+  if (!state.cos || typeof state.cos !== 'object') state.cos = { owned: [], on: {} };
+  if (!Array.isArray(state.cos.owned)) state.cos.owned = [];
+  if (!state.cos.on || typeof state.cos.on !== 'object') state.cos.on = {};
+  const on = state.cos.on;
+  for (const slot of cosPaintSlots()) if (!(slot in on)) on[slot] = null;
+  if (!on.theme) {
+    let saved = null;
+    try { saved = localStorage.getItem('gapon-theme'); } catch (e) {}
+    on.theme = (saved === 'jp' || saved === 'us') ? saved : 'us';
+  }
+  // drop anything the catalogue no longer has, so a removed item can't wedge
+  state.cos.owned = state.cos.owned.filter(id => COS_BY_ID[id]);
+  for (const slot of cosPaintSlots()) {
+    if (on[slot] && !cosOwned(on[slot])) on[slot] = null;
+  }
 }
 
 // ---- fukubiki ----

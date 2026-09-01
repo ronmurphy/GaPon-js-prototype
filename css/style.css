@@ -7,6 +7,60 @@
   --ink-dim: #b3a8dc;
   --gold: #ffc107;
   --radius: 16px;
+
+  /* ---- room surfaces ----------------------------------------------------
+     Every room paints the same way: theme-owned PATTERN layers (stripes,
+     carpet flecks, shoji lattice) stacked on one wall+floor gradient. Only
+     that last gradient's colours are tokenised, so a cosmetic can repaint a
+     surface without touching the texture over it — the arcade carpet stays
+     carpet, it just changes colour.
+
+     Each stop reads `var(--cos-x, var(--room-x))`:
+       --cos-*   a purchased cosmetic, set on <body>, applies to ALL rooms
+       --room-*  this room's own colour, set here and re-set by .theme-jp
+
+     The inner var() is what makes this safe. A missing custom property
+     invalidates the WHOLE background shorthand and the room renders as
+     nothing, so every stop must have a value at the end of its chain. */
+  --shop-wall-1: #46335f;  --shop-wall-2: #3d2c55;  --shop-base: #291d3d;
+  --shop-floor-1: #634c41; --shop-floor-2: #4c3a33;
+
+  --arc-wall-1: #17102c;   --arc-wall-2: #1d1538;
+  --arc-floor-1: #0d0a1e;  --arc-floor-2: #131026;
+
+  --par-wall-1: #4a1230;   --par-wall-2: #370f25;
+  --par-floor-1: #1f0a17;  --par-floor-2: #2a1220;
+
+  /* How tall the floor band is in each room. A pattern token writes
+     `bottom/100% var(--floor-h)`, and because custom properties resolve where
+     they are USED, one cosmetic gradient lands at the right height in all
+     three rooms without knowing anything about them. */
+  --floor-h: 30%;
+
+  /* The floor's texture. Only FLOORS get this. The three "wall patterns" are
+     not the same kind of thing — the shop has wallpaper stripes, the arcade a
+     neon light wash, the parlour a stage curtain — so one "wall texture" item
+     could not mean anything consistent across them. Every floor is a surface
+     you walk on, so it can.
+
+     Two IMAGE slots per room, never a whole layer with its size attached: a
+     var() inside a custom property is substituted where that property is
+     DECLARED, not where it is used, so a token written at :root would bake in
+     :root's --floor-h and land at the shop's height in every room. The size
+     stays in the room's own rule, where --floor-h is correct by construction.
+     Every room happens to use exactly two floor layers; `none` is a valid
+     background-image for any that needs fewer. */
+  --shop-floor-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.20) 0 3px, transparent 3px 112px);
+  --shop-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 30%);
+
+  --arc-floor-a: repeating-linear-gradient(45deg, rgba(0, 229, 255, 0.09) 0 5px, transparent 5px 42px);
+  --arc-floor-b: repeating-linear-gradient(-45deg, rgba(255, 64, 129, 0.09) 0 5px, transparent 5px 34px);
+
+  /* The parlour had no floor texture at all — it read fine as one flat maroon
+     and only looked bare once floors became repaintable. It's a game-show
+     stage, so: wide boards, and the spotlight pooling where the player stands. */
+  --par-floor-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 96px);
+  --par-floor-b: radial-gradient(420px 120px at 50% 100%, rgba(255, 214, 130, 0.10), transparent 72%);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -203,6 +257,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .shop-scroll::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 4px; }
 
 .shop-scene {
+  --floor-h: 30%;   /* planks start 70% down */
   display: flex;
   align-items: flex-end;
   gap: 30px;
@@ -215,12 +270,17 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     linear-gradient(180deg, rgba(10, 5, 26, 0.55), transparent 13%) top/100% 100% no-repeat,
     /* wallpaper stripes (wall only) */
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 30px, transparent 30px 60px) top/100% 66% no-repeat,
-    /* plank seams (floor only) */
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.20) 0 3px, transparent 3px 112px) bottom/100% 30% no-repeat,
-    /* floor sheen */
-    linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 30%) bottom/100% 30% no-repeat,
+    /* floor texture — a bought floor replaces both layers */
+    var(--cos-floor-a, var(--shop-floor-a)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-b, var(--shop-floor-b)) bottom/100% var(--floor-h) no-repeat,
     /* wall, baseboard, floor */
-    linear-gradient(180deg, #46335f 0%, #3d2c55 66%, #291d3d 66%, #291d3d 70%, #634c41 70%, #4c3a33 100%);
+    linear-gradient(180deg,
+      var(--cos-wall-1,  var(--shop-wall-1))  0%,
+      var(--cos-wall-2,  var(--shop-wall-2))  66%,
+      var(--cos-base,    var(--shop-base))    66%,
+      var(--cos-base,    var(--shop-base))    70%,
+      var(--cos-floor-1, var(--shop-floor-1)) 70%,
+      var(--cos-floor-2, var(--shop-floor-2)) 100%);
 }
 
 .mach-row {
@@ -1424,6 +1484,30 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 
 .flag-chip { font-size: 1.05rem; line-height: 1; padding: 6px 11px; }
 
+/* The theme owns each room's OWN colours; a cosmetic overrides them from
+   <body> without knowing which theme is on, so shoji panelling in a bought
+   palette composes instead of one of them winning. */
+.theme-jp {
+  --shop-wall-1: #5c4a63;  --shop-wall-2: #4d3d55;  --shop-base: #2f2438;
+  --shop-floor-1: #7a5c46; --shop-floor-2: #5d4636;
+
+  --arc-wall-1: #e8eef7;   --arc-wall-2: #dbe4f2;
+  --arc-floor-1: #b9c4d6;  --arc-floor-2: #cdd6e6;
+
+  --par-wall-1: #b3202b;   --par-wall-2: #8e1a23;
+  --par-floor-1: #2b2b30;  --par-floor-2: #3a3a42;
+
+  --shop-floor-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 3px, transparent 3px 112px);
+  --shop-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 30%);
+
+  --arc-floor-a: repeating-linear-gradient(45deg, rgba(63, 81, 181, 0.16) 0 8px, transparent 8px 30px);
+  --arc-floor-b: repeating-linear-gradient(-45deg, rgba(233, 30, 99, 0.12) 0 8px, transparent 8px 30px);
+
+  /* a pachinko hall floor is polished tile under a lot of light, not stage boards */
+  --par-floor-a: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 64px);
+  --par-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 42%);
+}
+
 /* the sign text is CSS so the toggle needs no re-render */
 .aroom-sign::before { content: 'ARCADE'; }
 .theme-jp .aroom-sign::before { content: 'ゲームセンター'; letter-spacing: 3px; }
@@ -1446,13 +1530,15 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     repeating-linear-gradient(90deg,
       rgba(255, 255, 255, 0.30) 0 76px, rgba(255, 255, 255, 0) 76px 210px) top/100% 26px no-repeat,
     linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 26%) top/100% 100% no-repeat,
-    /* pale diamond carpet */
-    repeating-linear-gradient(45deg, rgba(63, 81, 181, 0.16) 0 8px, transparent 8px 30px)
-      bottom/100% 26% no-repeat,
-    repeating-linear-gradient(-45deg, rgba(233, 30, 99, 0.12) 0 8px, transparent 8px 30px)
-      bottom/100% 26% no-repeat,
+    /* pale diamond carpet, unless a floor is bought */
+    var(--cos-floor-a, var(--arc-floor-a)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-b, var(--arc-floor-b)) bottom/100% var(--floor-h) no-repeat,
     /* wall + floor */
-    linear-gradient(180deg, #e8eef7 0%, #dbe4f2 74%, #b9c4d6 74%, #cdd6e6 100%);
+    linear-gradient(180deg,
+      var(--cos-wall-1,  var(--arc-wall-1))  0%,
+      var(--cos-wall-2,  var(--arc-wall-2))  74%,
+      var(--cos-floor-1, var(--arc-floor-1)) 74%,
+      var(--cos-floor-2, var(--arc-floor-2)) 100%);
 }
 
 /* cabinets read darker against a bright hall, and the CRTs stop glowing
@@ -1472,10 +1558,15 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
       top/100% 66% no-repeat,
     repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 58px)
       top/100% 66% no-repeat,
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 3px, transparent 3px 112px)
-      bottom/100% 30% no-repeat,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 30%) bottom/100% 30% no-repeat,
-    linear-gradient(180deg, #5c4a63 0%, #4d3d55 66%, #2f2438 66%, #2f2438 70%, #7a5c46 70%, #5d4636 100%);
+    var(--cos-floor-a, var(--shop-floor-a)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-b, var(--shop-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    linear-gradient(180deg,
+      var(--cos-wall-1,  var(--shop-wall-1))  0%,
+      var(--cos-wall-2,  var(--shop-wall-2))  66%,
+      var(--cos-base,    var(--shop-base))    66%,
+      var(--cos-base,    var(--shop-base))    70%,
+      var(--cos-floor-1, var(--shop-floor-1)) 70%,
+      var(--cos-floor-2, var(--shop-floor-2)) 100%);
 }
 
 .theme-jp .dec-poster {
@@ -1707,6 +1798,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .parlour-scroll::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 4px; }
 
 .parlour-scene {
+  --floor-h: 38%;   /* stage floor starts 62% down */
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1719,7 +1811,13 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     radial-gradient(300px 200px at 50% 0%, rgba(255, 214, 130, 0.16), transparent 70%),
     repeating-linear-gradient(90deg,
       rgba(0, 0, 0, 0.22) 0 14px, rgba(255, 255, 255, 0.05) 14px 30px) top/100% 62% no-repeat,
-    linear-gradient(180deg, #4a1230 0%, #370f25 62%, #1f0a17 62%, #2a1220 100%);
+    var(--cos-floor-a, var(--par-floor-a)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-b, var(--par-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    linear-gradient(180deg,
+      var(--cos-wall-1,  var(--par-wall-1))  0%,
+      var(--cos-wall-2,  var(--par-wall-2))  62%,
+      var(--cos-floor-1, var(--par-floor-1)) 62%,
+      var(--cos-floor-2, var(--par-floor-2)) 100%);
 }
 
 /* JP: a pachinko parlour — bright, chrome, red and gold */
@@ -1730,7 +1828,13 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     radial-gradient(320px 220px at 50% 0%, rgba(255, 235, 190, 0.22), transparent 70%),
     repeating-linear-gradient(90deg,
       rgba(255, 255, 255, 0.06) 0 40px, transparent 40px 80px) top/100% 64% no-repeat,
-    linear-gradient(180deg, #b3202b 0%, #8e1a23 64%, #2b2b30 64%, #3a3a42 100%);
+    var(--cos-floor-a, var(--par-floor-a)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-b, var(--par-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    linear-gradient(180deg,
+      var(--cos-wall-1,  var(--par-wall-1))  0%,
+      var(--cos-wall-2,  var(--par-wall-2))  64%,
+      var(--cos-floor-1, var(--par-floor-1)) 64%,
+      var(--cos-floor-2, var(--par-floor-2)) 100%);
 }
 
 .theme-jp .parlour-sign { color: #fff3c4; border-color: rgba(255, 243, 196, 0.65); }
@@ -2254,6 +2358,7 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
 .aroom-scroll::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 4px; }
 
 .aroom-scene {
+  --floor-h: 26%;   /* carpet starts 74% down */
   display: flex;
   align-items: flex-end;
   gap: 26px;
@@ -2266,11 +2371,15 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 16%) top/100% 100% no-repeat,
     /* neon wash on the wall */
     radial-gradient(320px 200px at 50% 0%, rgba(255, 64, 129, 0.10), transparent 70%) top/100% 74% no-repeat,
-    /* classic arcade carpet: crossing neon flecks */
-    repeating-linear-gradient(45deg, rgba(0, 229, 255, 0.09) 0 5px, transparent 5px 42px) bottom/100% 26% no-repeat,
-    repeating-linear-gradient(-45deg, rgba(255, 64, 129, 0.09) 0 5px, transparent 5px 34px) bottom/100% 26% no-repeat,
+    /* classic arcade carpet: crossing neon flecks, unless a floor is bought */
+    var(--cos-floor-a, var(--arc-floor-a)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-b, var(--arc-floor-b)) bottom/100% var(--floor-h) no-repeat,
     /* wall + carpet base */
-    linear-gradient(180deg, #17102c 0%, #1d1538 74%, #0d0a1e 74%, #131026 100%);
+    linear-gradient(180deg,
+      var(--cos-wall-1,  var(--arc-wall-1))  0%,
+      var(--cos-wall-2,  var(--arc-wall-2))  74%,
+      var(--cos-floor-1, var(--arc-floor-1)) 74%,
+      var(--cos-floor-2, var(--arc-floor-2)) 100%);
 }
 
 .aroom-sign {
@@ -4295,4 +4404,112 @@ footer button {
   .hchip .msr { font-size: 17px; }
   .icon-chip { padding: 4px 7px; }
   .fortune-chip { font-size: 0.8rem; }
+}
+
+/* ---------- Poko's counter: the prize shelf ----------
+   The stamp card and the shelf share one panel, so this stage is the tallest
+   in the game. Only the SHELF scrolls, not the whole stage: #overlay centres
+   its child, and a centred flex child that outgrows its scroll container has
+   its top clipped with no way to reach it. Keeping the card and the buttons
+   pinned means the scroll happens where there's obviously more to see. */
+.counter-stage {
+  max-height: calc(100vh - 24px);
+  width: min(380px, calc(100vw - 32px));
+  gap: 14px;
+}
+
+.cos-shelf {
+  width: 100%;
+  overflow-y: auto;
+  max-height: 46vh;
+  -webkit-overflow-scrolling: touch;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 10px;
+  text-align: left;
+}
+
+.cos-shelf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 700;
+  padding: 2px 4px 8px;
+}
+
+.cos-purse { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+.cos-slot + .cos-slot { margin-top: 12px; }
+
+.cos-slot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 0.76rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 0 4px 6px;
+}
+.cos-slot-head small { text-transform: none; letter-spacing: 0; opacity: 0.7; }
+
+.cos-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--card2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cos-row:hover { filter: brightness(1.12); }
+.cos-row:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Equipped reads as a state, not a hover: a ring plus the tick, so the row
+   still says what's on when the panel is screenshotted or read on a phone in
+   sunlight. Colour alone would be doing all the work. */
+.cos-row.on { box-shadow: inset 0 0 0 2px var(--gold); }
+
+/* Not yet bought: dimmed but never hidden — an unaffordable item is the whole
+   reason to come back, so it has to be legible. */
+.cos-row.locked { opacity: 0.82; }
+.cos-row.poor { opacity: 0.5; cursor: default; }
+
+.cos-row.arming { box-shadow: inset 0 0 0 2px var(--gold); }
+.cos-row.arming .cos-price { color: var(--gold); font-weight: 700; }
+
+/* Two stacked bands, matching how the room paints: wall over floor. */
+.cos-sw {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--a) 0 58%, var(--b) 58% 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.35);
+}
+
+.cos-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.cos-text b { font-size: 0.94rem; }
+.cos-text small { color: var(--ink-dim); font-size: 0.78rem; }
+
+.cos-tick { width: 22px; text-align: center; color: var(--gold); font-weight: 700; }
+.cos-price {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 400px) {
+  .cos-shelf { max-height: 40vh; }
+  .cos-text small { display: none; }   /* the name and price carry it */
 }

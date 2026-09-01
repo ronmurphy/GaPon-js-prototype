@@ -802,6 +802,7 @@ function showSaveModal(html) {
 
 function boot() {
   loadGame();
+  migrateCosmetics();   // must precede applyCosmetics; folds in the old theme key
   // decode the stored backdrop early; it redraws the wall once it's ready
   loadStoredPhoto(() => { if (wallCtx) drawWall(); });
   const firstRun = state.totalPulls === 0 && state.days.length === 0;
@@ -819,7 +820,7 @@ function boot() {
     if (confirm('Wipe your GaPon save and start over?')) resetGame();
   });
 
-  applyTheme();
+  applyCosmetics();  // paints the rooms AND applies the theme
   initProps();      // illustrated scenery, or CSS if PROPS.dir is null
   // ---- settings ----
   const setPanel = $('#settings');
@@ -838,10 +839,9 @@ function boot() {
   $('#export-save').addEventListener('click', closeSettings);
   $('#import-save').addEventListener('click', closeSettings);
 
-  $('#toggle-theme').addEventListener('click', () => {
-    cycleTheme();
-    sfx.tick();
-    if (!$('#parlour').hidden) renderParlour();   // its signage is themed
+  $('#open-counter').addEventListener('click', () => {
+    closeSettings();
+    openStampCard();          // the counter: stamp card, then the prize shelf
   });
 
   // The arcade keeps its tab (it's a daily stop, so it needs to stay one tap

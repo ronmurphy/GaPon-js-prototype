@@ -572,6 +572,73 @@ function stampBar(done, total, label) {
   </div>`;
 }
 
+// ---------- the prize counter ----------
+//
+// One screen, not two. The stamp card is a daily ritual and the prize shelf is
+// occasional browsing, but splitting them behind a "which do you want?" menu
+// would cost a tap on the ritual and hide the shop behind a decision — and the
+// shop's problem is that nobody finds it. A real arcade redemption counter
+// works exactly this way: ticket count at the top, prize wall below.
+//
+// The list IS the on/off. What's ticked is what you're wearing, so there is
+// nothing to learn and no separate "equip" mode.
+
+function cosSwatchHTML(item) {
+  const [a, b] = item ? item.swatch : ['#3a2d6e', '#2e2358'];
+  return `<span class="cos-sw" style="--a:${a};--b:${b}"></span>`;
+}
+
+function cosRowHTML(item, slot, equippedId) {
+  const owned = cosOwned(item.id);
+  const on = equippedId === item.id;
+  const afford = state.coins >= item.price;
+  const cls = ['cos-row', on ? 'on' : '', owned ? 'owned' : 'locked',
+               (!owned && !afford) ? 'poor' : ''].filter(Boolean).join(' ');
+  const right = owned
+    ? `<span class="cos-tick">${on ? '✓' : ''}</span>`
+    : `<span class="cos-price">${coinIcon()} ${item.price}</span>`;
+  return `
+    <button class="${cls}" data-cos="${item.id}" data-slot="${slot}">
+      ${cosSwatchHTML(item)}
+      <span class="cos-text"><b>${item.name}</b><small>${item.blurb}</small></span>
+      ${right}
+    </button>`;
+}
+
+function cosShelfHTML() {
+  return COSMETICS.slots.map(slot => {
+    const equipped = cosEquipped(slot.id);
+    // Themes always have one on, so they get no "none" row; a wall or floor
+    // can go back to the room's own paint, which has to be as easy to pick as
+    // anything bought — a toggle you can't turn off isn't a toggle.
+    const none = slot.id === 'theme' ? '' : `
+      <button class="cos-row owned${equipped ? '' : ' on'}" data-cos="" data-slot="${slot.id}">
+        ${cosSwatchHTML(null)}
+        <span class="cos-text"><b>As it comes</b><small>the room's own colours</small></span>
+        <span class="cos-tick">${equipped ? '' : '✓'}</span>
+      </button>`;
+    return `
+      <div class="cos-slot">
+        <div class="cos-slot-head">${slot.name}<small>${slot.note}</small></div>
+        ${none}
+        ${cosItems(slot.id).map(i => cosRowHTML(i, slot.id, equipped)).join('')}
+      </div>`;
+  }).join('');
+}
+
+// A locked row asks before it spends. Two taps on the row itself rather than a
+// dialog: 250 coins is a few days' play and an accidental purchase would be a
+// real loss, but a modal on top of an overlay is a mess to get out of.
+function cosArmRow(btn, onBuy) {
+  if (btn.classList.contains('arming')) { onBuy(); return; }
+  btn.parentNode.querySelectorAll('.cos-row.arming')
+     .forEach(b => { b.classList.remove('arming'); const p = b.querySelector('.cos-price');
+                     if (p) p.textContent = b.dataset.was || p.textContent; });
+  const price = btn.querySelector('.cos-price');
+  if (price) { btn.dataset.was = price.textContent; price.textContent = 'buy?'; }
+  btn.classList.add('arming');
+}
+
 function openStampCard() {
   const s = stampState();
   const full = stampCardFull();
@@ -579,8 +646,8 @@ function openStampCard() {
   const ov = $('#overlay');
   ov.hidden = false;
   ov.innerHTML = `
-    <div class="ov-stage share-stage">
-      <div class="keeper-title">${keeperFaceHTML('mini')}<span>${SHOPKEEPER.name}'s Stamp Rally</span></div>
+    <div class="ov-stage share-stage counter-stage">
+      <div class="keeper-title">${keeperFaceHTML('mini')}<span>${SHOPKEEPER.name}'s Counter</span></div>
       <div class="stamp-card">
         <div class="stamp-slots">${stampSlotsHTML()}</div>
         <p class="stamp-goal">fill all three for a stamp:</p>
@@ -594,15 +661,50 @@ function openStampCard() {
           ? `Card full! ${STAMP.reward} coins waiting.${over ? ` (+${over} stamp${over > 1 ? 's' : ''} already on the next card)` : ''}`
           : `${STAMP.cardSize} stamps fills the card — ${STAMP.reward} coins and ${STAMP.rewardTokens} arcade tokens. Cards done: ${s.cards}`}</p>
       </div>
+      ${full ? `<div class="r-btns"><button class="btn" id="stamp-redeem">${coinIcon()} Redeem ${STAMP.reward} + ${STAMP.rewardTokens} 🎟</button></div>` : ''}
+      <div class="cos-shelf">
+        <div class="cos-shelf-head">
+          <span>Prize shelf</span>
+          <span class="cos-purse">${coinIcon()} ${state.coins}</span>
+        </div>
+        ${cosShelfHTML()}
+      </div>
       <div class="r-btns">
         <button class="btn ghost" id="stamp-close">Close</button>
-        ${full ? `<button class="btn" id="stamp-redeem">${coinIcon()} Redeem ${STAMP.reward} + ${STAMP.rewardTokens} 🎟</button>` : ''}
       </div>
     </div>`;
   ov.querySelector('#stamp-close').addEventListener('click', () => {
     ov.hidden = true;
     ov.innerHTML = '';
   });
+  // ---- prize shelf ----
+  ov.querySelectorAll('[data-cos]').forEach(btn => btn.addEventListener('click', () => {
+    const id = btn.dataset.cos, slot = btn.dataset.slot;
+    if (!id) { equipCosmetic(null, slot); sfx.tick(); return refreshCounter(); }
+    if (cosOwned(id)) {
+      if (cosEquipped(slot) === id && slot !== 'theme') return;   // already on
+      equipCosmetic(id);
+      sfx.tick();
+      // the parlour draws its signage in JS, so a theme change needs a redraw
+      if (slot === 'theme' && !$('#parlour').hidden) renderParlour();
+      return refreshCounter();
+    }
+    const item = COS_BY_ID[id];
+    if (state.coins < item.price) {
+      sfx.buzz();
+      toast(`${item.name} costs ${item.price} coins — you have ${state.coins}.`, 'warn');
+      return;
+    }
+    cosArmRow(btn, () => {
+      if (!buyCosmetic(id)) return;
+      sfx.chime();      // the 'new thing' sound, same as a sticker you don't have
+      confetti(14);
+      updateHeader();
+      toast(`${item.name} — it's yours. Have a look around.`, 'good');
+      refreshCounter();
+    });
+  }));
+
   const redeem = ov.querySelector('#stamp-redeem');
   if (redeem) redeem.addEventListener('click', () => {
     const got = redeemStampCard();
@@ -623,6 +725,15 @@ function openStampCard() {
     }
     openStampCard();          // fresh card, with any overflow already on it
   });
+}
+
+// Rebuild the counter in place after a buy or an equip. Cheap enough to redraw
+// whole (nine rows), and it keeps one source of truth for what a row looks
+// like — a hand-patched row is how "the list is the on/off" quietly starts
+// lying about what's on.
+function refreshCounter() {
+  if ($('#overlay').hidden) return;
+  openStampCard();
 }
 
 // Called by the game whenever something might earn a stamp.

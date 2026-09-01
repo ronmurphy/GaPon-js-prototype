@@ -1,0 +1,89 @@
+/* GaPon — cosmetics ("objects")
+   =========================================================================
+   Bought from Poko's prize counter. Every rule here does ONE thing: set the
+   --cos-* custom properties that css/style.css already reads.
+
+   Why tokens and not "load this file last":
+   a room's background is a multi-layer shorthand and CSS cannot override one
+   layer of a shorthand. A later "just the floor" rule would have to restate
+   every layer, which means each floor would silently carry the wrong
+   wallpaper — and the JP shoji lattice would die the moment you equipped one.
+   Setting a token leaves the other layers alone, so a bought palette
+   recolours the arcade carpet while it stays carpet.
+
+   Each class sets ONLY its own slot's tokens, so two equipped items never
+   touch the same property. There is no precedence to reason about and no
+   dependency on the order of these rules or of the <link> tags.
+
+   Slots:
+     walls    --cos-wall-1 (top) --cos-wall-2 (bottom) --cos-base (shop only)
+     floor    --cos-floor-1 (front edge) --cos-floor-2 (back)   [colour]
+     floorpat --cos-floor-a --cos-floor-b                        [texture]
+
+   Colour and texture are separate slots on purpose. "Oak" is a palette: it
+   recolours whatever the room already has, so in the arcade it is oak-toned
+   carpet — which is honest as a colour and was a lie when the item was called
+   "Oak Boards". Texture is what actually replaces the carpet, and it costs
+   more because it changes more.
+
+   A texture item MUST set both --cos-floor-a and --cos-floor-b, using `none`
+   for the one it doesn't need. Setting only the first leaves the room's own
+   second layer showing through underneath.
+
+   Everything applies to all three rooms at once: you are redecorating the
+   building, not one room. Keep colour pairs close in value — the gradient is
+   short, and a wide spread reads as a stripe rather than a wall.
+   ========================================================================= */
+
+/* ---------- walls: colour ----------
+   The first three are lifted straight from the two themes, and are free. They
+   cost nothing to give away, they roughly triple what a new player can play
+   with on day one, and mixing the game center's pale walls with the American
+   arcade's carpet teaches the slots better than any label could. */
+
+.cos-w-plum    { --cos-wall-1: #46335f; --cos-wall-2: #3d2c55; --cos-base: #291d3d; }
+.cos-w-pale    { --cos-wall-1: #e8eef7; --cos-wall-2: #dbe4f2; --cos-base: #b9c4d6; }
+.cos-w-lantern { --cos-wall-1: #b3202b; --cos-wall-2: #8e1a23; --cos-base: #2b2b30; }
+
+.cos-w-sakura  { --cos-wall-1: #6e4257; --cos-wall-2: #5c374a; --cos-base: #3d2431; }
+.cos-w-mint    { --cos-wall-1: #2f5a52; --cos-wall-2: #274b45; --cos-base: #1a332f; }
+.cos-w-ink     { --cos-wall-1: #24365c; --cos-wall-2: #1e2d4d; --cos-base: #141e33; }
+
+/* ---------- floors: colour ---------- */
+
+.cos-f-timber  { --cos-floor-1: #634c41; --cos-floor-2: #4c3a33; }
+.cos-f-midnight{ --cos-floor-1: #0d0a1e; --cos-floor-2: #131026; }
+.cos-f-stage   { --cos-floor-1: #1f0a17; --cos-floor-2: #2a1220; }
+
+.cos-f-oak     { --cos-floor-1: #8a6440; --cos-floor-2: #6b4d31; }
+.cos-f-tatami  { --cos-floor-1: #9a9459; --cos-floor-2: #7d7847; }
+.cos-f-slate   { --cos-floor-1: #4a4a52; --cos-floor-2: #35353c; }
+
+/* ---------- floors: texture ----------
+   These replace the room's own floor layers everywhere, so the arcade stops
+   being carpet. The sizes stay in style.css, where each room's --floor-h is
+   correct — a var() inside a custom property is substituted where the property
+   is DECLARED, so a height written here would land at one room's band in all
+   three. Images only. */
+
+/* the arcade's own carpet, taken to the shop and the parlour */
+.cos-p-neon {
+  --cos-floor-a: repeating-linear-gradient(45deg, rgba(0, 229, 255, 0.09) 0 5px, transparent 5px 42px);
+  --cos-floor-b: repeating-linear-gradient(-45deg, rgba(255, 64, 129, 0.09) 0 5px, transparent 5px 34px);
+}
+
+.cos-p-boards {
+  --cos-floor-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.26) 0 3px, transparent 3px 104px);
+  --cos-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 34%);
+}
+
+.cos-p-tile {
+  --cos-floor-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 46px);
+  --cos-floor-b: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 46px);
+}
+
+/* nothing but a shine — for anyone who wants the palette to speak alone */
+.cos-p-polish {
+  --cos-floor-a: none;
+  --cos-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.13), transparent 46%);
+}
