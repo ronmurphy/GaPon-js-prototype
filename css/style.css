@@ -4645,3 +4645,106 @@ footer button {
   line-height: 1.5;
   white-space: nowrap;
 }
+
+/* Waiting is not failing. The album track is spent for today and returns
+   tomorrow, so it gets its own muted state rather than sitting at 0/1 beside
+   two green ticks, which reads as a task you missed. */
+.stamp-task.waiting .st-label { color: #8d7b63; font-style: italic; }
+.stamp-task.waiting .st-n { color: #8d7b63; }
+.stamp-task.waiting .st-bar { opacity: 0.45; }
+
+/* ---------- the ambient stamp rally ----------
+   Sits under the room in normal flow, so it dims with everything else when
+   #focus-layer comes up and you step to a machine — at that point you're at
+   the machine, not reading a checklist.
+
+   Same paper and same ink as .stamp-card in Poko's counter, deliberately: it
+   is not a summary OF the card, it IS the card, put down where you can see it.
+   Making them match also deleted every colour override this block used to
+   carry — the shared row renderer now needs no per-context tweaking at all,
+   which is the usual sign that two things were fighting rather than differing.
+
+   Capped rather than stretched: three progress rows spread across a 2000px
+   laptop read as broken furniture, not as a card. */
+#rally {
+  width: min(380px, calc(100% - 28px));
+  margin: 10px auto 22px;
+}
+
+.rally {
+  background: linear-gradient(180deg, #f8f1e0, #efe5cd);
+  color: #5d4037;
+  border-radius: 14px;
+  padding: 10px 12px 11px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+  text-align: left;
+}
+
+.rally-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.rally-name {
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #a1887f;
+}
+
+.rally-pips { display: flex; gap: 5px; }
+
+/* the counter's slots in miniature: a dashed ring waiting for a leaf */
+.rally-pip {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px dashed #c5b294;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rally-pip.on { border-style: solid; border-color: #ef5350; }
+.rally-leaf { color: #ef5350; width: 11px; height: 11px; }
+
+.rally .stamp-task { margin: 4px 0; font-size: 0.74rem; }
+
+.rally-cta {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #c0392b;
+}
+.rally.full { box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38), inset 0 0 0 2px #ef5350; }
+
+/* The completed frame: every track ticked at once, which the card could never
+   show before because the stamp clears them in the same call that earns it. */
+.rally.pop { animation: rallypop 700ms ease-out; }
+@keyframes rallypop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+
+/* ...then the leaf lands, the way a stamp is pressed onto paper. */
+.rally.stamped .rally-pip.on:last-of-type {
+  animation: rallystamp 620ms cubic-bezier(.2, 1.5, .4, 1);
+}
+@keyframes rallystamp {
+  0%   { transform: scale(2.6) rotate(-16deg); opacity: 0; }
+  60%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rally.pop, .rally.stamped .rally-pip.on:last-of-type { animation: none; }
+}
+
+/* A phone in landscape is the one viewport with no room to spare. */
+@media (max-height: 460px) {
+  #rally { display: none; }
+}

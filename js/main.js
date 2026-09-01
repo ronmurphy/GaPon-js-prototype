@@ -89,6 +89,7 @@ function showTab(name) {
   if (name === 'market') { renderMarket(); netMaybeCheck(); maybeExplainMarket(); }
   if (name === 'arcade') { renderArcade(); maybeExplainArcade(); }
   if (name === 'wall') renderWall();
+  renderRally();      // rooms show the card, documents don't
 }
 
 // ---------- reveal overlay ----------
@@ -821,6 +822,7 @@ function boot() {
   });
 
   applyCosmetics();  // paints the rooms AND applies the theme
+  renderRally();
   initProps();      // illustrated scenery, or CSS if PROPS.dir is null
   // ---- settings ----
   const setPanel = $('#settings');

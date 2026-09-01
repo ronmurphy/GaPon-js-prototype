@@ -563,12 +563,18 @@ function stampSlotsHTML() {
   return out;
 }
 
-function stampBar(done, total, label) {
+// `waiting` is a third state, not a variant of unfinished: the album track is
+// spent for today and comes back tomorrow. Rendering that as a 0/1 next to two
+// green ticks reads as "you failed this one" — a playtester asked why the card
+// always said he'd missed it. Nothing was wrong; the row was just describing a
+// gate as if it were a task.
+function stampBar(done, total, label, waiting) {
   const complete = done >= total;
-  return `<div class="stamp-task${complete ? ' done' : ''}">
+  const cls = complete ? ' done' : waiting ? ' waiting' : '';
+  return `<div class="stamp-task${cls}">
     <span class="st-label">${label}</span>
     <span class="st-bar"><i style="width:${(done / total * 100).toFixed(0)}%"></i></span>
-    <span class="st-n">${complete ? '✓' : `${done}/${total}`}</span>
+    <span class="st-n">${complete ? '✓' : waiting ? '🌙' : `${done}/${total}`}</span>
   </div>`;
 }
 
@@ -685,8 +691,11 @@ function openStampCard() {
         <div class="stamp-tasks">
           ${stampBar(s.pulls, STAMP.perPulls, 'capsule pulls')}
           ${stampBar(s.plays, STAMP.perPlays, 'arcade games')}
-          ${stampBar(s.binderDone ? 1 : 0, 1,
-            `visit your album${!s.binderDone && s.binderDay === todayStr() ? ' (tomorrow)' : ''}`)}
+          ${(() => {
+            const spent = !s.binderDone && s.binderDay === todayStr();
+            return stampBar(s.binderDone ? 1 : 0, 1,
+              spent ? 'album — back tomorrow' : 'visit your album', spent);
+          })()}
         </div>
         <p class="stamp-note">${full
           ? `Card full! ${STAMP.reward} coins waiting.${over ? ` (+${over} stamp${over > 1 ? 's' : ''} already on the next card)` : ''}`
@@ -754,6 +763,7 @@ function openStampCard() {
     confetti(24);
     updateHeader();
     updateKeeperBadge();
+    renderRally();
     toast(`Stamp card complete! +${got.coins} coins`
       + (got.tokens ? ` and ${got.tokens} arcade token${got.tokens > 1 ? 's' : ''}!` : ''),
       'good', 5000);
@@ -777,6 +787,111 @@ function refreshCounter() {
   openStampCard();
 }
 
+// ---------- the ambient stamp rally ----------
+//
+// The card lives under the room as well as inside Poko's counter, because the
+// daily ritual was invisible unless you already knew to go looking for it —
+// which is exactly what one playtester didn't. Read-only here: Poko's panel
+// stays the one place you can press anything, so there is no second home for
+// the same control to drift away from.
+//
+// It also fixes something the card could never show. `stampProgress` earns the
+// stamp and clears all three tracks in the same call, so the "all three ✓"
+// frame has never once been rendered anywhere in the game. Players see two
+// ticks and one empty row, and reasonably conclude they missed something.
+
+const RALLY_ROOMS = ['machines', 'arcade'];   // the parlour lives inside machines
+
+// Poko's own leaf, the same mark the counter's card is stamped with. A row of
+// plain dots would have been the same information wearing someone else's
+// identity — the leaf IS the card.
+function rallyStampsHTML(n) {
+  return Array.from({ length: STAMP.cardSize }, (_, i) =>
+    `<i class="rally-pip${i < n ? ' on' : ''}">${i < n ? leafMarkHTML('rally-leaf') : ''}</i>`
+  ).join('');
+}
+
+// `over` renders the completed card for a beat before it clears — see
+// rallyCelebrate. Everything else reads live state.
+function rallyHTML(over) {
+  const s = stampState();
+  const done = over ? STAMP.cardSize : Math.min(cardStamps(), STAMP.cardSize);
+  const full = !over && stampCardFull();
+  const spent = !over && !s.binderDone && s.binderDay === todayStr();
+  return `
+    <div class="rally${over ? ' pop' : ''}${full ? ' full' : ''}">
+      <div class="rally-head">
+        <span class="rally-name">${SHOPKEEPER.name}'s stamp rally</span>
+        <span class="rally-pips">${rallyStampsHTML(done)}</span>
+      </div>
+      <div class="rally-tasks">
+        ${stampBar(over ? STAMP.perPulls : s.pulls, STAMP.perPulls, 'capsule pulls')}
+        ${stampBar(over ? STAMP.perPlays : s.plays, STAMP.perPlays, 'arcade games')}
+        ${stampBar(over || s.binderDone ? 1 : 0, 1,
+                   spent ? 'album — back tomorrow' : 'visit your album', spent)}
+      </div>
+      ${full ? `<p class="rally-cta">card full — tap ${SHOPKEEPER.name} to redeem</p>` : ''}
+    </div>`;
+}
+
+function renderRally(over) {
+  const el = $('#rally');
+  if (!el) return;
+  const tab = document.querySelector('.tabs button.active');
+  const room = tab && RALLY_ROOMS.includes(tab.dataset.tab);
+  el.hidden = !room;
+  if (room) el.innerHTML = rallyHTML(over);
+}
+
+// ---- the celebration ----
+//
+// Timing is the whole trick. The stamp is banked the instant the last track
+// fills, deep inside stampProgress; this only ever REPORTS that. So it can be
+// delayed, interrupted or skipped entirely and nothing is lost — which is the
+// opposite of the trap this codebase has hit three times, where the flag was
+// set on delivery instead of on receipt.
+let rallyPending = false, rallyTimer = null;
+
+// Busy means something is covering the room: a capsule reveal, Poko's panel, an
+// arcade cabinet, or a machine you're stepped up to (which zooms the shop and
+// dims everything else). Polling rather than hooking each of those four close
+// paths — one loop that can't be forgotten is worth more here than four hooks
+// that can, and a missed celebration would be a silent regression.
+function rallyBusy() {
+  const ov = $('#overlay');
+  if (ov && !ov.hidden) return true;
+  const crt = document.querySelector('.crt-wrap');
+  if (crt) return true;
+  if (typeof focusState !== 'undefined' && focusState.card) return true;
+  return false;
+}
+
+function rallyCelebrate() {
+  rallyPending = true;
+  rallyFlush();
+}
+
+function rallyFlush() {
+  if (!rallyPending || rallyTimer) return;
+  if (rallyBusy()) {
+    rallyTimer = setTimeout(() => { rallyTimer = null; rallyFlush(); }, 400);
+    return;
+  }
+  const el = $('#rally');
+  if (el && el.hidden) { rallyPending = false; return; }   // not in a room; nothing to show
+  rallyPending = false;
+  renderRally(true);           // all three ticked — the frame nobody has ever seen
+  sfx.chime();
+  rallyTimer = setTimeout(() => {
+    const card = document.querySelector('.rally');
+    if (card) card.classList.add('stamped');
+    rallyTimer = setTimeout(() => {
+      rallyTimer = null;
+      renderRally();           // back to live state, one stamp heavier
+    }, 900);
+  }, 800);
+}
+
 // Called by the game whenever something might earn a stamp.
 // What's still missing before this stamp lands, in plain words.
 function stampNeeds() {
@@ -787,7 +902,7 @@ function stampNeeds() {
   if (s.plays < STAMP.perPlays) need.push(n(STAMP.perPlays - s.plays, 'arcade game', 'arcade games'));
   if (!s.binderDone) {
     need.push(s.binderDay === todayStr()
-      ? 'an album visit (tomorrow — one a day!)'
+      ? 'tomorrow\'s album visit (the album counts once a day)'
       : 'a look at your album');
   }
   return need;
@@ -815,9 +930,9 @@ function noteStamp(kind, count = 1) {
                   (kind === 'play' && was.plays >= STAMP.perPlays);
   const earned = stampProgress(kind);
   updateKeeperBadge();
+  if (earned) rallyCelebrate(); else renderRally();
 
   if (earned) {
-    sfx.chime();
     if (stampCardFull()) keeperReact('cardFull');
     else if (stampState().earned === 1) {
       keeperTell(`Your first stamp! Fill ${STAMP.cardSize} and I'll swap the card for ` +

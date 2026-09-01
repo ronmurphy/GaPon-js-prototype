@@ -711,7 +711,13 @@ function stampProgress(kind) {
   if (earned) {
     s.pulls = 0;
     s.plays = 0;
-    s.binderDone = false;   // binderDay stays set, so the next credit is tomorrow
+    // binderDay is the day of the VISIT, not of the stamp. When both happened
+    // today the next credit really is tomorrow — but a visit banked on Monday
+    // and cashed on Wednesday leaves this at Monday, so Wednesday can credit
+    // again and pay a second stamp the same day. That is deliberate now it has
+    // been noticed: it rewards the patient player, and the card's own label
+    // tests this same condition, so it never claims a gate that isn't there.
+    s.binderDone = false;
     s.earned++;
   }
   saveGame();
