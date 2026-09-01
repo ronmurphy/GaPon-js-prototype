@@ -796,6 +796,94 @@ function saveShelf(slot, caps) {
   saveGame();
 }
 
+// ---- the calendar ----
+
+// One clock for every seasonal feature. Everything below asks gaponNow()
+// rather than calling `new Date()` directly, so a date can be pinned — which
+// is the only way to look at Halloween in September, or to check Christmas
+// without waiting until Christmas. From the console:
+//
+//     setGaponNow('2026-10-31'); initProps(); maybeOfferHoliday();
+//     setGaponNow(null); initProps(); applyCosmetics();   // back to the real date
+//
+// maybeOfferHoliday() is the part that is easy to forget: the COSTUME is
+// opt-in, so pinning the date alone dresses the shop's own scenery (the fern
+// becomes a jack-o'-lantern) and changes nothing the player wears until Poko
+// has been answered. That is the design working, not a bug — but it does mean
+// a preview needs the ask as well as the date.
+//
+// Deliberately NOT wired into todayStr() or currentPeriod(): those drive the
+// save's own bookkeeping — stock, stamps, streaks — and letting a preview
+// rewrite them would corrupt a real save to look at a wallpaper.
+let NOW_OVERRIDE = null;
+function gaponNow() { return NOW_OVERRIDE || new Date(); }
+function setGaponNow(d) {
+  NOW_OVERRIDE = d ? (d instanceof Date ? d : new Date(d + 'T12:00:00')) : null;
+  return gaponNow();
+}
+
+// [month, day] inclusive, and it handles a range that wraps the new year
+// (Dec 20 – Jan 6) by testing the two halves separately. Without that, every
+// winter holiday would silently never fire.
+function dateInRange(d, from, to) {
+  const md = (d.getMonth() + 1) * 100 + d.getDate();
+  const a = from[0] * 100 + from[1];
+  const b = to[0] * 100 + to[1];
+  return a <= b ? (md >= a && md <= b) : (md >= a || md <= b);
+}
+
+function activeSeason(d = gaponNow()) {
+  return SEASONS.find(s => dateInRange(d, s.from, s.to)) || null;
+}
+
+function activeHoliday(d = gaponNow()) {
+  return HOLIDAYS.find(h => dateInRange(d, h.from, h.to)) || null;
+}
+
+// Keyed by YEAR as well as id, so a "no thanks" this Halloween is not a no
+// forever. Declining a costume for one night should not opt you out of the
+// idea permanently — that is the mistake the cloud-save ask made once already.
+function holidayKey(h, d = gaponNow()) {
+  return `${h.id}-${d.getFullYear()}`;
+}
+
+// Console helper. Answers are per holiday per YEAR — halloween-2026 and
+// halloween-2027 are different keys, so a costume is reoffered every year
+// without anything being cleared. But testing it needs a way back:
+//
+//     setGaponNow('2026-10-31'); resetHoliday(); maybeOfferHoliday();
+//
+// With no argument it forgets the holiday that is live right now.
+function resetHoliday(h) {
+  h = h || activeHoliday();
+  if (!h || !state.holidayAsks) return null;
+  delete state.holidayAsks[holidayKey(h)];
+  saveGame();
+  applyCosmetics();
+  return h.id;
+}
+
+function holidayAnswer(h) {
+  return (state.holidayAsks || {})[holidayKey(h)] || null;
+}
+
+function setHolidayAnswer(h, answer) {
+  state.holidayAsks = state.holidayAsks || {};
+  state.holidayAsks[holidayKey(h)] = answer;
+  saveGame();
+  applyCosmetics();
+}
+
+// The parts a live, accepted holiday is lending right now. Empty the rest of
+// the year. NOTHING here is ever written to state.cos.on — the loan is painted
+// over the player's own choices, so it ends by simply not being applied any
+// more. There is no revert to get wrong.
+function holidayLoan() {
+  const h = activeHoliday();
+  if (!h || !h.look) return {};
+  return String(holidayAnswer(h)).startsWith('yes') ? h.look : {};
+}
+
 // ---- cosmetics ----
 
 // Price-0 items ship owned, so a fresh save can equip a theme without ever
@@ -887,8 +975,14 @@ function equipCosmetic(id, slot) {
 function applyCosmetics() {
   const body = document.body;
   [...body.classList].forEach(c => { if (c.startsWith('cos-')) body.classList.remove(c); });
+  // A holiday loan overrides the slots it names and leaves the rest alone, so
+  // a player wearing a bought floor keeps it under a borrowed sign. Loaned
+  // parts skip the ownership check on purpose: they are not purchases, they
+  // are lent by the calendar, and the list of them is hardcoded data rather
+  // than anything a save can claim.
+  const loan = holidayLoan();
   for (const slot of cosPaintSlots()) {
-    const id = cosEquipped(slot);
+    const id = loan[slot] || cosEquipped(slot);
     if (id) body.classList.add('cos-' + id);
   }
   const theme = cosEquipped('theme') || 'us';

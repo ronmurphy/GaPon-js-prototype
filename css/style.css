@@ -50,6 +50,18 @@
      stays in the room's own rule, where --floor-h is correct by construction.
      Every room happens to use exactly two floor layers; `none` is a valid
      background-image for any that needs fewer. */
+  /* Each texture layer also takes a TILE WIDTH and a REPEAT from the cosmetic,
+     and nothing else. A weave or a stripe wants the full band (the 100%
+     default); a scattered pattern needs a small tile, because one
+     radial-gradient stretched across the floor is a single blob rather than a
+     field of pumpkins.
+
+     The tile HEIGHT is deliberately not offered. It is always the room's own
+     --wall-h / --floor-h, written here in the room's rule, because a var()
+     inside a custom property resolves where it is DECLARED — a cosmetic that
+     said `var(--floor-h)` would be declaring it on <body> and would pin every
+     room to the shop's 30%. That is not a rule to remember; splitting the
+     tokens this way makes it unsayable, which is why they are split. */
   --shop-floor-a: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.20) 0 3px, transparent 3px 112px);
   --shop-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 30%);
 
@@ -303,11 +315,11 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     /* ceiling shadow */
     linear-gradient(180deg, rgba(10, 5, 26, 0.55), transparent 13%) top/100% 100% no-repeat,
     /* wall texture — replaceable; the ceiling shadow above is light, not surface */
-    var(--cos-wall-a, var(--shop-wall-a)) top/100% var(--wall-h) no-repeat,
-    var(--cos-wall-b, var(--shop-wall-b)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-a, var(--shop-wall-a)) top / var(--cos-wall-a-tile, 100%) var(--wall-h) var(--cos-wall-a-rep, no-repeat),
+    var(--cos-wall-b, var(--shop-wall-b)) top / var(--cos-wall-b-tile, 100%) var(--wall-h) var(--cos-wall-b-rep, no-repeat),
     /* floor texture — a bought floor replaces both layers */
-    var(--cos-floor-a, var(--shop-floor-a)) bottom/100% var(--floor-h) no-repeat,
-    var(--cos-floor-b, var(--shop-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-a, var(--shop-floor-a)) bottom / var(--cos-floor-a-tile, 100%) var(--floor-h) var(--cos-floor-a-rep, no-repeat),
+    var(--cos-floor-b, var(--shop-floor-b)) bottom / var(--cos-floor-b-tile, 100%) var(--floor-h) var(--cos-floor-b-rep, no-repeat),
     /* wall, baseboard, floor */
     linear-gradient(180deg,
       var(--cos-wall-1,  var(--shop-wall-1))  0%,
@@ -1572,11 +1584,11 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     repeating-linear-gradient(90deg,
       rgba(255, 255, 255, 0.30) 0 76px, rgba(255, 255, 255, 0) 76px 210px) top/100% 26px no-repeat,
     linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 26%) top/100% 100% no-repeat,
-    var(--cos-wall-a, var(--arc-wall-a)) top/100% var(--wall-h) no-repeat,
-    var(--cos-wall-b, var(--arc-wall-b)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-a, var(--arc-wall-a)) top / var(--cos-wall-a-tile, 100%) var(--wall-h) var(--cos-wall-a-rep, no-repeat),
+    var(--cos-wall-b, var(--arc-wall-b)) top / var(--cos-wall-b-tile, 100%) var(--wall-h) var(--cos-wall-b-rep, no-repeat),
     /* pale diamond carpet, unless a floor is bought */
-    var(--cos-floor-a, var(--arc-floor-a)) bottom/100% var(--floor-h) no-repeat,
-    var(--cos-floor-b, var(--arc-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-a, var(--arc-floor-a)) bottom / var(--cos-floor-a-tile, 100%) var(--floor-h) var(--cos-floor-a-rep, no-repeat),
+    var(--cos-floor-b, var(--arc-floor-b)) bottom / var(--cos-floor-b-tile, 100%) var(--floor-h) var(--cos-floor-b-rep, no-repeat),
     /* wall + floor */
     linear-gradient(180deg,
       var(--cos-wall-1,  var(--arc-wall-1))  0%,
@@ -1598,10 +1610,10 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   background:
     linear-gradient(180deg, rgba(10, 5, 26, 0.42), transparent 13%) top/100% 100% no-repeat,
     /* shoji lattice, unless a wall texture is bought */
-    var(--cos-wall-a, var(--shop-wall-a)) top/100% var(--wall-h) no-repeat,
-    var(--cos-wall-b, var(--shop-wall-b)) top/100% var(--wall-h) no-repeat,
-    var(--cos-floor-a, var(--shop-floor-a)) bottom/100% var(--floor-h) no-repeat,
-    var(--cos-floor-b, var(--shop-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-wall-a, var(--shop-wall-a)) top / var(--cos-wall-a-tile, 100%) var(--wall-h) var(--cos-wall-a-rep, no-repeat),
+    var(--cos-wall-b, var(--shop-wall-b)) top / var(--cos-wall-b-tile, 100%) var(--wall-h) var(--cos-wall-b-rep, no-repeat),
+    var(--cos-floor-a, var(--shop-floor-a)) bottom / var(--cos-floor-a-tile, 100%) var(--floor-h) var(--cos-floor-a-rep, no-repeat),
+    var(--cos-floor-b, var(--shop-floor-b)) bottom / var(--cos-floor-b-tile, 100%) var(--floor-h) var(--cos-floor-b-rep, no-repeat),
     linear-gradient(180deg,
       var(--cos-wall-1,  var(--shop-wall-1))  0%,
       var(--cos-wall-2,  var(--shop-wall-2))  66%,
@@ -1855,10 +1867,10 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
   /* US: a game-show stage — swagged curtain and a warm spotlight */
   background:
     radial-gradient(300px 200px at 50% 0%, rgba(255, 214, 130, 0.16), transparent 70%),
-    var(--cos-wall-a, var(--par-wall-a)) top/100% var(--wall-h) no-repeat,
-    var(--cos-wall-b, var(--par-wall-b)) top/100% var(--wall-h) no-repeat,
-    var(--cos-floor-a, var(--par-floor-a)) bottom/100% var(--floor-h) no-repeat,
-    var(--cos-floor-b, var(--par-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-wall-a, var(--par-wall-a)) top / var(--cos-wall-a-tile, 100%) var(--wall-h) var(--cos-wall-a-rep, no-repeat),
+    var(--cos-wall-b, var(--par-wall-b)) top / var(--cos-wall-b-tile, 100%) var(--wall-h) var(--cos-wall-b-rep, no-repeat),
+    var(--cos-floor-a, var(--par-floor-a)) bottom / var(--cos-floor-a-tile, 100%) var(--floor-h) var(--cos-floor-a-rep, no-repeat),
+    var(--cos-floor-b, var(--par-floor-b)) bottom / var(--cos-floor-b-tile, 100%) var(--floor-h) var(--cos-floor-b-rep, no-repeat),
     linear-gradient(180deg,
       var(--cos-wall-1,  var(--par-wall-1))  0%,
       var(--cos-wall-2,  var(--par-wall-2))  62%,
@@ -1873,10 +1885,10 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     repeating-linear-gradient(90deg,
       rgba(255, 255, 255, 0.7) 0 60px, transparent 60px 170px) top/100% 4px no-repeat,
     radial-gradient(320px 220px at 50% 0%, rgba(255, 235, 190, 0.22), transparent 70%),
-    var(--cos-wall-a, var(--par-wall-a)) top/100% var(--wall-h) no-repeat,
-    var(--cos-wall-b, var(--par-wall-b)) top/100% var(--wall-h) no-repeat,
-    var(--cos-floor-a, var(--par-floor-a)) bottom/100% var(--floor-h) no-repeat,
-    var(--cos-floor-b, var(--par-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-wall-a, var(--par-wall-a)) top / var(--cos-wall-a-tile, 100%) var(--wall-h) var(--cos-wall-a-rep, no-repeat),
+    var(--cos-wall-b, var(--par-wall-b)) top / var(--cos-wall-b-tile, 100%) var(--wall-h) var(--cos-wall-b-rep, no-repeat),
+    var(--cos-floor-a, var(--par-floor-a)) bottom / var(--cos-floor-a-tile, 100%) var(--floor-h) var(--cos-floor-a-rep, no-repeat),
+    var(--cos-floor-b, var(--par-floor-b)) bottom / var(--cos-floor-b-tile, 100%) var(--floor-h) var(--cos-floor-b-rep, no-repeat),
     linear-gradient(180deg,
       var(--cos-wall-1,  var(--par-wall-1))  0%,
       var(--cos-wall-2,  var(--par-wall-2))  64%,
@@ -2420,11 +2432,11 @@ h2 { font-size: 1.25rem; margin-bottom: 12px; }
     /* neon wash on the wall */
     radial-gradient(320px 200px at 50% 0%, rgba(255, 64, 129, 0.10), transparent 70%) top/100% 74% no-repeat,
     /* the arcade has no wallpaper of its own — these are empty until one is bought */
-    var(--cos-wall-a, var(--arc-wall-a)) top/100% var(--wall-h) no-repeat,
-    var(--cos-wall-b, var(--arc-wall-b)) top/100% var(--wall-h) no-repeat,
+    var(--cos-wall-a, var(--arc-wall-a)) top / var(--cos-wall-a-tile, 100%) var(--wall-h) var(--cos-wall-a-rep, no-repeat),
+    var(--cos-wall-b, var(--arc-wall-b)) top / var(--cos-wall-b-tile, 100%) var(--wall-h) var(--cos-wall-b-rep, no-repeat),
     /* classic arcade carpet: crossing neon flecks, unless a floor is bought */
-    var(--cos-floor-a, var(--arc-floor-a)) bottom/100% var(--floor-h) no-repeat,
-    var(--cos-floor-b, var(--arc-floor-b)) bottom/100% var(--floor-h) no-repeat,
+    var(--cos-floor-a, var(--arc-floor-a)) bottom / var(--cos-floor-a-tile, 100%) var(--floor-h) var(--cos-floor-a-rep, no-repeat),
+    var(--cos-floor-b, var(--arc-floor-b)) bottom / var(--cos-floor-b-tile, 100%) var(--floor-h) var(--cos-floor-b-rep, no-repeat),
     /* wall + carpet base */
     linear-gradient(180deg,
       var(--cos-wall-1,  var(--arc-wall-1))  0%,

@@ -170,6 +170,12 @@ function updateRotateTimer() {
     return;
   }
   applyShopTime();
+  // A holiday can begin while the page is simply sitting open — someone who
+  // leaves GaPon up overnight on the 29th would otherwise never be asked,
+  // because the offer only ran at boot. The shop already handles a rotation
+  // rolling over underneath it; the calendar deserves the same.
+  if (typeof maybeOfferHoliday === 'function') maybeOfferHoliday();
+  if (typeof applySeasonalProps === 'function') applySeasonalProps();
   const ms = msUntilRotate();
   const h = Math.floor(ms / 3600000), min = Math.floor((ms % 3600000) / 60000);
   const el = document.querySelector('#rotate-timer');

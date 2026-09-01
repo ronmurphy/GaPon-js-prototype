@@ -787,6 +787,59 @@ function refreshCounter() {
   openStampCard();
 }
 
+// ---------- holidays ----------
+//
+// The shop dresses itself on the calendar without asking (see applySeasonalProps
+// — nobody bought the fern). A LOOK is different: it is the player's own, they
+// may have paid 450 for the one they are wearing, so the costume is offered and
+// a no is respected.
+//
+// The answer is keyed by holiday AND year, so declining a costume this October
+// does not opt anyone out of the idea permanently.
+
+function maybeOfferHoliday() {
+  const h = typeof activeHoliday === 'function' && activeHoliday();
+  if (!h || !h.look) return;
+  if (holidayAnswer(h)) return;                 // already answered this year
+  keeperAsk(h.ask, {
+    mood: 'welcome',
+    yes: 'Yes, dress it up!',
+    no: 'Leave it as it is',
+    onYes: () => {
+      setHolidayAnswer(h, 'yes');
+      toast(`${h.name}! Look around — it's yours for tonight.`, 'good', 4600);
+    },
+    onNo: () => setHolidayAnswer(h, 'no'),
+  });
+}
+
+// Once the holiday is over, the costume simply stops being painted — there is
+// nothing to revert. This is the point of the whole exercise: they have seen
+// the surfaces on their own shop, and the set those surfaces belong to is on
+// Poko's shelf. Said once, and only to someone who actually wore it.
+function maybeSellAfterHoliday() {
+  if (typeof activeHoliday !== 'function' || activeHoliday()) return;   // still on
+  for (const h of HOLIDAYS) {
+    if (!h.sell) continue;
+    // Only this year's. Someone who wore the costume and then didn't open the
+    // app until the following November would otherwise be pitched a set on the
+    // strength of a holiday twelve months gone.
+    const keys = [holidayKey(h)].filter(k => k in (state.holidayAsks || {}));
+    for (const key of keys) {
+      if (state.holidayAsks[key] !== 'yes') continue;
+      state.holidayAsks[key] = 'yes-done';
+      saveGame();
+      if (cosOwned(h.sell)) return;             // they already bought it
+      const set = COS_BY_ID[h.sell];
+      if (!set) return;
+      keeperTell(`Hope you enjoyed ${h.name}! That whole look is my ` +
+        `${set.name} set — it's on the prize shelf if you want to keep it.`,
+        { mood: 'welcome' });
+      return;
+    }
+  }
+}
+
 // ---------- the ambient stamp rally ----------
 //
 // The card lives under the room as well as inside Poko's counter, because the

@@ -823,6 +823,8 @@ function boot() {
 
   applyCosmetics();  // paints the rooms AND applies the theme
   renderRally();
+  maybeOfferHoliday();     // a costume is offered; the shop's own decor is not
+  maybeSellAfterHoliday();
   initProps();      // illustrated scenery, or CSS if PROPS.dir is null
   // ---- settings ----
   const setPanel = $('#settings');

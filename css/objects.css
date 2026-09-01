@@ -178,3 +178,64 @@
   --cos-floor-a: none;
   --cos-floor-b: linear-gradient(180deg, rgba(255, 255, 255, 0.20), transparent 55%);
 }
+
+/* ---------- Autumn Market ----------
+   A season, so it has to hold up for ten weeks, not one night: harvest browns
+   and lantern amber rather than anything spooky. Halloween borrows all four of
+   these surfaces and brings only its own signage. */
+
+.cos-lk-fall-w { --cos-wall-1: #6b4a33; --cos-wall-2: #593d2a; --cos-base: #3a2719; }
+.cos-lk-fall-q {
+  --cos-wall-a: repeating-linear-gradient(90deg,
+    rgba(0, 0, 0, 0.24) 0 3px, rgba(255, 208, 140, 0.06) 3px 8px, transparent 8px 52px);
+  --cos-wall-b: linear-gradient(180deg, rgba(255, 186, 110, 0.08), transparent 44%);
+}
+.cos-lk-fall-f { --cos-floor-1: #7a5b3a; --cos-floor-2: #5e4529; }
+/* Fallen leaves, as Brad asked: warm dots rather than a weave.
+   Each tile is exactly one band tall — the room supplies that height, so the
+   scatter can never climb the wall — and repeats sideways only. Two layers at
+   deliberately unrelated widths (113 and 167) put their dots out of phase, so
+   the eye reads a scatter rather than the two tidy rows one layer would give. */
+.cos-lk-fall-p {
+  --cos-floor-a: radial-gradient(circle at 34% 32%, rgba(198, 78, 32, 0.55) 0 4.5px, transparent 5px);
+  --cos-floor-a-tile: 113px; --cos-floor-a-rep: repeat-x;
+  --cos-floor-b: radial-gradient(circle at 71% 72%, rgba(226, 145, 46, 0.50) 0 3.5px, transparent 4px);
+  --cos-floor-b-tile: 167px; --cos-floor-b-rep: repeat-x;
+}
+
+.cos-lk-fall-s { --cos-sign: #f5a623; --cos-glow: #e8890b; }
+
+/* Orange lettering in a purple halo — the one combination nobody mistakes for
+   anything else, which is the entire job of a two-night loan. */
+.cos-hw-sign { --cos-sign: #ff8c1a; --cos-glow: #8e44ad; }
+
+/* ---------- Haunted Arcade ----------
+   Halloween's own look rather than autumn with a different sign. Autumn has to
+   hold up for ten weeks so it stays warm and tasteful; this has two nights and
+   can afford to be loud, which is the whole reason it needed separating. */
+
+.cos-hw-w { --cos-wall-1: #2e1f3d; --cos-wall-2: #241830; --cos-base: #150e1d; }
+
+/* Cobwebs. A web is spokes plus rings from one point, which is exactly what a
+   conic and a radial gradient are — so the two layers draw one web between
+   them and the tile repeats along the wall. Anchored top-left of each tile,
+   because a web hangs from a corner. */
+.cos-hw-q {
+  --cos-wall-a: repeating-conic-gradient(from 188deg at 4% 2%,
+    rgba(255, 255, 255, 0.13) 0 0.45deg, transparent 0.45deg 11deg);
+  --cos-wall-a-tile: 430px; --cos-wall-a-rep: repeat-x;
+  --cos-wall-b: repeating-radial-gradient(circle at 4% 2%,
+    transparent 0 25px, rgba(255, 255, 255, 0.11) 25px 26px);
+  --cos-wall-b-tile: 430px; --cos-wall-b-rep: repeat-x;
+}
+
+.cos-hw-f { --cos-floor-1: #1d1526; --cos-floor-2: #261c31; }
+
+/* Pumpkins on a dark carpet: small ones high, fatter ones low, at spacings
+   that don't line up. Same tiling rule as the autumn leaves. */
+.cos-hw-p {
+  --cos-floor-a: radial-gradient(circle at 28% 30%, rgba(255, 140, 26, 0.80) 0 3.5px, transparent 4px);
+  --cos-floor-a-tile: 121px; --cos-floor-a-rep: repeat-x;
+  --cos-floor-b: radial-gradient(circle at 66% 71%, rgba(255, 112, 20, 0.68) 0 5px, transparent 5.5px);
+  --cos-floor-b-tile: 179px; --cos-floor-b-rep: repeat-x;
+}

@@ -360,8 +360,102 @@ const COSMETICS = {
       blurb: 'From Winter Fair.',     swatch: ['#9aa7b5', '#7c8794'] },
     { id: 'lk-snow-p',  slot: 'floorpat', name: 'Swept Ice',      bundled: true, price: 0,
       blurb: 'From Winter Fair.',     swatch: ['#c3ced9', '#93a0ad'] },
+
+    // Autumn is a SEASON, not a day: it has to look right in mid-September as
+    // well as on the 31st, so it is warm and harvest-toned rather than spooky.
+    // Halloween borrows these four surfaces and adds its own signage, which is
+    // what lets one set's worth of design cover both.
+    { id: 'lk-fall',  slot: 'look', name: 'Autumn Market', price: 450,
+      blurb: 'Lantern light, dry leaves, late harvest.', swatch: ['#6b4a33', '#7a5b3a'],
+      sets: { walls: 'lk-fall-w', wallpat: 'lk-fall-q',
+              floor: 'lk-fall-f', floorpat: 'lk-fall-p', sign: 'lk-fall-s' } },
+
+    { id: 'lk-fall-w', slot: 'walls',    name: 'Harvest Amber', bundled: true, price: 0,
+      blurb: 'From Autumn Market.',   swatch: ['#6b4a33', '#593d2a'] },
+    { id: 'lk-fall-q', slot: 'wallpat',  name: 'Market Boards', bundled: true, price: 0,
+      blurb: 'From Autumn Market.',   swatch: ['#593d2a', '#41291b'] },
+    { id: 'lk-fall-f', slot: 'floor',    name: 'Dry Leaf',      bundled: true, price: 0,
+      blurb: 'From Autumn Market.',   swatch: ['#7a5b3a', '#5e4529'] },
+    { id: 'lk-fall-p', slot: 'floorpat', name: 'Scattered Leaves', bundled: true, price: 0,
+      blurb: 'From Autumn Market.',   swatch: ['#8a6a44', '#63492c'] },
+    { id: 'lk-fall-s', slot: 'sign',     name: 'Lantern Amber', bundled: true, price: 0,
+      blurb: 'From Autumn Market.',   swatch: ['#f5a623', '#e8890b'] },
+
+    // Halloween started out borrowing autumn's surfaces and bringing only its
+    // signage. That was cheap, but the shop floor has no lit sign — so on the
+    // busiest screen in the game, Halloween was autumn with a lantern. It has
+    // its own look now, which also resolves a tension in sharing: autumn must
+    // hold up for ten weeks and wants to be tasteful; Halloween has two nights
+    // and can afford to be loud.
+    { id: 'lk-hw',  slot: 'look', name: 'Haunted Arcade', price: 450,
+      blurb: 'Cobwebs, dark carpet, pumpkins underfoot.', swatch: ['#2e1f3d', '#1d1526'],
+      sets: { walls: 'hw-w', wallpat: 'hw-q',
+              floor: 'hw-f', floorpat: 'hw-p', sign: 'hw-sign' } },
+
+    { id: 'hw-w',    slot: 'walls',    name: 'Midnight Plum', bundled: true, price: 0,
+      blurb: 'From Haunted Arcade.',  swatch: ['#2e1f3d', '#241830'] },
+    { id: 'hw-q',    slot: 'wallpat',  name: 'Cobwebs',       bundled: true, price: 0,
+      blurb: 'From Haunted Arcade.',  swatch: ['#3b2a4d', '#2a1c39'] },
+    { id: 'hw-f',    slot: 'floor',    name: 'Dark Carpet',   bundled: true, price: 0,
+      blurb: 'From Haunted Arcade.',  swatch: ['#1d1526', '#261c31'] },
+    { id: 'hw-p',    slot: 'floorpat', name: 'Pumpkin Patch', bundled: true, price: 0,
+      blurb: 'From Haunted Arcade.',  swatch: ['#ff8c1a', '#ff7014'] },
+    { id: 'hw-sign', slot: 'sign',     name: 'Pumpkin Neon',  bundled: true, price: 0,
+      blurb: 'From Haunted Arcade.',  swatch: ['#ff8c1a', '#8e44ad'] },
   ],
 };
+
+// ---- the calendar ----
+//
+// Two kinds of thing, and the difference decides who gets asked.
+//
+// A SEASON dresses the shop itself: props, scenery, the things nobody bought.
+// The fern becomes a pumpkin in autumn the same way the window goes dark at
+// night — it is the building, not the player's belongings, so it needs no
+// permission and writes nothing to the save.
+//
+// A HOLIDAY additionally lends the player a LOOK for a day or two. That IS
+// their belongings, so Poko asks, and a no is respected for that holiday. It is
+// never written to state.cos.on either: the preview is painted over the top, so
+// November 1st needs no revert and nobody who paid 450 for Showa Yokochō
+// watches their room turn orange and then turn back into something they did not
+// choose.
+//
+// Dates are [month, day] inclusive, 1-based months. A range that wraps the new
+// year (Dec 20 – Jan 6) is handled by dateInRange.
+const SEASONS = [
+  {
+    id: 'fall', name: 'Autumn', from: [9, 22], to: [11, 30],
+    // Only the shop's own scenery. Nothing here touches what the player wears.
+    props: { fern: 'pumpkin.png' },
+  },
+];
+
+const HOLIDAYS = [
+  {
+    // The 30th is included on purpose: shops dress up a few days early, and one
+    // night is a very small window to be seen at all.
+    id: 'halloween', name: 'Halloween', from: [10, 30], to: [10, 31],
+    props: { fern: 'jackolantern.png' },
+    // Autumn's own surfaces plus one unmistakable accent. A holiday has to read
+    // as ITSELF for the loan to sell anything afterwards — a slightly warmer
+    // room on the 31st makes nobody want to buy an autumn set. The cheapest way
+    // to get there is the signage, which is why it is the only part that isn't
+    // shared with the set on sale.
+    // Exactly the Haunted Arcade set's parts — see the test that pins this.
+    // The moment the loan and the set drift apart, Poko's follow-up ("that look
+    // is my X set") quietly becomes a lie, and nothing else would notice.
+    look: {
+      walls: 'hw-w', wallpat: 'hw-q',
+      floor: 'hw-f', floorpat: 'hw-p', sign: 'hw-sign',
+    },
+    ask: 'It\'s Halloween! Want me to dress the place up for the night?',
+    // What Poko says afterwards, once the loan is over. Selling the costume
+    // itself beats pointing at a neighbouring set: they have just spent two
+    // nights in this exact room, so "you can keep it" is the honest pitch.
+    sell: 'lk-hw',
+  },
+];
 
 const COS_BY_ID = Object.fromEntries(COSMETICS.items.map(i => [i.id, i]));
 

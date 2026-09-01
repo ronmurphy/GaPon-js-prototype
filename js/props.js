@@ -40,4 +40,34 @@ function initProps() {
     root.style.setProperty('--prop-' + name, cssUrl(`${PROPS.dir}/${file}`));
   }
   document.body.classList.add('props-on');
+  applySeasonalProps();
+}
+
+// The shop dresses ITSELF on the calendar — the fern becomes a pumpkin in
+// autumn the way the window goes dark at night. Nobody bought the fern, so
+// nobody is asked; that consent line belongs to cosmetics, which are the
+// player's own belongings.
+//
+// A holiday outranks its season for the two nights it runs.
+//
+// Every swap is PROVEN before it is applied. A seasonal file can be missing —
+// the art may not have been drawn yet, or a deploy may land mid-season — and a
+// 404 in a background shorthand paints nothing at all, which would leave a
+// hole in the room where the fern used to be. Loading it first means the worst
+// case is last month's scenery instead of no scenery.
+function applySeasonalProps() {
+  if (!PROPS.dir) return;
+  const dressing = Object.assign(
+    {},
+    (typeof activeSeason === 'function' && activeSeason() || {}).props,
+    (typeof activeHoliday === 'function' && activeHoliday() || {}).props,
+  );
+  for (const [name, file] of Object.entries(dressing)) {
+    if (!(name in PROPS.files)) continue;         // never invent a new prop slot
+    const url = `${PROPS.dir}/${file}`;
+    const img = new Image();
+    img.onload = () =>
+      document.documentElement.style.setProperty('--prop-' + name, cssUrl(url));
+    img.src = url;                                 // onerror: keep what's there
+  }
 }
