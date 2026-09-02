@@ -696,6 +696,32 @@ const COLLECTIONS = [
       { id: 'ct_maneki',  name: 'LUCKY CAT',      icon: 'star',             rarity: 'chase' },
     ],
   },
+  {
+    // Ships alongside the Autumn Market look, so the season reads as deliberate
+    // rather than as a room dressing nobody asked for.
+    //
+    // BRIEF NOTE for the art: "autumn" invites twelve brown things, and a set
+    // where nine of twelve read the same at thumbnail size has happened here
+    // before (Ball Game). The subjects below are chosen to force PALETTE
+    // variety — russet, gold, deep green, grey sky, white, one cold blue — so
+    // ask for that spread explicitly rather than for "autumn colours".
+    id: 'autumn', name: 'Sweater Weather', color: '#c0663a', artDir: 'SweaterWeatherPngs',
+    unreleased: true,        // ← delete this line on the 15th, and that is the reveal
+    items: [
+      { id: 'aw_leaf',    name: 'First Red Leaf',  icon: 'eco',              rarity: 'common' },
+      { id: 'aw_boot',    name: 'Puddle Boots',    icon: 'steps',            rarity: 'common' },
+      { id: 'aw_cocoa',   name: 'Cocoa Mug',       icon: 'emoji_food_beverage', rarity: 'common' },
+      { id: 'aw_acorn',   name: 'Fat Acorn',       icon: 'spa',              rarity: 'common' },
+      { id: 'aw_scarf',   name: 'Long Scarf',      icon: 'checkroom',        rarity: 'common' },
+      { id: 'aw_rain',    name: 'Grey Afternoon',  icon: 'umbrella',         rarity: 'common' },
+      { id: 'aw_pie',     name: 'Cooling Pie',     icon: 'pie_chart',        rarity: 'uncommon' },
+      { id: 'aw_lantern', name: 'Porch Lantern',   icon: 'light',            rarity: 'uncommon' },
+      { id: 'aw_pine',    name: 'Green Pinecone',  icon: 'park',             rarity: 'uncommon' },
+      { id: 'aw_hedgehog',name: 'Hedgehog',        icon: 'cruelty_free',     rarity: 'rare' },
+      { id: 'aw_moon',    name: 'Harvest Moon',    icon: 'brightness_3',     rarity: 'rare' },
+      { id: 'aw_fox',     name: 'FIRST FROST FOX', icon: 'auto_awesome',     rarity: 'chase' },
+    ],
+  },
 ];
 
 // ---- monthly rotation ----
@@ -741,9 +767,42 @@ for (const col of COLLECTIONS) {
   }
 }
 
+// ---- release gating ----
+//
+// A set can sit fully wired in the repo — data, trade ids, art — before it is
+// meant to exist. `unreleased: true` is what makes that safe.
+//
+// This is NOT the same as being out of rotation, and confusing the two has
+// already cost a reveal once: rotation only filters the SHOP FLOOR, while the
+// Fukubiki drum, the Swap Shop and the Special Pon reach every collection. A
+// set added early leaks through those routes — and it leaks HARDEST, because
+// nobody owns any of it, so the drum's "give them something they're missing"
+// logic favours it above every other set.
+//
+// Releasing is one line deleted. Deliberately not a date: a reveal should
+// happen when the art is finished and Brad says so, not when a clock says so.
+//
+// ITEMS_BY_ID deliberately still contains unreleased stickers, so ids resolve
+// everywhere and nothing has to guard against a missing item.
+let SHOW_UNRELEASED = false;
+
+// Console helper, for checking new art in the binder before anyone else can
+// reach it:  showUnreleased(); renderAlbum();
+function showUnreleased(on = true) {
+  SHOW_UNRELEASED = !!on;
+  return SHOW_UNRELEASED;
+}
+
+function liveCollections() {
+  return COLLECTIONS.filter(c => !c.unreleased || SHOW_UNRELEASED);
+}
+
 // Virtual "collection" for the Special Pon — every sticker in the game.
 // Items keep their real `collection`, so art and album placement still work.
 const SPECIAL_COLLECTION = {
   id: 'special', name: 'Every Set!', color: '#ffc107',
-  items: COLLECTIONS.flatMap(c => c.items),
+  // A getter, not a computed array: the pool has to answer to the release flag
+  // at the moment it is rolled, or a set held back would still be handed out by
+  // the machine that pulls from everything.
+  get items() { return liveCollections().flatMap(c => c.items); },
 };

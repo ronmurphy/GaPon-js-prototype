@@ -455,7 +455,9 @@ function keeperTutorial() {
 function maybeExplainWants() {
   if (state.wantsTipSeen) return;
   if ((state.wants || []).length) { state.wantsTipSeen = true; saveGame(); return; }
-  const gaps = COLLECTIONS.some(c => c.items.some(it => !hasItem(it.id)));
+  // liveCollections, not COLLECTIONS: a set nobody can reach yet is not a gap
+  // the player could do anything about.
+  const gaps = liveCollections().some(c => c.items.some(it => !hasItem(it.id)));
   if (!gaps) return;
   // Fires from the ALBUM tab, where the speech bubble does not exist — which is
   // exactly why this used to become two toasts nobody read.

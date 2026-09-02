@@ -143,7 +143,7 @@ function corinthClose() {
 // have rotated out, with no threshold to tune.
 function corinthBoards() {
   const rng = mulberry32(hashString('corinth:' + currentPeriod()));
-  const pool = COLLECTIONS.slice();
+  const pool = liveCollections();     // an unreleased set must not reach the parlour either
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];

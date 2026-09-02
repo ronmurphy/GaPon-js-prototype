@@ -115,8 +115,22 @@ function foilStyle(item) {
 // (no artDir yet) paint the rainbow into the glyph instead.
 function foilClass(item) { return itemArtSrc(item) ? 'foil' : 'foil-glyph'; }
 
+// An unowned pocket shows a glyph silhouette on purpose — seeing the art before
+// you pull it would give away the whole set. That makes showUnreleased() useless
+// for the one job it has, though: judging new art in its real pockets before
+// anybody can reach it. So the peek lifts the veil, and ONLY for a set that is
+// still held back.
+//
+// Nothing here can leak: SHOW_UNRELEASED is false at boot and can only be
+// turned on from the console, and a released set never qualifies.
+function artPeek(item) {
+  if (typeof SHOW_UNRELEASED === 'undefined' || !SHOW_UNRELEASED) return false;
+  const col = COLLECTIONS.find(c => c.id === item.collection);
+  return !!(col && col.unreleased);
+}
+
 function stickerFace(item, { owned = true, cls = '' } = {}) {
-  const src = owned ? itemArtSrc(item) : null;
+  const src = (owned || artPeek(item)) ? itemArtSrc(item) : null;
   const col = COLLECTIONS.find(c => c.id === item.collection);
   if (src) {
     // A half-finished art set is normal while art is being drawn, so a
@@ -125,7 +139,7 @@ function stickerFace(item, { owned = true, cls = '' } = {}) {
       data-cls="${cls}" data-glyph="${item.icon}" data-color="${col.color}"
       onerror="artFallback(this)">`;
   }
-  return `<span class="msr ${cls}" style="${owned ? `color:${col.color}` : ''}">${item.icon}</span>`;
+  return `<span class="msr ${cls}" style="${owned || artPeek(item) ? `color:${col.color}` : ''}">${item.icon}</span>`;
 }
 
 // Swap a failed <img> for the glyph span it would have been. (Canvas drawing

@@ -176,4 +176,18 @@ const TRADE_ID_LEDGER = [
   'ct_tuxedo',       // 129
   'ct_window',       // 130
   'ct_zoom',         // 131
+  // Sweater Weather. APPENDED, never inserted — every index above is baked
+  // into trade codes that already exist in the wild.
+  'aw_acorn',        // 132
+  'aw_boot',         // 133
+  'aw_cocoa',        // 134
+  'aw_fox',          // 135
+  'aw_hedgehog',     // 136
+  'aw_lantern',      // 137
+  'aw_leaf',         // 138
+  'aw_moon',         // 139
+  'aw_pie',          // 140
+  'aw_pine',         // 141
+  'aw_rain',         // 142
+  'aw_scarf',        // 143
 ];

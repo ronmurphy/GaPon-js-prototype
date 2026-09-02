@@ -389,9 +389,12 @@ const FLOOR_TIERS = ['low', 'low', 'mid', 'mid', 'high'];
 // the binder, the drum, the Swap Shop, the Special Pon — still sees every
 // collection; only the shop floor is filtered.
 function rotatingCollections() {
-  if (!Array.isArray(ROTATION) || !ROTATION.length) return COLLECTIONS.slice();
-  const inRotation = COLLECTIONS.filter(c => ROTATION.includes(c.id));
-  return inRotation.length ? inRotation : COLLECTIONS.slice();
+  // liveCollections() first, so an unreleased set left in ROTATION by mistake
+  // still cannot reach the shop floor.
+  const live = liveCollections();
+  if (!Array.isArray(ROTATION) || !ROTATION.length) return live.slice();
+  const inRotation = live.filter(c => ROTATION.includes(c.id));
+  return inRotation.length ? inRotation : live.slice();
 }
 
 function isInRotation(colId) {
@@ -749,7 +752,7 @@ function dupeCount(rarity) {
 
 // Collections still missing at least one sticker of this rarity.
 function swapTargets(rarity) {
-  return COLLECTIONS
+  return liveCollections()
     .map(col => ({ col, missing: col.items.filter(it => it.rarity === rarity && !hasItem(it.id)) }))
     .filter(x => x.missing.length);
 }

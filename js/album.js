@@ -29,7 +29,7 @@ let albumFlipping = false;
 // every load and Cosmo Club happened to be first in the file.
 function binderOrder() {
   const going = [], done = [], untouched = [];
-  for (const c of COLLECTIONS) {
+  for (const c of liveCollections()) {
     const n = collectionProgress(c);
     (n === 0 ? untouched : n === c.items.length ? done : going).push(c);
   }
@@ -47,15 +47,6 @@ function renderAlbum() {
     <div class="binder">
       <div class="binder-rings">${'<i></i>'.repeat(5)}</div>
       <div class="binder-page" id="binder-page"></div>
-      <div class="binder-tabs">
-        ${albumOrder.map((c, i) => {
-          const done = collectionProgress(c), of = c.items.length;
-          return `
-          <button class="b-tab${i === albumPage ? ' active' : ''}${done === of ? ' full' : ''}"
-                  style="--tabc:${c.color};--fill:${Math.round(done / of * 100)}%"
-                  data-page="${i}" title="${c.name} — ${done}/${of}"></button>`;
-        }).join('')}
-      </div>
     </div>
     <div class="binder-nav">
       <button class="btn ghost small" id="pg-prev">‹ prev</button>
@@ -68,8 +59,9 @@ function renderAlbum() {
 
   $('#pg-prev').addEventListener('click', () => flipTo(albumPage - 1));
   $('#pg-next').addEventListener('click', () => flipTo(albumPage + 1));
-  host.querySelectorAll('.b-tab').forEach(tab =>
-    tab.addEventListener('click', () => flipTo(+tab.dataset.page)));
+  // Anywhere else closes the picker, and so does Escape.
+  host.addEventListener('click', () => toggleSetPicker(false));
+  host.addEventListener('keydown', e => { if (e.key === 'Escape') toggleSetPicker(false); });
 
   // swipe to flip (horizontal only, so vertical page scroll still works)
   const page = $('#binder-page');
@@ -98,10 +90,51 @@ function pocketHTML(it) {
                     : (wanted ? 'on your wants list' : 'tap to add to your wants list')}">
       ${n ? '' : `<span class="pkt-want${wanted ? ' on' : ''}">${wanted ? '★' : '☆'}</span>`}
       <div class="pkt-card${foils ? ' ' + foilClass(it) : ''}" style="${foils ? foilStyle(it) : ''}">${stickerFace(it, { owned: n > 0 })}</div>
-      <div class="pkt-name">${n ? it.name : '???'}</div>
+      <div class="pkt-name">${n || artPeek(it) ? it.name : '???'}</div>
       ${n > 1 ? `<span class="pkt-count">×${n}</span>` : ''}
       ${foils ? `<span class="pkt-foil">✨${foils > 1 ? foils : ''}</span>` : ''}
     </div>`;
+}
+
+// The set picker. Replaces the row of coloured tabs, which could not survive
+// the collection count growing — they run out of width somewhere around 14 sets
+// and the desktop tab bar dies near 17.
+//
+// A dropdown costs one extra tap, so it has to be worth it: this lists every
+// set's PROGRESS, which the tabs never showed and which existed nowhere else in
+// the game. It is a collection overview that happens to navigate.
+//
+// The order is binderOrder()'s — in progress, then complete, then untouched —
+// so what you are working on is always at the top. That does the job "only show
+// tabs for pages in progress" was reaching for, without a navigation bar that
+// rearranges itself as you finish things.
+function setPickerHTML(current) {
+  return `
+    <div class="set-picker" id="set-picker" hidden>
+      ${albumOrder.map((c, i) => {
+        const done = collectionProgress(c), of = c.items.length;
+        const full = done === of;
+        return `
+          <button class="sp-row${i === current ? ' current' : ''}${full ? ' full' : ''}"
+                  data-page="${i}">
+            <span class="sp-top">
+              <span class="sp-dot" style="--c:${c.color}"></span>
+              <span class="sp-name">${c.name}</span>
+              ${isInRotation(c.id) ? '' : '<span class="sp-out">rest</span>'}
+              <span class="sp-n">${done}/${of}</span>
+            </span>
+            <span class="sp-bar"><i style="width:${Math.round(done / of * 100)}%;--c:${c.color}"></i></span>
+          </button>`;
+      }).join('')}
+    </div>`;
+}
+
+function toggleSetPicker(open) {
+  const el = $('#set-picker'), btn = $('#page-pick');
+  if (!el || !btn) return;
+  const show = open === undefined ? el.hidden : open;
+  el.hidden = !show;
+  btn.setAttribute('aria-expanded', String(show));
 }
 
 function renderBinderPage() {
@@ -118,8 +151,12 @@ function renderBinderPage() {
                           // isn't always on screen when this is called
   page.innerHTML = `
     <div class="page-head">
-      <span class="page-title" style="color:${col.color}">${col.name}</span>
-      <span class="page-prog">${prog}/${col.items.length}</span>
+      <button class="page-pick" id="page-pick" aria-expanded="false" aria-haspopup="true">
+        <span class="page-title" style="color:${col.color}">${col.name}</span>
+        <span class="page-prog">${prog}/${col.items.length}</span>
+        <span class="page-chev">⌄</span>
+      </button>
+      ${setPickerHTML(albumPage)}
       ${isInRotation(col.id) ? '' : `<span class="page-outrot"
         title="not in the machines this month — still reachable from the drum, the Swap Shop, the Special Pon, and trades">out of rotation</span>`}
       ${foilProg ? `<span class="page-foil" title="foils are bonus — they never count toward completing a set">✨ ${foilProg}/${col.items.length}</span>` : ''}
@@ -139,6 +176,17 @@ function renderBinderPage() {
   // spare can be told — see net.js
   page.querySelectorAll('.pocket.locked').forEach(pk =>
     pk.addEventListener('click', () => toggleWant(pk.dataset.item)));
+  // Re-bound on every page render, like the pockets above — this markup is
+  // rebuilt each time, so a listener attached once at boot would be discarded.
+  const pick = page.querySelector('#page-pick');
+  if (pick) pick.addEventListener('click', e => { e.stopPropagation(); toggleSetPicker(); });
+  page.querySelectorAll('.sp-row').forEach(row =>
+    row.addEventListener('click', e => {
+      e.stopPropagation();
+      toggleSetPicker(false);      // close BEFORE the flip, or it folds with the page
+      flipTo(+row.dataset.page);
+    }));
+
   const claimBtn = page.querySelector('#page-claim');
   if (claimBtn) claimBtn.addEventListener('click', () => {
     const got = claimSetBonus(col);
@@ -159,8 +207,6 @@ function updateBinderNav() {
   $('#pg-prev').disabled = albumPage === 0;
   $('#pg-next').disabled = albumPage === albumOrder.length - 1;
   $('#pg-num').textContent = `page ${albumPage + 1} / ${albumOrder.length}`;
-  document.querySelectorAll('.b-tab').forEach((t, i) =>
-    t.classList.toggle('active', i === albumPage));
 }
 
 // Cheap-but-convincing page turn: fold the page edge-on about the rings,
