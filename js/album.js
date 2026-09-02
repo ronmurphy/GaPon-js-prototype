@@ -1,6 +1,7 @@
 // GaPon — the sticker album as a card binder. One collection per page:
 // twelve pockets, commons up top, the chase card living in the last slot
-// with a holo sleeve. Pages flip (buttons, edge tabs, or swipe).
+// with a holo sleeve. Pages flip with the buttons, a swipe, or the set picker
+// on the page title (the coloured edge tabs it replaced ran out of width).
 
 let albumPage = 0;          // index into albumOrder, NOT into COLLECTIONS
 let albumOrder = [];        // the page order the tabs were last built with

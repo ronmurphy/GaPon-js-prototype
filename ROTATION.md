@@ -103,7 +103,7 @@ ten needs re-checking as the library grows. Four have already been hit:
 
 | surface | limit | state |
 |---|---|---|
-| binder side tabs | ~17 sets (desktop, 693px binder) | fine at 11; group navigation planned at ~14 |
+| binder navigation | none — the picker is a scrolling list | **solved 1 Sep 2026.** The coloured side tabs ran out of width near 17 sets and needed grouping at ~14; they were replaced by a dropdown off the set name, sorted in-progress first. Adding sets no longer pushes on this at all. |
 | `ROTATION` pool | pool size divides how often a set appears — 5 of 10 stocked each half-day | keep it at **10**, one in one out |
 | the parlour | 3 machines, out-of-rotation sets sorted to the front | self-scaling, no threshold |
 | booth sticker tray | grows with your COLLECTION, not the game — 276 cells at 23 sets | set-filter chips, added 27 Aug 2026 |
