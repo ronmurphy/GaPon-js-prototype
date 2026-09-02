@@ -410,6 +410,11 @@ function applyMergeCode(code) {
   if (got.plain.length) bits.push(`${got.plain.length} sticker${got.plain.length > 1 ? 's' : ''}`);
   if (got.foils.length) bits.push(`✨${got.foils.length} foil${got.foils.length > 1 ? 's' : ''}`);
   if (got.friends) bits.push(`${got.friends} friend${got.friends > 1 ? 's' : ''}`);
+  // Named separately from stickers: these were PAID for, and someone who spent
+  // 450 coins wants to see them arrive rather than trust that they did.
+  if (got.cosmetics.length) {
+    bits.push(`${got.cosmetics.length} thing${got.cosmetics.length > 1 ? 's' : ''} from ${SHOPKEEPER.name}'s counter`);
+  }
   $('#overlay').hidden = true;
   $('#overlay').innerHTML = '';
   if (!bits.length) {

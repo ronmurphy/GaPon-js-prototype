@@ -609,7 +609,7 @@ function addItem(itemId, foil) {
 // a foil Dashy in the other save should get it.
 function mergeSave(data) {
   if (!data || typeof data.inv !== 'object') return null;
-  const got = { plain: [], foils: [], friends: 0, wants: 0, codes: 0 };
+  const got = { plain: [], foils: [], friends: 0, wants: 0, codes: 0, cosmetics: [] };
 
   for (const id of Object.keys(data.inv || {})) {
     if (!ITEMS_BY_ID[id] || !(data.inv[id] > 0)) continue;
@@ -637,8 +637,34 @@ function mergeSave(data) {
       got.wants++;
     }
   }
-  // Coins, stamps, streak, days, pulls and claimed set bonuses are deliberately
-  // NOT merged — those are the economy, and summing them is the exploit.
+  // Things bought at Poko's counter DO come across. They were paid for with
+  // coins on the other save, and coins are not merged — so nothing is
+  // duplicated and nobody gains an item they didn't buy. Losing a 450-coin set
+  // because you consolidated two browsers would be the game taking something
+  // back, which is the one thing a merge must never do.
+  //
+  // Ownership only. What they are WEARING is left alone: `cos.on` is a
+  // preference on this device, and silently redressing someone's rooms because
+  // they merged a save would be a surprise, not a feature. The toast names what
+  // arrived so they can go and put it on.
+  //
+  // A bundled part can arrive on its own here (a set's pieces are ordinary
+  // items once owned), which is fine — cosOwned only ever consults this list.
+  if (data.cos && Array.isArray(data.cos.owned)) {
+    state.cos = state.cos || { owned: [], on: {} };
+    if (!Array.isArray(state.cos.owned)) state.cos.owned = [];
+    for (const id of data.cos.owned) {
+      // COS_BY_ID, not a bare push: the catalogue can lose an item between
+      // builds, and migrateCosmetics would only prune it on the next boot.
+      if (COS_BY_ID[id] && !state.cos.owned.includes(id)) {
+        state.cos.owned.push(id);
+        got.cosmetics.push(id);
+      }
+    }
+  }
+  // Coins, stamps, streak, days, pulls, arcade tokens and claimed set bonuses
+  // are deliberately NOT merged — those are the economy, and summing them is
+  // the exploit.
   state.hasMigrated = true;
   pruneWants();          // anything the merge just filled leaves the list
   saveGame();
